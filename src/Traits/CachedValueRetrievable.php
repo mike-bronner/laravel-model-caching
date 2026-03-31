@@ -7,15 +7,13 @@ trait CachedValueRetrievable
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
         $cacheTags = $this->makeCacheTags();
-        $hashedCacheKey = sha1($cacheKey);
 
         return $this->withCacheFallback(
-            function () use ($arguments, $cacheKey, $cacheTags, $hashedCacheKey, $method) {
+            function () use ($arguments, $cacheKey, $cacheTags, $method) {
                 $result = $this->retrieveCachedValue(
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $hashedCacheKey,
                     $method
                 );
 
@@ -24,7 +22,6 @@ trait CachedValueRetrievable
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $hashedCacheKey,
                     $method
                 );
             },
@@ -40,22 +37,18 @@ trait CachedValueRetrievable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
         string $method
     ) {
         if ($result["key"] === $cacheKey) {
             return $result["value"];
         }
 
-        $this->cache()
-            ->tags($cacheTags)
-            ->forget($hashedCacheKey);
+        $this->forgetModelCacheValue($cacheKey, $cacheTags, true);
 
         return $this->retrieveCachedValue(
             $arguments,
             $cacheKey,
             $cacheTags,
-            $hashedCacheKey,
             $method
         );
     }
@@ -64,7 +57,6 @@ trait CachedValueRetrievable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
         string $method
     ) {
         if (property_exists($this, "model")) {
@@ -75,8 +67,7 @@ trait CachedValueRetrievable
             $this->checkCooldownAndRemoveIfExpired($this->getModel());
         }
 
-        $cache = $this->cache($cacheTags);
-        $cachedResult = $cache->get($hashedCacheKey);
+        $cachedResult = $this->getModelCacheValue($cacheKey, $cacheTags, true);
 
         if ($cachedResult !== null) {
             $this->fireRetrievedEvents($cachedResult["value"] ?? null);
@@ -89,7 +80,7 @@ trait CachedValueRetrievable
             "value" => parent::{$method}(...$arguments),
         ];
 
-        $cache->forever($hashedCacheKey, $result);
+        $this->putModelCacheValue($cacheKey, $result, $cacheTags, true);
 
         return $result;
     }

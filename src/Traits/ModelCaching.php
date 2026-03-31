@@ -65,8 +65,7 @@ trait ModelCaching
                 $tags = $instance->makeCacheTags();
                 $key = $instance->makeCacheKey();
 
-                return $instance->cache($tags)
-                    ->rememberForever($key, function () use ($columns) {
+                return $instance->rememberModelCacheForever($key, $tags, function () use ($columns) {
                         return parent::all($columns);
                     });
             },

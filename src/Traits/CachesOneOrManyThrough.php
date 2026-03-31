@@ -160,7 +160,6 @@ trait CachesOneOrManyThrough
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
         string $method
     ) {
         if (property_exists($this, "model")) {
@@ -171,8 +170,7 @@ trait CachesOneOrManyThrough
             $this->checkCooldownAndRemoveIfExpired($this->getModel());
         }
 
-        $cache = $this->cache($cacheTags);
-        $cachedResult = $cache->get($hashedCacheKey);
+        $cachedResult = $this->getModelCacheValue($cacheKey, $cacheTags, true);
 
         if ($cachedResult !== null) {
             $this->fireRetrievedEvents($cachedResult["value"] ?? null);
@@ -194,7 +192,7 @@ trait CachesOneOrManyThrough
             "value" => parent::{$method}(...$arguments),
         ];
 
-        $cache->forever($hashedCacheKey, $result);
+        $this->putModelCacheValue($cacheKey, $result, $cacheTags, true);
 
         return $result;
     }

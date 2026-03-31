@@ -1,7 +1,7 @@
 <?php namespace GeneaLabs\LaravelModelCaching\Console\Commands;
 
+use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use Illuminate\Console\Command;
-use Illuminate\Container\Container;
 use Illuminate\Support\Collection;
 
 class Clear extends Command
@@ -22,14 +22,7 @@ class Clear extends Command
 
     protected function flushEntireCache() : int
     {
-        $config = Container::getInstance()
-            ->make("config")
-            ->get('laravel-model-caching.store');
-
-        Container::getInstance()
-            ->make("cache")
-            ->store($config)
-            ->flush();
+        ModelCacheRepository::make()->invalidateAll();
 
         $this->info("✔︎ Entire model cache has been flushed.");
 

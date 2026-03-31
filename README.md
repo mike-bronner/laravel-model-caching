@@ -73,10 +73,10 @@ $posts = Post::where('active', true)->with('comments')->paginate();
 | Redis | ✅ (recommended) |
 | Memcached | ✅ |
 | APC | ✅ |
+| DynamoDB | ✅ |
 | Array | ❌ |
 | File | ❌ |
 | Database | ❌ |
-| DynamoDB | ❌ |
 
 ### 📋 Requirements
 - PHP 8.2+
@@ -194,6 +194,16 @@ To use a dedicated cache store for model caching, define one in
 ```
 MODEL_CACHE_STORE=model-cache
 ```
+
+### ☁️ DynamoDB Cache Store
+DynamoDB is supported when your selected Laravel cache store uses the
+`dynamodb` driver. Configure the store in `config/cache.php`, install the AWS
+SDK if your app does not already include it, and enable DynamoDB TTL on the
+table's `expires_at` attribute as described in the Laravel cache docs.
+
+Model invalidation on DynamoDB uses logical namespace versioning instead of
+native cache tags. That means stale query rows are made unreachable immediately,
+but the old DynamoDB items remain in the table until TTL removes them.
 
 ### 🏷️ Cache Key Prefix
 For multi-tenant applications you can isolate cache entries per tenant. Set the

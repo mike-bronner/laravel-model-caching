@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use Closure;
+use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
@@ -153,7 +154,7 @@ trait Caching
                 $tags = $this->makeCacheTags();
             }
 
-            $this->cache($tags)->flush();
+            $this->modelCacheRepository()->invalidateTags($tags);
 
             [$cacheCooldown] = $this->getModelCacheCooldown($this);
 
@@ -405,8 +406,41 @@ trait Caching
                 Container::getInstance()->make("db")->query()
             ))->make();
 
-            $instance->cache($tags)->flush();
+            $instance->modelCacheRepository()->invalidateTags($tags);
         }
+    }
+
+    protected function modelCacheRepository(): ModelCacheRepository
+    {
+        return ModelCacheRepository::make();
+    }
+
+    protected function rememberModelCacheForever(
+        string $key,
+        array $tags,
+        callable $callback,
+        bool $hash = false
+    ): mixed {
+        return $this->modelCacheRepository()->rememberForever($key, $tags, $callback, $hash);
+    }
+
+    protected function getModelCacheValue(string $key, array $tags = [], bool $hash = false): mixed
+    {
+        return $this->modelCacheRepository()->get($key, $tags, $hash);
+    }
+
+    protected function putModelCacheValue(
+        string $key,
+        mixed $value,
+        array $tags = [],
+        bool $hash = false
+    ): bool {
+        return $this->modelCacheRepository()->forever($key, $value, $tags, $hash);
+    }
+
+    protected function forgetModelCacheValue(string $key, array $tags = [], bool $hash = false): bool
+    {
+        return $this->modelCacheRepository()->forget($key, $tags, $hash);
     }
 
     public function isCachable() : bool
@@ -480,6 +514,13 @@ trait Caching
             if ($exception instanceof $exceptionClass) {
                 return true;
             }
+        }
+
+        if (
+            class_exists('\Aws\DynamoDb\Exception\DynamoDbException')
+            && $exception instanceof \Aws\DynamoDb\Exception\DynamoDbException
+        ) {
+            return $exception->isConnectionError();
         }
 
         return false;
