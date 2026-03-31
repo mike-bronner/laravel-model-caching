@@ -40,7 +40,7 @@ use Aws\DynamoDb\Exception\NonConnectionException as AwsDynamoDbNonConnectionExc
 
 class DynamoDbCacheFallbackTest extends IntegrationTestCase
 {
-    protected function setUp() : void
+    public function setUp() : void
     {
         parent::setUp();
 
