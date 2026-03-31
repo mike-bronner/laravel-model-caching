@@ -50,12 +50,14 @@ trait CachedValueRetrievable
 
         $this->forgetModelCacheValue($cacheKey, $cacheTags, true);
 
-        return $this->retrieveCachedValue(
+        $freshResult = $this->retrieveCachedValue(
             $arguments,
             $cacheKey,
             $cacheTags,
             $method,
         );
+
+        return $freshResult['value'];
     }
 
     protected function retrieveCachedValue(

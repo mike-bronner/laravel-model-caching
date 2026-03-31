@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace GeneaLabs\LaravelModelCaching\Cache;
 
 use Illuminate\Cache\DynamoDbStore;
+use Illuminate\Cache\Repository;
 use Illuminate\Cache\TaggableStore;
+use Illuminate\Cache\TaggedCache;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
 
@@ -14,7 +16,7 @@ class ModelCacheRepository
     protected const DYNAMODB_NAMESPACE_PREFIX = 'genealabs:laravel-model-caching:dynamodb:v1:';
 
     public function __construct(
-        protected $repository,
+        protected Repository $repository,
         protected bool $usesDynamoDb = false,
     ) {}
 
@@ -98,7 +100,7 @@ class ModelCacheRepository
         $this->repository->forever($this->globalVersionKey(), $this->freshVersion());
     }
 
-    protected function repositoryFor(array $tags)
+    protected function repositoryFor(array $tags): Repository|TaggedCache
     {
         if (
             ! $this->usesDynamoDb
@@ -123,6 +125,9 @@ class ModelCacheRepository
 
     protected function versionedKey(string $key, array $tags): string
     {
+        // DynamoDB control keys are bounded: one global namespace key plus one
+        // key per normalized tag hash. Query entries are the only records that
+        // accumulate until TTL removes them.
         $versions = [$this->currentVersion($this->globalVersionKey())];
 
         foreach ($this->normalizeTags($tags) as $tag) {
@@ -152,6 +157,9 @@ class ModelCacheRepository
 
     protected function tagVersionKey(string $tag): string
     {
+        // Hashing keeps control keys short and stable even for long or
+        // punctuation-heavy tag strings. Namespace collisions are therefore
+        // limited to theoretical SHA-1 collisions.
         return static::DYNAMODB_NAMESPACE_PREFIX . 'tag-version:' . sha1($tag);
     }
 

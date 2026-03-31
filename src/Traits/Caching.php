@@ -29,6 +29,7 @@ trait Caching
         \RedisException::class,
         'Predis\\Connection\\ConnectionException',
     ];
+    protected static ?\WeakMap $modelCacheRepositories = null;
     protected $isCachable = true;
     protected $scopesAreApplied = false;
     protected $macroKey = "";
@@ -266,6 +267,9 @@ trait Caching
         string $cachePrefix,
         string $modelClassName,
     ): array {
+        // Cooldown metadata intentionally bypasses ModelCacheRepository so it
+        // remains unversioned on DynamoDB and keeps the original package
+        // semantics for direct cooldown reads and writes.
         return [
             $instance
                 ->cache()
@@ -412,7 +416,11 @@ trait Caching
 
     protected function modelCacheRepository(): ModelCacheRepository
     {
-        return ModelCacheRepository::make();
+        static::$modelCacheRepositories
+            ??= new \WeakMap;
+
+        return static::$modelCacheRepositories[$this]
+            ??= ModelCacheRepository::make();
     }
 
     protected function rememberModelCacheForever(
@@ -558,6 +566,8 @@ trait Caching
             $modelClassName = get_class($instance);
             $cacheKey = "{$cachePrefix}:{$modelClassName}-cooldown:saved-at";
 
+            // Cooldown timestamps are stored on the raw cache repository so
+            // they do not participate in DynamoDB namespace versioning.
             $instance->cache()
                 ->rememberForever($cacheKey, function () {
                     return (new Carbon)->now();
