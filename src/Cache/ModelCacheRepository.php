@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Cache;
 
+use Illuminate\Cache\DynamoDbStore;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
@@ -15,8 +16,7 @@ class ModelCacheRepository
     public function __construct(
         protected $repository,
         protected bool $usesDynamoDb = false,
-    ) {
-    }
+    ) {}
 
     public static function make(): static
     {
@@ -36,7 +36,7 @@ class ModelCacheRepository
             ! $usesDynamoDb
             && class_exists('\Illuminate\Cache\DynamoDbStore')
         ) {
-            $usesDynamoDb = $repository->getStore() instanceof \Illuminate\Cache\DynamoDbStore;
+            $usesDynamoDb = $repository->getStore() instanceof DynamoDbStore;
         }
 
         return new static($repository, $usesDynamoDb);
@@ -56,11 +56,11 @@ class ModelCacheRepository
         string $key,
         array $tags,
         callable $callback,
-        bool $hash = false
+        bool $hash = false,
     ): mixed {
         return $this->repositoryFor($tags)->rememberForever(
             $this->itemKey($key, $tags, $hash),
-            $callback
+            $callback,
         );
     }
 
@@ -136,7 +136,7 @@ class ModelCacheRepository
     {
         return (string) $this->repository->rememberForever(
             $versionKey,
-            fn () => $this->freshVersion()
+            fn () => $this->freshVersion(),
         );
     }
 

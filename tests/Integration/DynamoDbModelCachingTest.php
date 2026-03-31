@@ -18,7 +18,7 @@ use Illuminate\Cache\Repository;
 
 class DynamoDbModelCachingTest extends IntegrationTestCase
 {
-    public function setUp() : void
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -32,7 +32,7 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
         ]);
     }
 
-    public function testRepeatedQueriesReuseCachedResultsOnDynamoDb(): void
+    public function test_repeated_queries_reuse_cached_results_on_dynamo_db(): void
     {
         $first = Author::query()->get();
         $writesAfterFirstQuery = FakeDynamoDbStore::writeCount();
@@ -42,7 +42,7 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
         $this->assertSame($writesAfterFirstQuery, FakeDynamoDbStore::writeCount());
     }
 
-    public function testModelInvalidationRefreshesOnlyTheTargetModelNamespace(): void
+    public function test_model_invalidation_refreshes_only_the_target_model_namespace(): void
     {
         $cachedAuthors = Author::query()->get();
         $cachedBooks = Book::query()->get();
@@ -63,15 +63,15 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
 
         $this->assertSame(
             'DYNAMODB_UPDATED_AUTHOR',
-            $freshAuthors->firstWhere('id', $authorId)->name
+            $freshAuthors->firstWhere('id', $authorId)->name,
         );
         $this->assertNotSame(
             'DYNAMODB_UPDATED_BOOK',
-            $staleBooks->firstWhere('id', $bookId)->title
+            $staleBooks->firstWhere('id', $bookId)->title,
         );
     }
 
-    public function testClearCommandLogicallyInvalidatesAllEntriesWithoutFlushingStore(): void
+    public function test_clear_command_logically_invalidates_all_entries_without_flushing_store(): void
     {
         $cachedAuthors = Author::query()->get();
         $cachedBooks = Book::query()->get();
@@ -96,7 +96,7 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
         $this->assertSame('CLEARED_BOOK', $freshBooks->firstWhere('id', $bookId)->title);
     }
 
-    public function testCooldownMetadataRemainsUnversionedOnDynamoDb(): void
+    public function test_cooldown_metadata_remains_unversioned_on_dynamo_db(): void
     {
         AuthorWithCooldown::query()
             ->withCacheCooldownSeconds(60)
@@ -105,17 +105,17 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
         $keys = FakeDynamoDbStore::keys();
 
         $this->assertTrue(
-            collect($keys)->contains(fn ($key) => str_contains($key, '-cooldown:seconds'))
+            collect($keys)->contains(fn ($key) => str_contains($key, '-cooldown:seconds')),
         );
         $this->assertTrue(
-            collect($keys)->contains(fn ($key) => str_contains($key, '-cooldown:invalidated-at'))
+            collect($keys)->contains(fn ($key) => str_contains($key, '-cooldown:invalidated-at')),
         );
         $this->assertFalse(
-            collect($keys)->contains(fn ($key) => str_contains($key, '-cooldown:seconds:versions:'))
+            collect($keys)->contains(fn ($key) => str_contains($key, '-cooldown:seconds:versions:')),
         );
     }
 
-    public function testPivotOperationsInvalidateCachedRelationsWithoutFlushingStore(): void
+    public function test_pivot_operations_invalidate_cached_relations_without_flushing_store(): void
     {
         $user = User::query()->first();
         $initialCount = $user->roles()->count();

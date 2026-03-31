@@ -40,7 +40,7 @@ use Aws\DynamoDb\Exception\NonConnectionException as AwsDynamoDbNonConnectionExc
 
 class DynamoDbCacheFallbackTest extends IntegrationTestCase
 {
-    public function setUp() : void
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -76,7 +76,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
         });
     }
 
-    public function testDynamoDbConnectionFailuresFallBackToDatabaseWhenEnabled(): void
+    public function test_dynamo_db_connection_failures_fall_back_to_database_when_enabled(): void
     {
         config(['laravel-model-caching.fallback-to-database' => true]);
         $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
@@ -91,7 +91,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
         $this->assertNotEmpty($authors);
     }
 
-    public function testNonConnectionDynamoDbExceptionsAreNotSwallowed(): void
+    public function test_non_connection_dynamo_db_exceptions_are_not_swallowed(): void
     {
         config(['laravel-model-caching.fallback-to-database' => true]);
         $this->breakCacheConnection(AwsDynamoDbNonConnectionException::class);

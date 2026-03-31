@@ -1,5 +1,10 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Traits;
+<?php
 
+namespace GeneaLabs\LaravelModelCaching\Traits;
+
+use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 trait CachedValueRetrievable
 {
@@ -14,7 +19,7 @@ trait CachedValueRetrievable
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $method
+                    $method,
                 );
 
                 return $this->preventHashCollision(
@@ -22,13 +27,13 @@ trait CachedValueRetrievable
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $method
+                    $method,
                 );
             },
             'cache read failed, falling back to database',
             function () use ($method, $arguments) {
                 return parent::{$method}(...$arguments);
-            }
+            },
         );
     }
 
@@ -37,7 +42,7 @@ trait CachedValueRetrievable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $method
+        string $method,
     ) {
         if ($result["key"] === $cacheKey) {
             return $result["value"];
@@ -49,7 +54,7 @@ trait CachedValueRetrievable
             $arguments,
             $cacheKey,
             $cacheTags,
-            $method
+            $method,
         );
     }
 
@@ -57,7 +62,7 @@ trait CachedValueRetrievable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $method
+        string $method,
     ) {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
@@ -87,7 +92,7 @@ trait CachedValueRetrievable
 
     protected function fireRetrievedEvents($value): void
     {
-        if ($value instanceof \Illuminate\Database\Eloquent\Model) {
+        if ($value instanceof Model) {
             $this->fireRetrievedEventOnModel($value);
 
             return;
@@ -97,31 +102,31 @@ trait CachedValueRetrievable
 
         if ($value instanceof \Illuminate\Database\Eloquent\Collection) {
             $models = $value;
-        } elseif ($value instanceof \Illuminate\Contracts\Pagination\Paginator) {
+        } elseif ($value instanceof Paginator) {
             $models = $value->getCollection();
-        } elseif ($value instanceof \Illuminate\Support\Collection) {
+        } elseif ($value instanceof Collection) {
             $models = $value->filter(function ($item) {
-                return $item instanceof \Illuminate\Database\Eloquent\Model;
+                return $item instanceof Model;
             });
         }
 
         if ($models) {
             $models->each(function ($model) {
-                if ($model instanceof \Illuminate\Database\Eloquent\Model) {
+                if ($model instanceof Model) {
                     $this->fireRetrievedEventOnModel($model);
                 }
             });
         }
     }
 
-    protected function fireRetrievedEventOnModel(\Illuminate\Database\Eloquent\Model $model): void
+    protected function fireRetrievedEventOnModel(Model $model): void
     {
         $dispatcher = $model::getEventDispatcher();
 
         if ($dispatcher) {
             $dispatcher->dispatch(
                 "eloquent.retrieved: " . get_class($model),
-                $model
+                $model,
             );
         }
     }

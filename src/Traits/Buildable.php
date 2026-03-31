@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 
 /**
  * @SuppressWarnings(PHPMD.TooManyPublicMethods)
@@ -177,7 +180,7 @@ trait Buildable
         $columns = ["*"],
         $pageName = "page",
         $page = null,
-        $total = null
+        $total = null,
     ) {
         if (! $this->isCachable()) {
             return parent::paginate($perPage, $columns, $pageName, $page);
@@ -203,14 +206,14 @@ trait Buildable
 
         $result = $this->cachedValue(func_get_args(), $cacheKey);
 
-        if ($result instanceof \Illuminate\Pagination\AbstractPaginator) {
+        if ($result instanceof AbstractPaginator) {
             $result->setPath(Paginator::resolveCurrentPath());
         }
 
         return $result;
     }
 
-    protected function recursiveImplodeWithKey(array $items, string $glue = "_") : string
+    protected function recursiveImplodeWithKey(array $items, string $glue = "_"): string
     {
         $result = "";
 
@@ -275,7 +278,7 @@ trait Buildable
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $method
+                    $method,
                 );
 
                 return $this->preventHashCollision(
@@ -283,13 +286,13 @@ trait Buildable
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $method
+                    $method,
                 );
             },
             'cache read failed, falling back to database',
             function () use ($arguments, $method) {
                 return $this->executeOnInnerOrParent($method, $arguments);
-            }
+            },
         );
     }
 
@@ -298,7 +301,7 @@ trait Buildable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $method
+        string $method,
     ) {
         if ($result["key"] === $cacheKey) {
             return $result["value"];
@@ -310,7 +313,7 @@ trait Buildable
             $arguments,
             $cacheKey,
             $cacheTags,
-            $method
+            $method,
         );
     }
 
@@ -318,7 +321,7 @@ trait Buildable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $method
+        string $method,
     ) {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
@@ -341,7 +344,7 @@ trait Buildable
                     "value" => $this->executeOnInnerOrParent($method, $arguments),
                 ];
             },
-            true
+            true,
         );
 
         if (! $closureRan) {
@@ -353,7 +356,7 @@ trait Buildable
 
     protected function fireRetrievedEvents($value): void
     {
-        $dispatcher = \Illuminate\Database\Eloquent\Model::getEventDispatcher();
+        $dispatcher = Model::getEventDispatcher();
 
         if (! $dispatcher) {
             return;
@@ -361,10 +364,10 @@ trait Buildable
 
         $models = [];
 
-        if ($value instanceof \Illuminate\Database\Eloquent\Model) {
+        if ($value instanceof Model) {
             $models = [$value];
-        } elseif ($value instanceof \Illuminate\Support\Collection || $value instanceof \Illuminate\Pagination\AbstractPaginator) {
-            $models = $value->filter(fn ($item) => $item instanceof \Illuminate\Database\Eloquent\Model);
+        } elseif ($value instanceof Collection || $value instanceof AbstractPaginator) {
+            $models = $value->filter(fn ($item) => $item instanceof Model);
         }
 
         foreach ($models as $model) {
