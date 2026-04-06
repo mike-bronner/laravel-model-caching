@@ -9,9 +9,9 @@
         }
     ],
     "replace": {
-        "genealabs/laravel-model-caching": "self.version"
+        "genealabs/laravel-model-caching": "self.version",
         "mikebronner/laravel-model-caching": "self.version"
-    }
+    },
     "repositories": [
         {
             "type": "vcs",
