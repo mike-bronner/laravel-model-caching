@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 
 /**
  * @SuppressWarnings(PHPMD.TooManyPublicMethods)
@@ -49,8 +52,7 @@ trait Buildable
     public function decrement($column, $amount = 1, array $extra = [])
     {
         $this->withCacheFallback(function () {
-            $this->cache($this->makeCacheTags())
-                ->flush();
+            $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
         }, 'cache flush failed during decrement');
 
         return $this->executeOnInnerOrParent('decrement', [$column, $amount, $extra]);
@@ -62,8 +64,7 @@ trait Buildable
 
         if ($result) {
             $this->withCacheFallback(function () {
-                $this->cache($this->makeCacheTags())
-                    ->flush();
+                $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
             }, 'cache flush failed during delete');
         }
 
@@ -108,8 +109,7 @@ trait Buildable
 
         if ($result) {
             $this->withCacheFallback(function () {
-                $this->cache($this->makeCacheTags())
-                    ->flush();
+                $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
             }, 'cache flush failed during forceDelete');
         }
 
@@ -131,8 +131,7 @@ trait Buildable
     public function increment($column, $amount = 1, array $extra = [])
     {
         $this->withCacheFallback(function () {
-            $this->cache($this->makeCacheTags())
-                ->flush();
+            $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
         }, 'cache flush failed during increment');
 
         return $this->executeOnInnerOrParent('increment', [$column, $amount, $extra]);
@@ -181,7 +180,7 @@ trait Buildable
         $columns = ["*"],
         $pageName = "page",
         $page = null,
-        $total = null
+        $total = null,
     ) {
         if (! $this->isCachable()) {
             return parent::paginate($perPage, $columns, $pageName, $page);
@@ -207,14 +206,14 @@ trait Buildable
 
         $result = $this->cachedValue(func_get_args(), $cacheKey);
 
-        if ($result instanceof \Illuminate\Pagination\AbstractPaginator) {
+        if ($result instanceof AbstractPaginator) {
             $result->setPath(Paginator::resolveCurrentPath());
         }
 
         return $result;
     }
 
-    protected function recursiveImplodeWithKey(array $items, string $glue = "_") : string
+    protected function recursiveImplodeWithKey(array $items, string $glue = "_"): string
     {
         $result = "";
 
@@ -272,16 +271,14 @@ trait Buildable
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
         $cacheTags = $this->makeCacheTags();
-        $hashedCacheKey = sha1($cacheKey);
 
         return $this->withCacheFallback(
-            function () use ($arguments, $cacheKey, $cacheTags, $hashedCacheKey, $method) {
+            function () use ($arguments, $cacheKey, $cacheTags, $method) {
                 $result = $this->retrieveCachedValue(
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $hashedCacheKey,
-                    $method
+                    $method,
                 );
 
                 return $this->preventHashCollision(
@@ -289,14 +286,13 @@ trait Buildable
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $hashedCacheKey,
-                    $method
+                    $method,
                 );
             },
             'cache read failed, falling back to database',
             function () use ($arguments, $method) {
                 return $this->executeOnInnerOrParent($method, $arguments);
-            }
+            },
         );
     }
 
@@ -305,32 +301,29 @@ trait Buildable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
-        string $method
+        string $method,
     ) {
         if ($result["key"] === $cacheKey) {
             return $result["value"];
         }
 
-        $this->cache()
-            ->tags($cacheTags)
-            ->forget($hashedCacheKey);
+        $this->forgetModelCacheValue($cacheKey, $cacheTags, true);
 
-        return $this->retrieveCachedValue(
+        $freshResult = $this->retrieveCachedValue(
             $arguments,
             $cacheKey,
             $cacheTags,
-            $hashedCacheKey,
-            $method
+            $method,
         );
+
+        return $freshResult['value'];
     }
 
     protected function retrieveCachedValue(
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
-        string $method
+        string $method,
     ) {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
@@ -342,18 +335,19 @@ trait Buildable
 
         $closureRan = false;
 
-        $result = $this->cache($cacheTags)
-            ->rememberForever(
-                $hashedCacheKey,
-                function () use ($arguments, $cacheKey, $method, &$closureRan) {
-                    $closureRan = true;
+        $result = $this->rememberModelCacheForever(
+            $cacheKey,
+            $cacheTags,
+            function () use ($arguments, $cacheKey, $method, &$closureRan) {
+                $closureRan = true;
 
-                    return [
-                        "key" => $cacheKey,
-                        "value" => $this->executeOnInnerOrParent($method, $arguments),
-                    ];
-                }
-            );
+                return [
+                    "key" => $cacheKey,
+                    "value" => $this->executeOnInnerOrParent($method, $arguments),
+                ];
+            },
+            true,
+        );
 
         if (! $closureRan) {
             $this->fireRetrievedEvents($result["value"] ?? null);
@@ -364,7 +358,7 @@ trait Buildable
 
     protected function fireRetrievedEvents($value): void
     {
-        $dispatcher = \Illuminate\Database\Eloquent\Model::getEventDispatcher();
+        $dispatcher = Model::getEventDispatcher();
 
         if (! $dispatcher) {
             return;
@@ -372,10 +366,10 @@ trait Buildable
 
         $models = [];
 
-        if ($value instanceof \Illuminate\Database\Eloquent\Model) {
+        if ($value instanceof Model) {
             $models = [$value];
-        } elseif ($value instanceof \Illuminate\Support\Collection || $value instanceof \Illuminate\Pagination\AbstractPaginator) {
-            $models = $value->filter(fn ($item) => $item instanceof \Illuminate\Database\Eloquent\Model);
+        } elseif ($value instanceof Collection || $value instanceof AbstractPaginator) {
+            $models = $value->filter(fn ($item) => $item instanceof Model);
         }
 
         foreach ($models as $model) {

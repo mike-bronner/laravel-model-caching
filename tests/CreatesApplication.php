@@ -1,4 +1,6 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests;
+<?php
+
+namespace GeneaLabs\LaravelModelCaching\Tests;
 
 use GeneaLabs\LaravelModelCaching\Providers\Service as LaravelModelCachingService;
 use Illuminate\Support\Facades\Artisan;
@@ -6,7 +8,6 @@ use Illuminate\Support\Facades\Artisan;
 trait CreatesApplication
 {
     private static $baseLineDatabaseMigrated = false;
-
     protected $cache;
     protected $testingSqlitePath;
 
@@ -21,7 +22,7 @@ trait CreatesApplication
         return $cache;
     }
 
-    public function setUp() : void
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -36,7 +37,7 @@ trait CreatesApplication
             ?: unlink($testingPath);
         copy($baselinePath, $testingPath);
 
-        require(__DIR__ . '/routes/web.php');
+        require __DIR__ . '/routes/web.php';
 
         view()->addLocation(__DIR__ . '/resources/views', 'laravel-model-caching');
 
@@ -99,16 +100,16 @@ trait CreatesApplication
         $app['config']->set('database.redis.client', "phpredis");
         $app['config']->set('database.redis.cache', [
             'host' => env('REDIS_HOST', '127.0.0.1'),
-            'port' => env('REDIS_PORT', 6379),
+            'port' => env('REDIS_PORT', 6_379),
         ]);
         $app['config']->set('database.redis.default', [
             'host' => env('REDIS_HOST', '127.0.0.1'),
-            'port' => env('REDIS_PORT', 6379),
+            'port' => env('REDIS_PORT', 6_379),
         ]);
         $app['config']->set('database.redis.model-cache', [
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => env('REDIS_PASSWORD', null),
-            'port' => env('REDIS_PORT', 6379),
+            'port' => env('REDIS_PORT', 6_379),
             'database' => 1,
         ]);
         $app['config']->set('cache.stores.model', [

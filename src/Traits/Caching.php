@@ -4,22 +4,24 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
+use Aws\DynamoDb\Exception\DynamoDbException;
 use Closure;
+use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use ReflectionClass;
-use ReflectionNamedType;
-use ReflectionMethod;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Scope;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use ReflectionClass;
+use ReflectionMethod;
+use ReflectionNamedType;
 
 trait Caching
 {
@@ -27,7 +29,7 @@ trait Caching
         \RedisException::class,
         'Predis\\Connection\\ConnectionException',
     ];
-
+    protected static ?\WeakMap $modelCacheRepositories = null;
     protected $isCachable = true;
     protected $scopesAreApplied = false;
     protected $macroKey = "";
@@ -153,7 +155,7 @@ trait Caching
                 $tags = $this->makeCacheTags();
             }
 
-            $this->cache($tags)->flush();
+            $this->modelCacheRepository()->invalidateTags($tags);
 
             [$cacheCooldown] = $this->getModelCacheCooldown($this);
 
@@ -170,7 +172,7 @@ trait Caching
         }, 'cache flush failed');
     }
 
-    protected function getCachePrefix() : string
+    protected function getCachePrefix(): string
     {
         $cachePrefix = Container::getInstance()
             ->make("config")
@@ -194,8 +196,8 @@ trait Caching
     protected function makeCacheKey(
         array $columns = ['*'],
         $idColumn = null,
-        string $keyDifferentiator = ''
-    ) : string {
+        string $keyDifferentiator = '',
+    ): string {
         $this->applyScopesToInstance();
         $eagerLoad = $this->eagerLoad
             ?? [];
@@ -225,7 +227,7 @@ trait Caching
             ->make($columns, $idColumn, $keyDifferentiator);
     }
 
-    protected function makeCacheTags() : array
+    protected function makeCacheTags(): array
     {
         $eagerLoad = $this->eagerLoad ?? [];
         $model = $this->getModel() instanceof Model
@@ -242,7 +244,7 @@ trait Caching
         return $tags;
     }
 
-    protected function getModelCacheCooldown(Model $instance) : array
+    protected function getModelCacheCooldown(Model $instance): array
     {
         if (! $instance->cacheCooldownSeconds) {
             return [null, null, null];
@@ -263,8 +265,11 @@ trait Caching
     protected function getCacheCooldownDetails(
         Model $instance,
         string $cachePrefix,
-        string $modelClassName
-    ) : array {
+        string $modelClassName,
+    ): array {
+        // Cooldown metadata intentionally bypasses ModelCacheRepository so it
+        // remains unversioned on DynamoDB and keeps the original package
+        // semantics for direct cooldown reads and writes.
         return [
             $instance
                 ->cache()
@@ -402,14 +407,51 @@ trait Caching
             $tags = (new CacheTags(
                 [],
                 $relationshipInstance,
-                Container::getInstance()->make("db")->query()
+                Container::getInstance()->make("db")->query(),
             ))->make();
 
-            $instance->cache($tags)->flush();
+            $instance->modelCacheRepository()->invalidateTags($tags);
         }
     }
 
-    public function isCachable() : bool
+    protected function modelCacheRepository(): ModelCacheRepository
+    {
+        static::$modelCacheRepositories
+            ??= new \WeakMap;
+
+        return static::$modelCacheRepositories[$this]
+            ??= ModelCacheRepository::make();
+    }
+
+    protected function rememberModelCacheForever(
+        string $key,
+        array $tags,
+        callable $callback,
+        bool $hash = false,
+    ): mixed {
+        return $this->modelCacheRepository()->rememberForever($key, $tags, $callback, $hash);
+    }
+
+    protected function getModelCacheValue(string $key, array $tags = [], bool $hash = false): mixed
+    {
+        return $this->modelCacheRepository()->get($key, $tags, $hash);
+    }
+
+    protected function putModelCacheValue(
+        string $key,
+        mixed $value,
+        array $tags = [],
+        bool $hash = false,
+    ): bool {
+        return $this->modelCacheRepository()->forever($key, $value, $tags, $hash);
+    }
+
+    protected function forgetModelCacheValue(string $key, array $tags = [], bool $hash = false): bool
+    {
+        return $this->modelCacheRepository()->forget($key, $tags, $hash);
+    }
+
+    public function isCachable(): bool
     {
         $isCacheDisabled = ! Container::getInstance()
             ->make("config")
@@ -467,19 +509,26 @@ trait Caching
             && ! $hasLock;
     }
 
-    public function shouldFallbackToDatabase() : bool
+    public function shouldFallbackToDatabase(): bool
     {
         return Container::getInstance()
             ->make("config")
             ->get("laravel-model-caching.fallback-to-database", false);
     }
 
-    public function isCacheConnectionException(\Throwable $exception) : bool
+    public function isCacheConnectionException(\Throwable $exception): bool
     {
         foreach (static::$cacheConnectionExceptions as $exceptionClass) {
             if ($exception instanceof $exceptionClass) {
                 return true;
             }
+        }
+
+        if (
+            class_exists('\Aws\DynamoDb\Exception\DynamoDbException')
+            && $exception instanceof DynamoDbException
+        ) {
+            return $exception->isConnectionError();
         }
 
         return false;
@@ -517,6 +566,8 @@ trait Caching
             $modelClassName = get_class($instance);
             $cacheKey = "{$cachePrefix}:{$modelClassName}-cooldown:saved-at";
 
+            // Cooldown timestamps are stored on the raw cache repository so
+            // they do not participate in DynamoDB namespace versioning.
             $instance->cache()
                 ->rememberForever($cacheKey, function () {
                     return (new Carbon)->now();

@@ -30,6 +30,7 @@
         "illuminate/support": "^11.0|^12.0|^13.0"
     },
     "require-dev": {
+        "aws/aws-sdk-php": "^3.322.9",
         "doctrine/dbal": "^3.3|^4.2",
         "fakerphp/faker": "^1.11",
         "larastan/larastan": "^2.0|^3.0",

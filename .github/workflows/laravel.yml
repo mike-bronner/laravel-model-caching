@@ -10,6 +10,11 @@ jobs:
   laravel-tests:
 
     runs-on: ubuntu-latest
+    env:
+      PGSQL_HOST: 127.0.0.1
+      PGSQL_DATABASE: testing
+      PGSQL_USERNAME: forge
+      PGSQL_PASSWORD: secret
 
     strategy:
       fail-fast: false
@@ -88,3 +93,112 @@ jobs:
         fail_ci_if_error: true
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  dynamodb-integration:
+
+    runs-on: ubuntu-latest
+    name: PHP 8.4 / Laravel 13 / DynamoDB Local
+    env:
+      PGSQL_HOST: 127.0.0.1
+      PGSQL_DATABASE: testing
+      PGSQL_USERNAME: forge
+      PGSQL_PASSWORD: secret
+      AWS_ACCESS_KEY_ID: testing
+      AWS_SECRET_ACCESS_KEY: testing
+      AWS_DEFAULT_REGION: us-east-1
+      DYNAMODB_ENDPOINT: http://127.0.0.1:8000
+      DYNAMODB_CACHE_TABLE: cache
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.composer/cache
+        key: dynamodb-integration-composer-${{ hashFiles('composer.json') }}
+        restore-keys: |
+          dynamodb-integration-composer-
+
+    - name: Setup PHP 8.4
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql
+        coverage: none
+
+    - name: Install specific Laravel version
+      run: |
+        composer require "illuminate/support:13.*" "illuminate/database:13.*" "illuminate/cache:13.*" "illuminate/config:13.*" "illuminate/console:13.*" "illuminate/container:13.*" "illuminate/http:13.*" "orchestra/testbench:11.*" --no-update --no-interaction
+
+    - name: Copy .env
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+    - name: Install Dependencies
+      run: composer update -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Start DynamoDB Local
+      run: |
+        docker run -d --name dynamodb-local -p 8000:8000 amazon/dynamodb-local:latest -jar DynamoDBLocal.jar -sharedDb -inMemory
+        sleep 5
+
+    - name: Create DynamoDB cache table
+      run: |
+        php <<'PHP'
+        <?php
+        require 'vendor/autoload.php';
+
+        $client = new Aws\DynamoDb\DynamoDbClient([
+            'region' => getenv('AWS_DEFAULT_REGION'),
+            'version' => 'latest',
+            'endpoint' => getenv('DYNAMODB_ENDPOINT'),
+            'credentials' => [
+                'key' => getenv('AWS_ACCESS_KEY_ID'),
+                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+            ],
+        ]);
+
+        $client->createTable([
+            'TableName' => getenv('DYNAMODB_CACHE_TABLE'),
+            'AttributeDefinitions' => [
+                ['AttributeName' => 'key', 'AttributeType' => 'S'],
+            ],
+            'KeySchema' => [
+                ['AttributeName' => 'key', 'KeyType' => 'HASH'],
+            ],
+            'BillingMode' => 'PAY_PER_REQUEST',
+        ]);
+
+        $client->waitUntil('TableExists', [
+            'TableName' => getenv('DYNAMODB_CACHE_TABLE'),
+        ]);
+
+        $client->updateTimeToLive([
+            'TableName' => getenv('DYNAMODB_CACHE_TABLE'),
+            'TimeToLiveSpecification' => [
+                'Enabled' => true,
+                'AttributeName' => 'expires_at',
+            ],
+        ]);
+        PHP
+
+    - name: Execute real DynamoDB smoke tests
+      run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Integration/RealDynamoDbModelCachingTest.php

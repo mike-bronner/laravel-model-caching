@@ -65,15 +65,14 @@ trait ModelCaching
                 $tags = $instance->makeCacheTags();
                 $key = $instance->makeCacheKey();
 
-                return $instance->cache($tags)
-                    ->rememberForever($key, function () use ($columns) {
+                return $instance->rememberModelCacheForever($key, $tags, function () use ($columns) {
                         return parent::all($columns);
                     });
             },
             'cache read failed, falling back to database',
             function () use ($columns) {
                 return parent::all($columns);
-            }
+            },
         );
     }
 
@@ -229,7 +228,7 @@ trait ModelCaching
         $firstKey,
         $secondKey,
         $localKey,
-        $secondLocalKey
+        $secondLocalKey,
     ) {
         if ($this->isThroughRelationCachable($query, $farParent)) {
             return new CachedHasManyThrough(
@@ -239,7 +238,7 @@ trait ModelCaching
                 $firstKey,
                 $secondKey,
                 $localKey,
-                $secondLocalKey
+                $secondLocalKey,
             );
         }
 
@@ -250,7 +249,7 @@ trait ModelCaching
             $firstKey,
             $secondKey,
             $localKey,
-            $secondLocalKey
+            $secondLocalKey,
         );
     }
 
@@ -261,7 +260,7 @@ trait ModelCaching
         $firstKey,
         $secondKey,
         $localKey,
-        $secondLocalKey
+        $secondLocalKey,
     ) {
         if ($this->isThroughRelationCachable($query, $farParent)) {
             return new CachedHasOneThrough(
@@ -271,7 +270,7 @@ trait ModelCaching
                 $firstKey,
                 $secondKey,
                 $localKey,
-                $secondLocalKey
+                $secondLocalKey,
             );
         }
 
@@ -282,7 +281,7 @@ trait ModelCaching
             $firstKey,
             $secondKey,
             $localKey,
-            $secondLocalKey
+            $secondLocalKey,
         );
     }
 

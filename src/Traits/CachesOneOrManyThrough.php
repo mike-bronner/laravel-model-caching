@@ -1,4 +1,6 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Traits;
+<?php
+
+namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
@@ -160,8 +162,7 @@ trait CachesOneOrManyThrough
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
-        string $method
+        string $method,
     ) {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
@@ -171,8 +172,7 @@ trait CachesOneOrManyThrough
             $this->checkCooldownAndRemoveIfExpired($this->getModel());
         }
 
-        $cache = $this->cache($cacheTags);
-        $cachedResult = $cache->get($hashedCacheKey);
+        $cachedResult = $this->getModelCacheValue($cacheKey, $cacheTags, true);
 
         if ($cachedResult !== null) {
             $this->fireRetrievedEvents($cachedResult["value"] ?? null);
@@ -194,7 +194,7 @@ trait CachesOneOrManyThrough
             "value" => parent::{$method}(...$arguments),
         ];
 
-        $cache->forever($hashedCacheKey, $result);
+        $this->putModelCacheValue($cacheKey, $result, $cacheTags, true);
 
         return $result;
     }
@@ -202,7 +202,7 @@ trait CachesOneOrManyThrough
     protected function makeCacheKey(
         array $columns = ['*'],
         $idColumn = null,
-        string $keyDifferentiator = ''
+        string $keyDifferentiator = '',
     ): string {
         $eagerLoad = $this->eagerLoad ?? [];
         $model = $this->getModel();
@@ -214,7 +214,7 @@ trait CachesOneOrManyThrough
             $query,
             $this->macroKey,
             $this->withoutGlobalScopes,
-            $this->withoutAllGlobalScopes
+            $this->withoutAllGlobalScopes,
         ))->make($columns, $idColumn, $keyDifferentiator);
     }
 

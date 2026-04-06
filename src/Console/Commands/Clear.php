@@ -1,8 +1,11 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Console\Commands;
+<?php
 
+namespace GeneaLabs\LaravelModelCaching\Console\Commands;
+
+use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use Illuminate\Console\Command;
-use Illuminate\Container\Container;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class Clear extends Command
 {
@@ -20,23 +23,22 @@ class Clear extends Command
         return $this->flushModelCache($option);
     }
 
-    protected function flushEntireCache() : int
+    protected function flushEntireCache(): int
     {
-        $config = Container::getInstance()
-            ->make("config")
-            ->get('laravel-model-caching.store');
+        try {
+            ModelCacheRepository::make()->invalidateAll();
+        } catch (Throwable $throwable) {
+            $this->error("Unable to clear the model cache: {$throwable->getMessage()}");
 
-        Container::getInstance()
-            ->make("cache")
-            ->store($config)
-            ->flush();
+            return 1;
+        }
 
         $this->info("✔︎ Entire model cache has been flushed.");
 
         return 0;
     }
 
-    protected function flushModelCache(string $option) : int
+    protected function flushModelCache(string $option): int
     {
         $model = new $option;
         $usesCachableTrait = $this->getAllTraitsUsedByClass($option)
@@ -58,8 +60,8 @@ class Clear extends Command
     /** @SuppressWarnings(PHPMD.BooleanArgumentFlag) */
     protected function getAllTraitsUsedByClass(
         string $classname,
-        bool $autoload = true
-    ) : Collection {
+        bool $autoload = true,
+    ): Collection {
         $traits = collect();
 
         if (class_exists($classname, $autoload)) {

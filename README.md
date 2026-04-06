@@ -73,10 +73,10 @@ $posts = Post::where('active', true)->with('comments')->paginate();
 | Redis | ✅ (recommended) |
 | Memcached | ✅ |
 | APC | ✅ |
+| DynamoDB | ✅ |
 | Array | ❌ |
 | File | ❌ |
 | Database | ❌ |
-| DynamoDB | ❌ |
 
 ### 📋 Requirements
 - PHP 8.2+
@@ -194,6 +194,85 @@ To use a dedicated cache store for model caching, define one in
 ```
 MODEL_CACHE_STORE=model-cache
 ```
+
+### ☁️ DynamoDB Cache Store
+DynamoDB is supported when your selected Laravel cache store uses the
+`dynamodb` driver:
+```env
+MODEL_CACHE_STORE=dynamodb-model
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_DEFAULT_REGION=us-east-1
+AWS_DYNAMODB_CACHE_ENDPOINT=
+AWS_DYNAMODB_CACHE_TABLE=cache
+```
+
+Define the store in `config/cache.php` using the same fields Laravel documents
+for the DynamoDB cache driver:
+```php
+'stores' => [
+    'dynamodb-model' => [
+        'driver' => 'dynamodb',
+        'key' => env('AWS_ACCESS_KEY_ID'),
+        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+        'table' => env('AWS_DYNAMODB_CACHE_TABLE', 'cache'),
+        'endpoint' => env('AWS_DYNAMODB_CACHE_ENDPOINT'),
+        'attributes' => [
+            'key' => 'key',
+            'value' => 'value',
+            'expiration' => 'expires_at',
+        ],
+    ],
+],
+```
+
+If your application does not already require it, install the AWS SDK:
+```sh
+composer require aws/aws-sdk-php
+```
+
+Enable DynamoDB TTL on the table's `expires_at` attribute as described in the
+Laravel cache docs.
+
+#### How invalidation works on DynamoDB
+Model invalidation on DynamoDB uses logical namespace versioning instead of
+native cache tags:
+- `modelCache:clear` rotates a package-wide namespace key.
+- Model and relationship invalidation rotate per-tag namespace keys.
+- Cached query rows become unreachable immediately after the namespace changes.
+- Old query rows are not deleted eagerly; DynamoDB removes them later through TTL.
+
+This package does **not** issue table scans or destructive flushes on DynamoDB.
+
+#### TTL guidance
+Laravel's DynamoDB cache store writes `forever()` entries with a long-lived
+expiration instead of a truly unbounded item. In current Laravel releases that
+window is several years, which means stale DynamoDB rows are bounded but can
+linger for a long time after invalidation.
+
+Practical guidance:
+- Always enable TTL on `expires_at`.
+- Treat DynamoDB cache invalidation as logical invalidation first and physical cleanup later.
+- Expect dead query rows to accumulate temporarily on write-heavy or high-churn models.
+- If you need faster physical cleanup than Laravel's long-lived cache TTL allows, Redis is usually a better fit.
+
+#### Operational notes
+- Namespace control keys do not grow without bound. The package stores one global namespace key plus one key per normalized tag hash.
+- Multi-tag invalidation is not atomic. Tags are rotated one at a time, so a crash in the middle of an invalidation can leave a partial namespace rotation. A later invalidation will still converge the cache to the latest version.
+- Tag control keys hash the raw tag string, so long or punctuation-heavy tags are supported. Namespace collisions are limited to theoretical SHA-1 collisions.
+- Cache cool-down metadata intentionally bypasses namespace versioning and stays on the raw cache store.
+
+#### Troubleshooting
+- **`modelCache:clear` did not shrink the DynamoDB table:** expected. The command makes old rows unreachable; it does not physically delete every row.
+- **Stale rows are still visible in DynamoDB:** expected until TTL removes them.
+- **Frequent invalidations increase table size:** expected on high-churn models because stale rows remain until TTL cleanup.
+- **Connection failures during reads:** enable `MODEL_CACHE_FALLBACK_TO_DB=true` if you want query paths to fall back to the database during cache outages.
+- **Connection failures during `modelCache:clear`:** the command now returns a non-zero exit code and prints the cache error instead of silently succeeding.
+
+#### When to use DynamoDB vs Redis
+- Use **DynamoDB** when you are already operating in AWS-native or serverless environments, want a managed cache store without running Redis, or need a simple multi-AZ DynamoDB-backed cache layer.
+- Use **Redis** when you need lower latency, higher write churn, native tag support, or faster physical cleanup of invalidated cache data.
 
 ### 🏷️ Cache Key Prefix
 For multi-tenant applications you can isolate cache entries per tenant. Set the

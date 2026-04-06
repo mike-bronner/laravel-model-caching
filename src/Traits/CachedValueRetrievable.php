@@ -1,5 +1,10 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Traits;
+<?php
 
+namespace GeneaLabs\LaravelModelCaching\Traits;
+
+use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 trait CachedValueRetrievable
 {
@@ -7,16 +12,14 @@ trait CachedValueRetrievable
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
         $cacheTags = $this->makeCacheTags();
-        $hashedCacheKey = sha1($cacheKey);
 
         return $this->withCacheFallback(
-            function () use ($arguments, $cacheKey, $cacheTags, $hashedCacheKey, $method) {
+            function () use ($arguments, $cacheKey, $cacheTags, $method) {
                 $result = $this->retrieveCachedValue(
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $hashedCacheKey,
-                    $method
+                    $method,
                 );
 
                 return $this->preventHashCollision(
@@ -24,14 +27,13 @@ trait CachedValueRetrievable
                     $arguments,
                     $cacheKey,
                     $cacheTags,
-                    $hashedCacheKey,
-                    $method
+                    $method,
                 );
             },
             'cache read failed, falling back to database',
             function () use ($method, $arguments) {
                 return parent::{$method}(...$arguments);
-            }
+            },
         );
     }
 
@@ -40,32 +42,29 @@ trait CachedValueRetrievable
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
-        string $method
+        string $method,
     ) {
         if ($result["key"] === $cacheKey) {
             return $result["value"];
         }
 
-        $this->cache()
-            ->tags($cacheTags)
-            ->forget($hashedCacheKey);
+        $this->forgetModelCacheValue($cacheKey, $cacheTags, true);
 
-        return $this->retrieveCachedValue(
+        $freshResult = $this->retrieveCachedValue(
             $arguments,
             $cacheKey,
             $cacheTags,
-            $hashedCacheKey,
-            $method
+            $method,
         );
+
+        return $freshResult['value'];
     }
 
     protected function retrieveCachedValue(
         array $arguments,
         string $cacheKey,
         array $cacheTags,
-        string $hashedCacheKey,
-        string $method
+        string $method,
     ) {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
@@ -75,8 +74,7 @@ trait CachedValueRetrievable
             $this->checkCooldownAndRemoveIfExpired($this->getModel());
         }
 
-        $cache = $this->cache($cacheTags);
-        $cachedResult = $cache->get($hashedCacheKey);
+        $cachedResult = $this->getModelCacheValue($cacheKey, $cacheTags, true);
 
         if ($cachedResult !== null) {
             $this->fireRetrievedEvents($cachedResult["value"] ?? null);
@@ -89,14 +87,14 @@ trait CachedValueRetrievable
             "value" => parent::{$method}(...$arguments),
         ];
 
-        $cache->forever($hashedCacheKey, $result);
+        $this->putModelCacheValue($cacheKey, $result, $cacheTags, true);
 
         return $result;
     }
 
     protected function fireRetrievedEvents($value): void
     {
-        if ($value instanceof \Illuminate\Database\Eloquent\Model) {
+        if ($value instanceof Model) {
             $this->fireRetrievedEventOnModel($value);
 
             return;
@@ -106,31 +104,31 @@ trait CachedValueRetrievable
 
         if ($value instanceof \Illuminate\Database\Eloquent\Collection) {
             $models = $value;
-        } elseif ($value instanceof \Illuminate\Contracts\Pagination\Paginator) {
+        } elseif ($value instanceof Paginator) {
             $models = $value->getCollection();
-        } elseif ($value instanceof \Illuminate\Support\Collection) {
+        } elseif ($value instanceof Collection) {
             $models = $value->filter(function ($item) {
-                return $item instanceof \Illuminate\Database\Eloquent\Model;
+                return $item instanceof Model;
             });
         }
 
         if ($models) {
             $models->each(function ($model) {
-                if ($model instanceof \Illuminate\Database\Eloquent\Model) {
+                if ($model instanceof Model) {
                     $this->fireRetrievedEventOnModel($model);
                 }
             });
         }
     }
 
-    protected function fireRetrievedEventOnModel(\Illuminate\Database\Eloquent\Model $model): void
+    protected function fireRetrievedEventOnModel(Model $model): void
     {
         $dispatcher = $model::getEventDispatcher();
 
         if ($dispatcher) {
             $dispatcher->dispatch(
                 "eloquent.retrieved: " . get_class($model),
-                $model
+                $model,
             );
         }
     }
