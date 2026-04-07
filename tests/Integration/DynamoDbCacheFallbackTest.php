@@ -16,66 +16,8 @@ use Illuminate\Cache\Repository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class_exists('Aws\DynamoDb\Exception\DynamoDbException') || eval(<<<'PHP'
-namespace Aws\DynamoDb\Exception;
-
-class DynamoDbException extends \RuntimeException
-{
-    protected bool $connectionError = true;
-
-    public function isConnectionError(): bool
-    {
-        return $this->connectionError;
-    }
-}
-
-class ConnectionException extends DynamoDbException
-{
-    protected bool $connectionError = true;
-}
-
-class NonConnectionException extends DynamoDbException
-{
-    protected bool $connectionError = false;
-}
-PHP);
-
-class_exists('Aws\DynamoDb\Exception\ConnectionException') || eval(<<<'PHP'
-namespace Aws\DynamoDb\Exception;
-
-class ConnectionException extends DynamoDbException
-{
-    public function __construct(string $message = 'Connection refused')
-    {
-        $this->message = $message;
-    }
-
-    public function isConnectionError(): bool
-    {
-        return true;
-    }
-}
-PHP);
-
-class_exists('Aws\DynamoDb\Exception\NonConnectionException') || eval(<<<'PHP'
-namespace Aws\DynamoDb\Exception;
-
-class NonConnectionException extends DynamoDbException
-{
-    public function __construct(string $message = 'Something else')
-    {
-        $this->message = $message;
-    }
-
-    public function isConnectionError(): bool
-    {
-        return false;
-    }
-}
-PHP);
-
-use Aws\DynamoDb\Exception\ConnectionException as AwsDynamoDbConnectionException;
-use Aws\DynamoDb\Exception\NonConnectionException as AwsDynamoDbNonConnectionException;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\FakeDynamoDbConnectionException;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\FakeDynamoDbNonConnectionException;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Role;
 
 class DynamoDbCacheFallbackTest extends IntegrationTestCase
@@ -125,7 +67,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
     public function test_dynamo_db_connection_failures_fall_back_to_database_when_enabled(): void
     {
         config(['laravel-model-caching.fallback-to-database' => true]);
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -140,9 +82,9 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
     public function test_non_connection_dynamo_db_exceptions_are_not_swallowed(): void
     {
         config(['laravel-model-caching.fallback-to-database' => true]);
-        $this->breakCacheConnection(AwsDynamoDbNonConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbNonConnectionException::class);
 
-        $this->expectException(AwsDynamoDbNonConnectionException::class);
+        $this->expectException(FakeDynamoDbNonConnectionException::class);
 
         Author::all();
     }
@@ -153,7 +95,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
 
         $author = Author::factory()->create(['name' => 'Dynamo Delete Test']);
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -171,7 +113,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
 
         $author = Author::factory()->create(['name' => 'Dynamo Force Delete Test']);
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -190,7 +132,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
         $book = Book::first();
         $originalPrice = $book->price;
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -211,7 +153,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
         $book = Book::first();
         $originalPrice = $book->price;
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -232,7 +174,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
         $author = Author::first();
         $author->name = 'Saved During Dynamo Outage';
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -246,7 +188,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
     {
         config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -268,7 +210,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
         $user = User::query()->first();
         $newRole = Role::factory()->create();
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -291,7 +233,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
             ->pluck('role_id')
             ->toArray();
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -311,7 +253,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
         $user = (new User)->newQueryWithoutScopes()->find($pivotRow->user_id);
         $newRole = UncachedRole::create(['name' => 'uncached-dynamo-role']);
 
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -327,7 +269,7 @@ class DynamoDbCacheFallbackTest extends IntegrationTestCase
 
     public function test_clear_command_returns_non_zero_when_dynamo_db_is_unavailable(): void
     {
-        $this->breakCacheConnection(AwsDynamoDbConnectionException::class);
+        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
 
         $this->artisan('modelCache:clear')
             ->assertExitCode(1);

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Artisan;
 trait CreatesApplication
 {
     private static $baseLineDatabaseMigrated = false;
+
     protected $cache;
     protected $testingSqlitePath;
 
@@ -100,16 +101,16 @@ trait CreatesApplication
         $app['config']->set('database.redis.client', "phpredis");
         $app['config']->set('database.redis.cache', [
             'host' => env('REDIS_HOST', '127.0.0.1'),
-            'port' => env('REDIS_PORT', 6_379),
+            'port' => env('REDIS_PORT', 6379),
         ]);
         $app['config']->set('database.redis.default', [
             'host' => env('REDIS_HOST', '127.0.0.1'),
-            'port' => env('REDIS_PORT', 6_379),
+            'port' => env('REDIS_PORT', 6379),
         ]);
         $app['config']->set('database.redis.model-cache', [
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => env('REDIS_PASSWORD', null),
-            'port' => env('REDIS_PORT', 6_379),
+            'port' => env('REDIS_PORT', 6379),
             'database' => 1,
         ]);
         $app['config']->set('cache.stores.model', [

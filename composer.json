@@ -36,7 +36,9 @@
         "larastan/larastan": "^2.0|^3.0",
         "laravel/pint": "^1.27",
         "orchestra/testbench": "^9.0|^10.0|^11.0",
-        "phpunit/phpunit": "^10.5|^11.5.3|^12.5.12",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "phpunit/phpunit": "^10.5|^11.5|^12.5",
         "slevomat/coding-standard": "^7.0|^8.14",
         "squizlabs/php_codesniffer": "^3.6|^4.0",
         "symfony/thanks": "^1.2"
@@ -62,13 +64,17 @@
             ]
         }
     },
+    "suggest": {
+        "aws/aws-sdk-php": "Required for DynamoDB cache store support (^3.322)"
+    },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "config": {
         "allow-plugins": {
             "symfony/thanks": true,
             "dealerdirect/phpcodesniffer-composer-installer": true,
-            "mikebronner/development-settings": true
+            "mikebronner/development-settings": true,
+            "pestphp/pest-plugin": true
         }
     }
 }

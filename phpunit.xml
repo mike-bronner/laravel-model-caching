@@ -30,8 +30,8 @@
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="REDIS_HOST" value="127.0.0.1"/>
         <env name="PGSQL_HOST" value="127.0.0.1"/>
-        <env name="PGSQL_USERNAME" value="forge"/>
-        <env name="PGSQL_PASSWORD" value="secret"/>
+        <env name="PGSQL_USERNAME" value="root"/>
+        <env name="PGSQL_PASSWORD" value=""/>
         <env name="PGSQL_DATABASE" value="testing"/>
     </php>
     <source>
