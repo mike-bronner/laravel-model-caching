@@ -2,7 +2,7 @@ name: Sync Developer Settings
 
 on:
   push:
-    branches: [main,develop,production]
+    branches: [main,master,develop,production]
   workflow_dispatch:
 
 jobs:
