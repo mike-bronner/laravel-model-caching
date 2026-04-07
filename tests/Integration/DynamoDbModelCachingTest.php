@@ -194,7 +194,10 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
         ]);
 
         $freshAuthors = Author::query()->get();
-        $storedPayload = FakeDynamoDbStore::getStoredValue($hashedItemKey);
+        $rawStoredPayload = FakeDynamoDbStore::getStoredValue($hashedItemKey);
+        $storedPayload = is_string(value: $rawStoredPayload) && str_starts_with(haystack: $rawStoredPayload, needle: ModelCacheRepository::SERIALIZED_VALUE_PREFIX)
+            ? unserialize(data: substr(string: $rawStoredPayload, offset: strlen(string: ModelCacheRepository::SERIALIZED_VALUE_PREFIX)), options: ["allowed_classes" => true])
+            : $rawStoredPayload;
 
         $this->assertEquals($expectedAuthors->pluck('id')->toArray(), $freshAuthors->pluck('id')->toArray());
         $this->assertSame($cacheKey, $storedPayload['key']);

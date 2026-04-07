@@ -32,12 +32,13 @@ class CachableTest extends IntegrationTestCase
 
         $authors = (new Author)
             ->all();
-        $defaultcacheResults = app('cache')
+        $defaultcacheResults = $this
+            ->makeCacheDeserializeProxy(store: app(abstract: "cache"))
             ->tags($tags)
             ->get($key)['value']
             ?? null;
-        $customCacheResults = app('cache')
-            ->store('customCache')
+        $customCacheResults = $this
+            ->cache()
             ->tags($tags)
             ->get($key)['value']
             ?? null;

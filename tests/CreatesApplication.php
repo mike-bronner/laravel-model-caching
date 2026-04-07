@@ -2,7 +2,9 @@
 
 namespace GeneaLabs\LaravelModelCaching\Tests;
 
+use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\Providers\Service as LaravelModelCachingService;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Artisan;
 
 trait CreatesApplication
@@ -12,15 +14,53 @@ trait CreatesApplication
     protected $cache;
     protected $testingSqlitePath;
 
-    protected function cache()
+    protected function cache(): object
     {
-        $cache = app('cache');
+        $cache = app(abstract: "cache");
 
-        if (config('laravel-model-caching.store')) {
-            $cache = $cache->store(config('laravel-model-caching.store'));
+        if (config(key: "laravel-model-caching.store")) {
+            $cache = $cache->store(name: config(key: "laravel-model-caching.store"));
         }
 
-        return $cache;
+        return $this->makeCacheDeserializeProxy(store: $cache);
+    }
+
+    protected function makeCacheDeserializeProxy(object $store): object
+    {
+        return new class($store)
+        {
+            public function __construct(private readonly object $store) {}
+
+            public function __call(string $name, array $arguments): mixed
+            {
+                $result = $this->store->{$name}(...$arguments);
+
+                if ($name === "get") {
+                    $prefix = ModelCacheRepository::SERIALIZED_VALUE_PREFIX;
+
+                    if (
+                        is_string(value: $result)
+                        && str_starts_with(haystack: $result, needle: $prefix)
+                    ) {
+                        return unserialize(
+                            data: substr(string: $result, offset: strlen(string: $prefix)),
+                            options: ["allowed_classes" => true],
+                        );
+                    }
+
+                    return $result;
+                }
+
+                if (
+                    is_object(value: $result)
+                    && ($result instanceof Repository || method_exists(object_or_class: $result, method: "get"))
+                ) {
+                    return new self(store: $result);
+                }
+
+                return $result;
+            }
+        };
     }
 
     protected function setUp(): void
@@ -42,8 +82,9 @@ trait CreatesApplication
 
         view()->addLocation(__DIR__ . '/resources/views', 'laravel-model-caching');
 
-        $this->cache = app('cache')
-            ->store(config('laravel-model-caching.store'));
+        $this->cache = $this->makeCacheDeserializeProxy(
+            store: app(abstract: "cache")->store(name: config(key: "laravel-model-caching.store")),
+        );
         $this->cache()->flush();
     }
 

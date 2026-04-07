@@ -15,6 +15,8 @@ class ModelCacheRepository
 {
     protected const DYNAMODB_NAMESPACE_PREFIX = 'genealabs:laravel-model-caching:dynamodb:v1:';
 
+    public const SERIALIZED_VALUE_PREFIX = 'genealabs:lmc:v1:serialized:';
+
     public function __construct(
         protected Repository $repository,
         protected bool $usesDynamoDb = false,
@@ -51,7 +53,20 @@ class ModelCacheRepository
 
     public function get(string $key, array $tags = [], bool $hash = false): mixed
     {
-        return $this->repositoryFor($tags)->get($this->itemKey($key, $tags, $hash));
+        $cached = $this->repositoryFor(tags: $tags)->get(key: $this->itemKey(key: $key, tags: $tags, hash: $hash));
+
+        if (! is_string(value: $cached)) {
+            return $cached;
+        }
+
+        if (! str_starts_with(haystack: $cached, needle: static::SERIALIZED_VALUE_PREFIX)) {
+            return $cached;
+        }
+
+        return unserialize(
+            data: substr(string: $cached, offset: strlen(string: static::SERIALIZED_VALUE_PREFIX)),
+            options: ["allowed_classes" => true],
+        );
     }
 
     public function rememberForever(
@@ -60,15 +75,34 @@ class ModelCacheRepository
         callable $callback,
         bool $hash = false,
     ): mixed {
-        return $this->repositoryFor($tags)->rememberForever(
-            $this->itemKey($key, $tags, $hash),
-            $callback,
+        $prefix = static::SERIALIZED_VALUE_PREFIX;
+        $cached = $this->repositoryFor(tags: $tags)->rememberForever(
+            key: $this->itemKey(key: $key, tags: $tags, hash: $hash),
+            callback: static function () use ($callback, $prefix): string {
+                return $prefix . serialize(value: $callback());
+            },
+        );
+
+        if (! is_string(value: $cached)) {
+            return $cached;
+        }
+
+        if (! str_starts_with(haystack: $cached, needle: $prefix)) {
+            return $cached;
+        }
+
+        return unserialize(
+            data: substr(string: $cached, offset: strlen(string: $prefix)),
+            options: ["allowed_classes" => true],
         );
     }
 
     public function forever(string $key, mixed $value, array $tags = [], bool $hash = false): bool
     {
-        return $this->repositoryFor($tags)->forever($this->itemKey($key, $tags, $hash), $value);
+        return $this->repositoryFor(tags: $tags)->forever(
+            key: $this->itemKey(key: $key, tags: $tags, hash: $hash),
+            value: static::SERIALIZED_VALUE_PREFIX . serialize(value: $value),
+        );
     }
 
     public function forget(string $key, array $tags = [], bool $hash = false): bool
