@@ -31,8 +31,6 @@
     },
     "require-dev": {
         "aws/aws-sdk-php": "^3.322.9",
-        "barryvdh/laravel-debugbar": "^3.15",
-        "barryvdh/laravel-ide-helper": "^3.5",
         "doctrine/dbal": "^3.3|^4.2",
         "fakerphp/faker": "^1.11",
         "larastan/larastan": "^2.0|^3.0",

@@ -7165,16 +7165,16 @@
         },
         {
             "name": "mikebronner/development-settings",
-            "version": "0.1.15",
+            "version": "0.1.16",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mikebronner/development-settings.git",
-                "reference": "7d7d8eb07f7e13ed9f7ac81bcac5737a03d78c8b"
+                "reference": "b34558ee75a725fc0aac27242dd8bdaf5eeed318"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mikebronner/development-settings/zipball/7d7d8eb07f7e13ed9f7ac81bcac5737a03d78c8b",
-                "reference": "7d7d8eb07f7e13ed9f7ac81bcac5737a03d78c8b",
+                "url": "https://api.github.com/repos/mikebronner/development-settings/zipball/b34558ee75a725fc0aac27242dd8bdaf5eeed318",
+                "reference": "b34558ee75a725fc0aac27242dd8bdaf5eeed318",
                 "shasum": ""
             },
             "require": {
@@ -7213,10 +7213,10 @@
                 "laravel"
             ],
             "support": {
-                "source": "https://github.com/mikebronner/development-settings/tree/0.1.15",
+                "source": "https://github.com/mikebronner/development-settings/tree/0.1.16",
                 "issues": "https://github.com/mikebronner/development-settings/issues"
             },
-            "time": "2026-04-05T19:13:53+00:00"
+            "time": "2026-04-08T22:41:47+00:00"
         },
         {
             "name": "mockery/mockery",

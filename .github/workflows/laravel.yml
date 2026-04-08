@@ -80,7 +80,7 @@ jobs:
       run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
     - name: Install Dependencies
-      run: composer update -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
     - name: Execute Integration and Feature tests via PHPUnit
       run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }}
@@ -153,7 +153,7 @@ jobs:
       run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
     - name: Install Dependencies
-      run: composer update -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
     - name: Start DynamoDB Local
       run: |

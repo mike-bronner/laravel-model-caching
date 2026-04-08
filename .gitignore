@@ -78,6 +78,8 @@ tmplaravel*
 _ide_helper*.php
 .cursorrules
 /vendor/laravel-ide/*
+/tests/database/*.sqlite-journal
+composer.lock
 
 # ignore all the ai configuration files, have laravel boost manage them and the developer choose their setup
 .ai
