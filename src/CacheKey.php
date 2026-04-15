@@ -7,7 +7,7 @@ namespace GeneaLabs\LaravelModelCaching;
 use BackedEnum;
 use DateTimeInterface;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
-use Illuminate\Database\Query\Expression;
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
