@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GeneaLabs\LaravelModelCaching\Cache;
 
 use Illuminate\Cache\DynamoDbStore;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Cache\Repository;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Cache\TaggedCache;
@@ -125,13 +126,46 @@ class ModelCacheRepository
 
     public function invalidateAll(): void
     {
-        if (! $this->usesDynamoDb) {
-            $this->repository->flush();
+        if ($this->usesDynamoDb) {
+            $this->repository->forever($this->globalVersionKey(), $this->freshVersion());
 
             return;
         }
 
-        $this->repository->forever($this->globalVersionKey(), $this->freshVersion());
+        $store = $this->repository->getStore();
+
+        if (
+            $store instanceof RedisStore
+            && $store->getPrefix() !== ''
+        ) {
+            $this->flushRedisStoreByPrefix($store);
+
+            return;
+        }
+
+        $this->repository->flush();
+    }
+
+    protected function flushRedisStoreByPrefix(RedisStore $store): void
+    {
+        $connection = $store->connection();
+        $prefix = $store->getPrefix();
+        $pattern = $prefix . '*';
+        $cursor = null;
+
+        do {
+            $result = $connection->scan($cursor, ['match' => $pattern, 'count' => 1000]);
+
+            if ($result === false) {
+                break;
+            }
+
+            [$cursor, $keys] = $result;
+
+            if (is_array($keys) && $keys !== []) {
+                $connection->del($keys);
+            }
+        } while ((int) $cursor !== 0);
     }
 
     protected function repositoryFor(array $tags): Repository|TaggedCache

@@ -18,6 +18,25 @@ use Illuminate\Support\Carbon;
 // phpcs:ignore SlevomatCodingStandard.Classes.ClassLength.ClassTooLong
 trait ModelCaching
 {
+    // phpcs:ignore SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint,SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
+    public function newEloquentBuilder($query)
+    {
+        static $building = [];
+        $objectId = spl_object_id($this);
+
+        if ($building[$objectId] ?? false) {
+            return new Builder($query);
+        }
+
+        $building[$objectId] = true;
+
+        try {
+            return $this->newModelCachingEloquentBuilder($query);
+        } finally {
+            unset($building[$objectId]);
+        }
+    }
+
     public function __get($key)
     {
         if ($key === "cachePrefix") {
@@ -126,44 +145,6 @@ trait ModelCaching
         }
 
         return $result;
-    }
-
-    /**
-     * Create a new Eloquent query builder for the model.
-     *
-     * When caching is disabled the model's custom builder (if any) is returned
-     * as-is.  When caching is enabled the method delegates to
-     * {@see newModelCachingEloquentBuilder()} so that custom-builder support and
-     * caching are composed correctly.
-     *
-     * **Trait collision (AC6 / #535):** If another trait used on your model also
-     * defines `newEloquentBuilder` you will encounter a PHP fatal "collision"
-     * error.  Resolve it by explicitly overriding the method on the model class
-     * and calling `newModelCachingEloquentBuilder()`:
-     *
-     * ```php
-     * use Cachable, NodeTrait {
-     *     Cachable::newEloquentBuilder insteadof NodeTrait;
-     * }
-     * ```
-     *
-     * Or, if you need *both* trait builders composed:
-     *
-     * ```php
-     * use Cachable, NodeTrait {
-     *     Cachable::newEloquentBuilder as newCachableEloquentBuilder;
-     *     NodeTrait::newEloquentBuilder  as newNodeTraitEloquentBuilder;
-     * }
-     *
-     * public function newEloquentBuilder($query)
-     * {
-     *     return $this->newModelCachingEloquentBuilder($query);
-     * }
-     * ```
-     */
-    public function newEloquentBuilder($query)
-    {
-        return $this->newModelCachingEloquentBuilder($query);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
 
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorCachedQueryBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorExtendingGenerated;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorQueryBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCachedCustomBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBuilder;
@@ -207,6 +208,41 @@ class CustomBuilderTest extends IntegrationTestCase
         $cached = $this->cache()->tags($tags)->get($cacheKey);
 
         $this->assertNotNull($cached, 'Model with resolved trait collision must still cache results');
+        $this->assertEquals(
+            $results->count(),
+            $cached['value']->count(),
+        );
+    }
+
+    public function test_inheritance_with_double_cachable_does_not_recurse()
+    {
+        $builder = (new AuthorExtendingGenerated)->newQuery();
+
+        $this->assertInstanceOf(
+            CachedBuilder::class,
+            $builder,
+            'Child model whose parent also uses Cachable must still return a CachedBuilder',
+        );
+    }
+
+    public function test_inheritance_with_double_cachable_still_caches_results()
+    {
+        $results = (new AuthorExtendingGenerated)->get();
+
+        $cacheKey = sha1(
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite" .
+            ":authors:genealabslaravelmodelcachingtestsfixturesauthorextendinggenerated" .
+            "-authors.deleted_at_null",
+        );
+        $tags = [
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite" .
+            ":genealabslaravelmodelcachingtestsfixturesauthorextendinggenerated",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+        ];
+
+        $cached = $this->cache()->tags($tags)->get($cacheKey);
+
+        $this->assertNotNull($cached, 'Child model with double-Cachable inheritance must still cache results');
         $this->assertEquals(
             $results->count(),
             $cached['value']->count(),
