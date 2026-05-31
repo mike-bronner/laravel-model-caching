@@ -163,6 +163,13 @@ trait CreatesApplication
 
         self::$baseLineDatabaseMigrated = true;
 
+        // Building the baseline database temporarily switches the default
+        // connection, so capture the connection the active test selected (via
+        // getEnvironmentSetUp) and restore it afterwards. Otherwise the first
+        // test in a process that overrides the connection (e.g.
+        // WhereJsonContainsTest → pgsql) gets silently clobbered onto sqlite.
+        $originalDefaultConnection = $this->app['config']->get('database.default');
+
         $databasePath = $this->testDatabaseDirectory();
 
         if (! is_dir(filename: $databasePath)) {
@@ -190,7 +197,7 @@ trait CreatesApplication
             '--database' => 'baseline',
         ]);
 
-        $this->app['config']->set('database.default', 'testing');
+        $this->app['config']->set('database.default', $originalDefaultConnection);
     }
 
     protected function getEnvironmentSetUp($app)
