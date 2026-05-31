@@ -6,11 +6,14 @@ namespace GeneaLabs\LaravelModelCaching\Cache;
 
 use Illuminate\Cache\DynamoDbStore;
 use Illuminate\Cache\RedisStore;
+use Illuminate\Cache\RedisTagSet;
 use Illuminate\Cache\Repository;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Cache\TaggedCache;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
 
 class ModelCacheRepository
 {
@@ -114,7 +117,7 @@ class ModelCacheRepository
     public function invalidateTags(array $tags): void
     {
         if (! $this->usesDynamoDb) {
-            $this->repositoryFor($tags)->flush();
+            $this->flushTaggedCache($this->repositoryFor($tags));
 
             return;
         }
@@ -122,6 +125,52 @@ class ModelCacheRepository
         foreach ($this->normalizeTags($tags) as $tag) {
             $this->repository->forever($this->tagVersionKey($tag), $this->freshVersion());
         }
+    }
+
+    protected function flushTaggedCache(Repository|TaggedCache $repository): void
+    {
+        try {
+            $repository->flush();
+        } catch (Throwable $exception) {
+            if (
+                ! $repository instanceof TaggedCache
+                || ! $this->isCrossSlotException($exception)
+            ) {
+                throw $exception;
+            }
+
+            $this->flushTaggedCacheBySlot($repository);
+        }
+    }
+
+    protected function isCrossSlotException(\Throwable $exception): bool
+    {
+        return stripos($exception->getMessage(), 'CROSSSLOT') !== false;
+    }
+
+    protected function flushTaggedCacheBySlot(TaggedCache $repository): void
+    {
+        $store = $repository->getStore();
+
+        if (! $store instanceof RedisStore) {
+            throw new RuntimeException(
+                'Cannot recover from a cross-slot cache flush failure on a '
+                . 'non-Redis store.',
+            );
+        }
+
+        $tags = $repository->getTags();
+        $prefix = $store->getPrefix();
+        $connection = $store->connection();
+
+        if ($tags instanceof RedisTagSet) {
+            $tags->entries()
+                ->each(function (string $key) use ($connection, $prefix): void {
+                    $connection->del($prefix . $key);
+                });
+        }
+
+        $tags->flush();
     }
 
     public function invalidateAll(): void
