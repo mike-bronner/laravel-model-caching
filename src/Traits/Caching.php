@@ -150,6 +150,10 @@ trait Caching
 
     public function flushCache(array $tags = [])
     {
+        if (! $this->isCachable()) {
+            return;
+        }
+
         $this->withCacheFallback(function () use ($tags) {
             if (count($tags) === 0) {
                 $tags = $this->makeCacheTags();
