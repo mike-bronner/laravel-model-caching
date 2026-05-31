@@ -162,6 +162,8 @@ trait CreatesApplication
         }
 
         self::$baseLineDatabaseMigrated = true;
+        $originalDefaultConnection = $this->app['config']
+            ->get('database.default');
 
         $databasePath = $this->testDatabaseDirectory();
 
@@ -190,7 +192,7 @@ trait CreatesApplication
             '--database' => 'baseline',
         ]);
 
-        $this->app['config']->set('database.default', 'testing');
+        $this->app['config']->set('database.default', $originalDefaultConnection);
     }
 
     protected function getEnvironmentSetUp($app)

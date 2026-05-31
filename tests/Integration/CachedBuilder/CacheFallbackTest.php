@@ -400,4 +400,15 @@ class CacheFallbackTest extends IntegrationTestCase
         $this->assertNotNull($authors);
         $this->assertNotEmpty($authors);
     }
+
+    public function testFlushCacheIsNoOpWhenCachingDisabled(): void
+    {
+        config(['laravel-model-caching.enabled' => false]);
+        config(['laravel-model-caching.fallback-to-database' => false]);
+        $this->breakCacheConnection();
+
+        $this->expectNotToPerformAssertions();
+
+        (new Author)->flushCache();
+    }
 }
