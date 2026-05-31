@@ -403,9 +403,6 @@ class CacheFallbackTest extends IntegrationTestCase
 
     public function testFlushCacheIsNoOpWhenCachingDisabled(): void
     {
-        // Regression for #595: when caching is disabled, flushCache() must
-        // short-circuit and never resolve or connect to the configured store —
-        // even when that store is unreachable and fallback-to-database is off.
         config(['laravel-model-caching.enabled' => false]);
         config(['laravel-model-caching.fallback-to-database' => false]);
         $this->breakCacheConnection();
