@@ -40,6 +40,10 @@ class ClearAcrossProvidersTest extends IntegrationTestCase
                 $table->integer('expiration');
             });
         }
+
+        // The file store persists on disk between runs (temp dir), so clear it up
+        // front to keep the stale-read check idempotent.
+        $this->app['cache']->store('file-test')->flush();
     }
 
     protected function tearDown() : void

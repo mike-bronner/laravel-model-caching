@@ -62,19 +62,8 @@ class InvalidateAllCrossSlotTest extends IntegrationTestCase
     private function modelCacheKeys() : array
     {
         $token = (int) env('TEST_TOKEN', 1);
-        $pattern = "lmc-test-{$token}:*";
-        $client = app('redis')->connection('model-cache')->client();
-        $cursor = null;
-        $keys = [];
+        $connection = app('redis')->connection('model-cache');
 
-        do {
-            $found = $client->scan($cursor, $pattern, 1000);
-
-            if (is_array($found)) {
-                $keys = array_merge($keys, $found);
-            }
-        } while ($cursor > 0);
-
-        return $keys;
+        return $this->scanRedisKeys($connection, "lmc-test-{$token}:*");
     }
 }

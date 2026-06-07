@@ -200,6 +200,7 @@ class ModelCacheRepository
     protected function flushRedisStoreByPrefix(RedisStore $store): void
     {
         $connection = $store->connection();
+        $client = $connection->client();
 
         // Redis layers two independent prefixes: the connection-level client
         // prefix (phpredis OPT_PREFIX / Predis KeyPrefixProcessor, from
@@ -208,11 +209,14 @@ class ModelCacheRepository
         // include the client prefix, while DEL re-applies it — so we neutralize
         // the client prefix for the duration and work in absolute keys, which
         // is deterministic across both clients and their SCAN-prefix quirks.
-        [$clientPrefix, $restoreClientPrefix] = $this->neutralizeClientPrefix($connection->client());
+        [$clientPrefix, $restoreClientPrefix] = $this->neutralizeClientPrefix($client);
 
         try {
             $pattern = $clientPrefix . $store->getPrefix() . '*';
-            $cursor = null;
+            // The initial SCAN cursor differs by client: phpredis (with
+            // SCAN_RETRY) treats 0 as "iteration complete" and needs null, while
+            // Predis rejects null with "ERR invalid cursor" and needs 0.
+            $cursor = $client instanceof ClientInterface ? 0 : null;
 
             do {
                 $result = $connection->scan($cursor, ['match' => $pattern, 'count' => 1000]);
