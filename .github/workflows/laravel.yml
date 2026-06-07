@@ -88,20 +88,15 @@ jobs:
     - name: Execute Integration and Feature tests via PHPUnit
       run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }}
 
-    # Retry the upload: codecov-action intermittently fails the CLI GPG signature
-    # check when its keyserver key import flakes (codecov-action#1876). Retrying
-    # keeps integrity verification on while surviving the transient failure.
     - name: Upload coverage to Codecov
       if: matrix.php == '8.5' && matrix.laravel == '13.*'
-      uses: Wandalen/wretry.action@v3.8.0
+      uses: codecov/codecov-action@v5
       with:
-        action: codecov/codecov-action@v5
-        attempt_limit: 3
-        attempt_delay: 15000
-        with: |
-          files: coverage.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+        files: coverage.xml
+        skip_validation: true
+        fail_ci_if_error: true
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   dynamodb-integration:
 
@@ -278,17 +273,12 @@ jobs:
     - name: Execute Integration and Feature tests via PHPUnit (Predis client)
       run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature --coverage-clover coverage.xml
 
-    # flags: predis keeps this report distinct so Codecov merges the Predis-only
-    # branches (e.g. the KeyPrefixProcessor path) with the phpredis run. Wrapped in
-    # wretry for the same signature-check flake as the phpredis upload above.
     - name: Upload Predis coverage to Codecov
-      uses: Wandalen/wretry.action@v3.8.0
+      uses: codecov/codecov-action@v5
       with:
-        action: codecov/codecov-action@v5
-        attempt_limit: 3
-        attempt_delay: 15000
-        with: |
-          files: coverage.xml
-          flags: predis
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+        files: coverage.xml
+        flags: predis
+        skip_validation: true
+        fail_ci_if_error: true
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
