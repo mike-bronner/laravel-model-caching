@@ -231,6 +231,23 @@ trait CreatesApplication
             'connection' => 'model-cache',
             'prefix' => "lmc-test-{$token}:",
         ]);
+        // A second Redis store whose connection carries a non-empty client-level
+        // prefix (phpredis OPT_PREFIX / Predis KeyPrefixProcessor). Per-connection
+        // options override the global empty prefix, so existing tests are
+        // unaffected while this store reproduces the real-world layering that
+        // exposes issue #598. Physical keys become "tenant-{token}:lmc-test-{token}:…".
+        $app['config']->set('database.redis.model-cache-prefixed', [
+            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'password' => env('REDIS_PASSWORD', null),
+            'port' => env('REDIS_PORT', 6379),
+            'database' => 2,
+            'options' => ['prefix' => "tenant-{$token}:"],
+        ]);
+        $app['config']->set('cache.stores.model-prefixed', [
+            'driver' => 'redis',
+            'connection' => 'model-cache-prefixed',
+            'prefix' => "lmc-test-{$token}:",
+        ]);
         $app['config']->set('laravel-model-caching.store', 'model');
     }
 

@@ -12,6 +12,8 @@ use Illuminate\Cache\TaggableStore;
 use Illuminate\Cache\TaggedCache;
 use Illuminate\Container\Container;
 use Illuminate\Support\Str;
+use Predis\ClientInterface;
+use Predis\Command\Processor\KeyPrefixProcessor;
 use RuntimeException;
 use Throwable;
 
@@ -198,23 +200,94 @@ class ModelCacheRepository
     protected function flushRedisStoreByPrefix(RedisStore $store): void
     {
         $connection = $store->connection();
-        $prefix = $store->getPrefix();
-        $pattern = $prefix . '*';
-        $cursor = null;
 
-        do {
-            $result = $connection->scan($cursor, ['match' => $pattern, 'count' => 1000]);
+        // Redis layers two independent prefixes: the connection-level client
+        // prefix (phpredis OPT_PREFIX / Predis KeyPrefixProcessor, from
+        // database.redis.options.prefix) and the cache-store prefix
+        // ($store->getPrefix()). A raw SCAN returns absolute keys that already
+        // include the client prefix, while DEL re-applies it — so we neutralize
+        // the client prefix for the duration and work in absolute keys, which
+        // is deterministic across both clients and their SCAN-prefix quirks.
+        [$clientPrefix, $restoreClientPrefix] = $this->neutralizeClientPrefix($connection->client());
 
-            if ($result === false) {
-                break;
+        try {
+            $pattern = $clientPrefix . $store->getPrefix() . '*';
+            $cursor = null;
+
+            do {
+                $result = $connection->scan($cursor, ['match' => $pattern, 'count' => 1000]);
+
+                if ($result === false) {
+                    break;
+                }
+
+                [$cursor, $keys] = $result;
+
+                if (is_array($keys) && $keys !== []) {
+                    $this->deleteRedisKeys($connection, $keys);
+                }
+            } while ((int) $cursor !== 0);
+        } finally {
+            $restoreClientPrefix();
+        }
+    }
+
+    /**
+     * Disable the connection's client-level key prefix and return the prefix
+     * string alongside a callback that restores it. Supports phpredis
+     * (\Redis / \RedisCluster) and Predis; returns an empty prefix and a no-op
+     * restorer for any other client.
+     *
+     * @return array{0: string, 1: callable}
+     */
+    protected function neutralizeClientPrefix(object $client): array
+    {
+        if ($client instanceof ClientInterface) {
+            $processor = $client->getOptions()->prefix ?? null;
+
+            if (! $processor instanceof KeyPrefixProcessor) {
+                return ['', static fn (): null => null];
             }
 
-            [$cursor, $keys] = $result;
+            $original = $processor->getPrefix();
+            $processor->setPrefix('');
 
-            if (is_array($keys) && $keys !== []) {
-                $connection->del($keys);
+            return [
+                $original,
+                static function () use ($processor, $original): void {
+                    $processor->setPrefix($original);
+                },
+            ];
+        }
+
+        // \Redis and \RedisCluster expose the prefix under the same option id.
+        $option = \Redis::OPT_PREFIX;
+        $original = (string) $client->getOption($option);
+        $client->setOption($option, '');
+
+        return [
+            $original,
+            static function () use ($client, $option, $original): void {
+                $client->setOption($option, $original);
+            },
+        ];
+    }
+
+    protected function deleteRedisKeys($connection, array $keys): void
+    {
+        try {
+            $connection->del($keys);
+        } catch (Throwable $exception) {
+            if (! $this->isCrossSlotException($exception)) {
+                throw $exception;
             }
-        } while ((int) $cursor !== 0);
+
+            // A batched DEL spanning hash slots is rejected on a cluster; fall
+            // back to per-key deletion, mirroring flushTaggedCacheBySlot().
+            foreach ($keys as $key) {
+                $connection->del($key);
+            }
+        }
     }
 
     protected function repositoryFor(array $tags): Repository|TaggedCache
