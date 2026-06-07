@@ -10,6 +10,9 @@ class BooleanTest extends IntegrationTestCase
 {
     public function testBooleanWhereTrueCreatesCorrectCacheKey()
     {
+        Author::factory()
+            ->create(['is_famous' => true]);
+
         $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-is_famous_=_1-authors.deleted_at_null");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
@@ -35,6 +38,9 @@ class BooleanTest extends IntegrationTestCase
 
     public function testBooleanWhereFalseCreatesCorrectCacheKey()
     {
+        Author::factory()
+            ->create(['is_famous' => false]);
+
         $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-is_famous_=_-authors.deleted_at_null");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",

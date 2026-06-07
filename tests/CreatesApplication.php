@@ -132,17 +132,38 @@ trait CreatesApplication
     protected function flushWorkerCacheKeys(): void
     {
         $token = (int) env(key: "TEST_TOKEN", default: 1);
-        $pattern = "lmc-test-{$token}:*";
-        $client = app(abstract: "redis")->connection(name: "model-cache")->client();
-        $cursor = null;
+        $connection = app(abstract: "redis")->connection(name: "model-cache");
+        $keys = $this->scanRedisKeys($connection, "lmc-test-{$token}:*");
+
+        if ($keys !== []) {
+            $connection->del($keys);
+        }
+    }
+
+    // Collects every key matching $pattern via the connection-level SCAN so it
+    // works under both phpredis and Predis. The two clients disagree on the
+    // initial cursor: phpredis (with SCAN_RETRY) treats 0 as "complete" and needs
+    // null, while Predis rejects null with "ERR invalid cursor" and needs 0.
+    protected function scanRedisKeys(object $connection, string $pattern): array
+    {
+        $cursor = $connection->client() instanceof \Predis\ClientInterface ? 0 : null;
+        $keys = [];
 
         do {
-            $found = $client->scan($cursor, $pattern, 1000);
+            $result = $connection->scan($cursor, ['match' => $pattern, 'count' => 1000]);
+
+            if ($result === false) {
+                break;
+            }
+
+            [$cursor, $found] = $result;
 
             if (is_array(value: $found) && $found !== []) {
-                $client->del($found);
+                $keys = array_merge($keys, $found);
             }
-        } while ($cursor > 0);
+        } while ((int) $cursor !== 0);
+
+        return $keys;
     }
 
     /**
@@ -206,7 +227,7 @@ trait CreatesApplication
             'prefix' => '',
             "foreign_key_constraints" => false,
         ]);
-        $app['config']->set('database.redis.client', "phpredis");
+        $app['config']->set('database.redis.client', env('REDIS_CLIENT', 'phpredis'));
         $app['config']->set('database.redis.options', [
             'cluster' => 'redis',
             'prefix' => '',
@@ -229,6 +250,23 @@ trait CreatesApplication
         $app['config']->set('cache.stores.model', [
             'driver' => 'redis',
             'connection' => 'model-cache',
+            'prefix' => "lmc-test-{$token}:",
+        ]);
+        // A second Redis store whose connection carries a non-empty client-level
+        // prefix (phpredis OPT_PREFIX / Predis KeyPrefixProcessor). Per-connection
+        // options override the global empty prefix, so existing tests are
+        // unaffected while this store reproduces the real-world layering that
+        // exposes issue #598. Physical keys become "tenant-{token}:lmc-test-{token}:…".
+        $app['config']->set('database.redis.model-cache-prefixed', [
+            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'password' => env('REDIS_PASSWORD', null),
+            'port' => env('REDIS_PORT', 6379),
+            'database' => 2,
+            'options' => ['prefix' => "tenant-{$token}:"],
+        ]);
+        $app['config']->set('cache.stores.model-prefixed', [
+            'driver' => 'redis',
+            'connection' => 'model-cache-prefixed',
             'prefix' => "lmc-test-{$token}:",
         ]);
         $app['config']->set('laravel-model-caching.store', 'model');

@@ -2,16 +2,13 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\FakePredisConnectionException;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\ThrowingCacheStore;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Cache\Repository;
 use Illuminate\Support\Facades\Log;
-
-// Stub for Predis exception — Predis may not be installed as a dependency
-class_exists('Predis\Connection\ConnectionException') || eval('namespace Predis\Connection; class ConnectionException extends \Exception {}');
-use Predis\Connection\ConnectionException as PredisConnectionException;
 
 class CacheFallbackTest extends IntegrationTestCase
 {
@@ -90,7 +87,7 @@ class CacheFallbackTest extends IntegrationTestCase
     public function testCacheReadFailureFallsThroughWithPredisException(): void
     {
         config(['laravel-model-caching.fallback-to-database' => true]);
-        $this->breakCacheConnection(PredisConnectionException::class);
+        $this->breakCacheConnection(FakePredisConnectionException::class);
 
         Log::shouldReceive('warning')
             ->atLeast()
@@ -108,7 +105,7 @@ class CacheFallbackTest extends IntegrationTestCase
     public function testIsCacheConnectionExceptionRecognizesPredisException(): void
     {
         $instance = new Author;
-        $predisException = new PredisConnectionException('Connection refused');
+        $predisException = new FakePredisConnectionException('Connection refused');
 
         $this->assertTrue($instance->isCacheConnectionException($predisException));
     }

@@ -206,8 +206,7 @@ class FlushTest extends IntegrationTestCase
             'invalidateAll() must not delete keys outside the model cache prefix',
         );
 
-        $remainingPrefixed = $connection->scan(null, ['match' => $prefix . '*', 'count' => 100]);
-        $remainingKeys = is_array($remainingPrefixed) ? ($remainingPrefixed[1] ?? []) : [];
+        $remainingKeys = $this->scanRedisKeys($connection, $prefix . '*');
         $this->assertEmpty(
             $remainingKeys,
             'invalidateAll() must remove all keys with the model cache prefix',
