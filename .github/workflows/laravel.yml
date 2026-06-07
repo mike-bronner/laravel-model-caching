@@ -205,3 +205,69 @@ jobs:
 
     - name: Execute real DynamoDB smoke tests
       run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Integration/RealDynamoDbModelCachingTest.php
+
+  predis-tests:
+
+    runs-on: ubuntu-latest
+    name: PHP 8.4 / Laravel 13 / Predis + Memcached
+    env:
+      PGSQL_HOST: 127.0.0.1
+      PGSQL_DATABASE: testing
+      PGSQL_USERNAME: forge
+      PGSQL_PASSWORD: secret
+      # Run the whole suite against the Predis client to guard clearing parity.
+      REDIS_CLIENT: predis
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      memcached:
+        image: memcached:alpine
+        ports:
+          - 11211:11211
+
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.composer/cache
+        key: predis-tests-composer-${{ hashFiles('composer.json') }}
+        restore-keys: |
+          predis-tests-composer-
+
+    - name: Setup PHP 8.4
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql, redis, memcached
+        coverage: none
+
+    - name: Install specific Laravel version
+      run: |
+        composer require "illuminate/support:13.*" "illuminate/database:13.*" "illuminate/cache:13.*" "illuminate/config:13.*" "illuminate/console:13.*" "illuminate/container:13.*" "illuminate/http:13.*" "orchestra/testbench:11.*" --no-update --no-interaction
+
+    - name: Copy .env
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+    - name: Install Dependencies
+      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Execute Integration and Feature tests via PHPUnit (Predis client)
+      run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature
