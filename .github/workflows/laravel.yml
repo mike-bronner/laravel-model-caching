@@ -257,7 +257,7 @@ jobs:
       with:
         php-version: '8.4'
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql, redis, memcached
-        coverage: none
+        coverage: xdebug
 
     - name: Install specific Laravel version
       run: |
@@ -270,4 +270,16 @@ jobs:
       run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
     - name: Execute Integration and Feature tests via PHPUnit (Predis client)
-      run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature
+      run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature --coverage-clover coverage.xml
+
+    - name: Upload Predis coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        files: coverage.xml
+        # Predis-specific branches (e.g. the KeyPrefixProcessor path) only execute
+        # under this client; merging this report with the phpredis run gives Codecov
+        # the full picture of the changed lines.
+        flags: predis
+        fail_ci_if_error: true
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
