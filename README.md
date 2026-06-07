@@ -416,6 +416,11 @@ php artisan modelCache:clear --model='App\Models\Post'
 php artisan modelCache:clear
 ```
 
+> **ℹ️ Scope of the full clear (no `--model`)** — how much is removed depends on the cache driver:
+> - **Redis** (with a cache-store prefix) — only the model-cache keys are scanned and deleted; other keys on the same connection are left intact. This honors both the connection-level client prefix (`database.redis.options.prefix`) and the cache-store prefix, and works on the phpredis **and** Predis clients, single-node or cluster (`CROSSSLOT`-safe).
+> - **DynamoDB** — rotates a package-wide namespace key; no destructive table scan (see the DynamoDB section).
+> - **Memcached, file, database, or un-prefixed Redis** — these cannot scope a clear by prefix, so the **entire** cache store is flushed. Give the model cache a dedicated store (see the *Custom Cache Store* section) so a full clear never touches unrelated data.
+
 **🔧 Programmatic via Facade:**
 ```php
 use GeneaLabs\LaravelModelCaching\Facades\ModelCache;
