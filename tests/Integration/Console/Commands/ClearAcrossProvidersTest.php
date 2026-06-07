@@ -83,6 +83,24 @@ class ClearAcrossProvidersTest extends IntegrationTestCase
             ]],
         ]]);
 
+        // The extension is present on CI runners even when no memcached server is
+        // running, so probe for a reachable server (a round-trip) rather than just
+        // a loaded extension. Without this, the store silently no-ops and the
+        // stale-read assertion below fails instead of skipping.
+        try {
+            $store = $this->app['cache']->store('memcached-test');
+            $store->forever('lmc-memcached-probe', 'ok');
+            $reachable = $store->get('lmc-memcached-probe') === 'ok';
+        } catch (\Throwable $exception) {
+            $reachable = false;
+        }
+
+        if (! $reachable) {
+            $this->markTestSkipped('No reachable memcached server.');
+        }
+
+        $store->forget('lmc-memcached-probe');
+
         $this->assertClearEmptiesStore('memcached-test');
     }
 
