@@ -75,6 +75,9 @@ jobs:
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql
         coverage: ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && 'xdebug' || 'none' }}
 
+    - name: Authenticate Composer for private development-settings repo
+      run: composer config --global github-oauth.github.com "${{ secrets.DEVELOPER_SETTINGS_TOKEN }}"
+
     - name: Install specific Laravel version
       run: |
         composer require "illuminate/support:${{ matrix.laravel }}" "illuminate/database:${{ matrix.laravel }}" "illuminate/cache:${{ matrix.laravel }}" "illuminate/config:${{ matrix.laravel }}" "illuminate/console:${{ matrix.laravel }}" "illuminate/container:${{ matrix.laravel }}" "illuminate/http:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-update --no-interaction
@@ -148,6 +151,9 @@ jobs:
         php-version: '8.4'
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql
         coverage: none
+
+    - name: Authenticate Composer for private development-settings repo
+      run: composer config --global github-oauth.github.com "${{ secrets.DEVELOPER_SETTINGS_TOKEN }}"
 
     - name: Install specific Laravel version
       run: |
@@ -259,6 +265,9 @@ jobs:
         php-version: '8.4'
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql, redis, memcached
         coverage: xdebug
+
+    - name: Authenticate Composer for private development-settings repo
+      run: composer config --global github-oauth.github.com "${{ secrets.DEVELOPER_SETTINGS_TOKEN }}"
 
     - name: Install specific Laravel version
       run: |
