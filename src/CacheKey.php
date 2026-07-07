@@ -549,6 +549,6 @@ class CacheKey
             return $value;
         }
 
-        return $value->getValue($this->query->getConnection()->getQueryGrammar());
+        return (string) $value->getValue($this->query->getConnection()->getQueryGrammar());
     }
 }

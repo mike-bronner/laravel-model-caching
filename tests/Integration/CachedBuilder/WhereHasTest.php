@@ -19,6 +19,18 @@ class WhereHasTest extends IntegrationTestCase
         $this->assertEquals($authors->pluck("id"), $uncachedAuthors->pluck("id"));
     }
 
+    public function testCountedWhereHasClause()
+    {
+        $authors = (new Author)
+            ->whereHas("books", null, ">=", 2)
+            ->get();
+        $uncachedAuthors = (new UncachedAuthor)
+            ->whereHas("books", null, ">=", 2)
+            ->get();
+
+        $this->assertEquals($authors->pluck("id"), $uncachedAuthors->pluck("id"));
+    }
+
     public function testNestedWhereHasClauses()
     {
         $authors = (new Author)
