@@ -24,6 +24,7 @@ class CacheKey
     protected $macroKey;
     protected $model;
     protected $query;
+    protected bool $hasBeforeQueryCallbacks;
     protected $withoutGlobalScopes = [];
     protected $withoutAllGlobalScopes = false;
 
@@ -35,6 +36,13 @@ class CacheKey
         array $withoutGlobalScopes,
         $withoutAllGlobalScopes
     ) {
+        $this->hasBeforeQueryCallbacks = $query->beforeQueryCallbacks !== [];
+
+        if ($this->hasBeforeQueryCallbacks) {
+            $query = clone $query;
+            $query->applyBeforeQueryCallbacks();
+        }
+
         $this->eagerLoad = $eagerLoad;
         $this->macroKey = $macroKey;
         $this->model = $model;
@@ -73,14 +81,20 @@ class CacheKey
         }
 
         if ($this->withoutAllGlobalScopes) {
-            return Arr::query($this->model->query()->withoutGlobalScopes()->getBindings());
+            $bindings = Arr::query($this->model->query()->withoutGlobalScopes()->getBindings());
+        } elseif (count($this->withoutGlobalScopes) > 0) {
+            $bindings = Arr::query($this->model->query()->withoutGlobalScopes($this->withoutGlobalScopes)->getBindings());
+        } else {
+            $bindings = Arr::query($this->model->query()->getBindings());
         }
 
-        if (count($this->withoutGlobalScopes) > 0) {
-            return Arr::query($this->model->query()->withoutGlobalScopes($this->withoutGlobalScopes)->getBindings());
+        if (! $this->hasBeforeQueryCallbacks) {
+            return $bindings;
         }
 
-        return Arr::query($this->model->query()->getBindings());
+        return $bindings . "-materialized_query_" . sha1(
+            $this->query->toSql() . "\0" . serialize($this->query->getBindings())
+        );
     }
 
     protected function getColumnClauses(array $where) : string

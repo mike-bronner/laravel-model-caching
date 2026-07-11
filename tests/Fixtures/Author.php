@@ -45,6 +45,12 @@ class Author extends Model
         return $this->hasOne(Profile::class);
     }
 
+    public function oldestBook() : HasOne
+    {
+        return $this->hasOne(Book::class)
+            ->ofMany("id", "min");
+    }
+
     public function getLatestBookAttribute()
     {
         return $this

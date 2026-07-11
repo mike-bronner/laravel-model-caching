@@ -189,4 +189,34 @@ class PaginateTest extends IntegrationTestCase
             "Paginator should not retain the original cached domain"
         );
     }
+
+    public function testPaginationRetainsOfManyEagerLoadsAcrossPages()
+    {
+        foreach (range(1, 2) as $index) {
+            $author = Author::factory()->create([
+                "name" => sprintf("Of Many Regression %02d", $index),
+            ]);
+
+            Book::factory()->create([
+                "author_id" => $author->id,
+                "title" => sprintf("Oldest Book %02d", $index),
+            ]);
+        }
+
+        $pageOne = (new Author)
+            ->disableModelCaching()
+            ->where("name", "LIKE", "Of Many Regression %")
+            ->orderBy("name")
+            ->with("oldestBook")
+            ->paginate(1, ["*"], "page", 1);
+        $pageTwo = (new Author)
+            ->disableModelCaching()
+            ->where("name", "LIKE", "Of Many Regression %")
+            ->orderBy("name")
+            ->with("oldestBook")
+            ->paginate(1, ["*"], "page", 2);
+
+        $this->assertSame($pageOne->first()->id, $pageOne->first()->oldestBook?->author_id);
+        $this->assertSame($pageTwo->first()->id, $pageTwo->first()->oldestBook?->author_id);
+    }
 }
