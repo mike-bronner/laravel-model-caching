@@ -80,10 +80,36 @@ class CacheKey
         // which only run at execution time — after this key was generated.
         // Materialize them on a clone so the key reflects the SQL that will
         // actually run, without mutating the query Laravel executes.
-        $query = clone $this->query;
-        $sql = $query->toSql();
+        //
+        // Boundary notes: the callbacks are shared by reference with the
+        // original query, so materializing here means they run once per key
+        // computation and again at execution — harmless for Eloquent's
+        // idempotent, self-clearing `ofMany()` family, but a custom
+        // non-idempotent `beforeQuery` callback would observe the extra
+        // invocation. The shallow clone also only isolates this outer query:
+        // a composite `ofMany(["a", "b"])` subquery carries its own nested
+        // `beforeQuery` callback on a shared subquery object.
+        try {
+            $query = clone $this->query;
+            $sql = $query->toSql();
 
-        return "-beforeQuery_" . sha1($sql . json_encode($query->getBindings()));
+            return "-beforeQuery_" . sha1($sql . $this->encodeForKeyHash($query->getBindings()));
+        } catch (Throwable) {
+            return "";
+        }
+    }
+
+    protected function encodeForKeyHash($value) : string
+    {
+        $encoded = json_encode($value);
+
+        // json_encode() returns false — not a string — when any nested value
+        // is a non-UTF-8 byte string (e.g. a raw binary(16) UUID key), which
+        // would silently erase the value from the hash and let differing
+        // queries collide on one cache key. serialize() is binary-safe;
+        // valid-UTF-8 values keep the exact json_encode() output so existing
+        // cache keys are unchanged.
+        return $encoded === false ? serialize($value) : $encoded;
     }
 
     protected function getBindingsSlug() : string
@@ -510,7 +536,7 @@ class CacheKey
                 return "";
             }
 
-            return "=" . sha1(json_encode($addedWheres) . json_encode($addedBindings));
+            return "=" . sha1($this->encodeForKeyHash($addedWheres) . $this->encodeForKeyHash($addedBindings));
         } catch (Throwable) {
             return "";
         }

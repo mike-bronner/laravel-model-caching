@@ -91,6 +91,32 @@ class OfManyTest extends IntegrationTestCase
         $this->assertNotEquals($keys->first(), $keys->last());
     }
 
+    public function testDeferredQueriesWithDifferentBinaryBindingsProduceDifferentCacheKeys()
+    {
+        $keys = collect([
+            hex2bin("ffd8ffe000104a4649460001abcdef01"),
+            hex2bin("ffd8ffe000104a4649460001abcdef02"),
+        ])
+            ->map(function (string $binaryId) {
+                $query = (new Author)->newQueryWithoutScopes()->getQuery();
+                $query->beforeQuery(function ($query) use ($binaryId) {
+                    $query->where("id", $binaryId);
+                });
+
+                return (new \GeneaLabs\LaravelModelCaching\CacheKey(
+                    [],
+                    new Author,
+                    $query,
+                    "",
+                    [],
+                    false,
+                ))
+                    ->make(["*"]);
+            });
+
+        $this->assertNotEquals($keys->first(), $keys->last());
+    }
+
     public function testQueriesWithoutDeferredCallbacksKeepTheirCacheKeyFormat()
     {
         $key = (new \GeneaLabs\LaravelModelCaching\CacheKey(
@@ -103,6 +129,9 @@ class OfManyTest extends IntegrationTestCase
         ))
             ->make(["*"]);
 
-        $this->assertStringNotContainsString("beforeQuery", $key);
+        $this->assertEquals(
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor",
+            $key,
+        );
     }
 }
