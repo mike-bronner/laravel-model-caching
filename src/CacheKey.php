@@ -60,10 +60,30 @@ class CacheKey
         $key .= $this->getOffsetClause();
         $key .= $this->getLimitClause();
         $key .= $this->getBindingsSlug();
+        $key .= $this->getDeferredCallbacksSlug();
         $key .= $keyDifferentiator;
         $key .= $this->macroKey;
 
         return $key;
+    }
+
+    protected function getDeferredCallbacksSlug() : string
+    {
+        if (! property_exists($this->query, "beforeQueryCallbacks")
+            || ! $this->query->beforeQueryCallbacks
+        ) {
+            return "";
+        }
+
+        // Queries like Eloquent's `ofMany()` relations build their joined
+        // subquery (and its bindings) lazily through `beforeQuery` callbacks,
+        // which only run at execution time — after this key was generated.
+        // Materialize them on a clone so the key reflects the SQL that will
+        // actually run, without mutating the query Laravel executes.
+        $query = clone $this->query;
+        $sql = $query->toSql();
+
+        return "-beforeQuery_" . sha1($sql . json_encode($query->getBindings()));
     }
 
     protected function getBindingsSlug() : string
