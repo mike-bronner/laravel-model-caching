@@ -12,11 +12,11 @@ use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Scope;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use ReflectionClass;
@@ -237,11 +237,17 @@ trait Caching
         $model = $this->getModel() instanceof Model
             ? $this->getModel()
             : $this;
-        $query = $this->query instanceof Builder
-            ? $this->query
-            : Container::getInstance()
+        $query = $this->query
+            ?? Container::getInstance()
                 ->make("db")
                 ->query();
+
+        // Relation classes hold an Eloquent builder here, not a query builder.
+        // Unwrap it as makeCacheKey() does, so joined tables get tagged.
+        if ($this->query && method_exists($this->query, "getQuery")) {
+            $query = $this->query->getQuery();
+        }
+
         $tags = (new CacheTags($eagerLoad, $model, $query))
             ->make();
 
@@ -501,7 +507,7 @@ trait Caching
         if (property_exists($this, 'query') && $this->query) {
             $baseQuery = $this->query;
 
-            if ($baseQuery instanceof \Illuminate\Database\Eloquent\Builder) {
+            if ($baseQuery instanceof Builder) {
                 $baseQuery = $baseQuery->getQuery();
             }
 
