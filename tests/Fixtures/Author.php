@@ -35,6 +35,24 @@ class Author extends Model
         return $this->hasMany(Book::class);
     }
 
+    public function oldestBook() : HasOne
+    {
+        return $this->hasOne(Book::class)
+            ->ofMany("id", "min");
+    }
+
+    public function firstBook() : HasOne
+    {
+        return $this->hasOne(Book::class)
+            ->oldestOfMany();
+    }
+
+    public function newestBook() : HasOne
+    {
+        return $this->hasOne(Book::class)
+            ->latestOfMany();
+    }
+
     public function printers() : HasManyThrough
     {
         return $this->hasManyThrough(Printer::class, Book::class);
