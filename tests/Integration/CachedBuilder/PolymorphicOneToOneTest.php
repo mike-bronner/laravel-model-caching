@@ -8,7 +8,12 @@ class PolymorphicOneToOneTest extends IntegrationTestCase
 {
     public function testEagerloadedRelationship()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:images:genealabslaravelmodelcachingtestsfixturesimage-images.imagable_id_inraw_2-images.imagable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\User");
+        $userId = (new User)
+            ->disableModelCaching()
+            ->whereHas("image")
+            ->first()
+            ->id;
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:images:genealabslaravelmodelcachingtestsfixturesimage-images.imagable_id_inraw_{$userId}-images.imagable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\User");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesimage",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:images",
@@ -36,9 +41,14 @@ class PolymorphicOneToOneTest extends IntegrationTestCase
         $this->assertNotEmpty($liveResults);
     }
 
-    public function testLazyloadedHasOneThrough()
+    public function testLazyloadedMorphOne()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:images:genealabslaravelmodelcachingtestsfixturesimage-images.imagable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\User-images.imagable_id_=_2-images.imagable_id_notnull-limit_1");
+        $userId = (new User)
+            ->disableModelCaching()
+            ->whereHas("image")
+            ->first()
+            ->id;
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:images:genealabslaravelmodelcachingtestsfixturesimage-images.imagable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\User-images.imagable_id_=_{$userId}-images.imagable_id_notnull-limit_1");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesimage",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:images",

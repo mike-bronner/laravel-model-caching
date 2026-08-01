@@ -36,7 +36,6 @@
         "larastan/larastan": "^2.0|^3.0",
         "laravel/boost": "^2.0",
         "laravel/pint": "^1.27",
-        "mikebronner/development-settings": "^0.1.15",
         "orchestra/testbench": "^9.0|^10.0|^11.0",
         "pestphp/pest": "^3.0|^4.0",
         "pestphp/pest-plugin-laravel": "^3.0|^4.0",
