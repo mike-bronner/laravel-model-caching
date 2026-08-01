@@ -12,6 +12,7 @@ use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -507,7 +508,7 @@ trait Caching
         if (property_exists($this, 'query') && $this->query) {
             $baseQuery = $this->query;
 
-            if ($baseQuery instanceof \Illuminate\Database\Eloquent\Builder) {
+            if ($baseQuery instanceof Builder) {
                 $baseQuery = $baseQuery->getQuery();
             }
 

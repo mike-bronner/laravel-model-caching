@@ -8,7 +8,12 @@ class PolymorphicOneToManyTest extends IntegrationTestCase
 {
     public function testEagerloadedRelationship()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-comments.commentable_id_inraw_1-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post");
+        $postId = (new Post)
+            ->disableModelCaching()
+            ->whereHas("comments")
+            ->first()
+            ->id;
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-comments.commentable_id_inraw_{$postId}-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturescomment",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments",
@@ -38,7 +43,11 @@ class PolymorphicOneToManyTest extends IntegrationTestCase
 
     public function testLazyloadedRelationship()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-comments.commentable_id_=_1-comments.commentable_id_notnull");
+        $postId = (new Post)
+            ->disableModelCaching()
+            ->first()
+            ->id;
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-comments.commentable_id_=_{$postId}-comments.commentable_id_notnull");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturescomment",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments",

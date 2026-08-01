@@ -8,7 +8,12 @@ class HasManyTest extends IntegrationTestCase
 {
     public function testEagerloadedHasMany()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-books.author_id_inraw_1");
+        $authorId = (new Author)
+            ->disableModelCaching()
+            ->whereHas("books")
+            ->first()
+            ->id;
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-books.author_id_inraw_{$authorId}");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
@@ -16,14 +21,14 @@ class HasManyTest extends IntegrationTestCase
 
         $books = (new Author)
             ->with("books")
-            ->find(1)
+            ->find($authorId)
             ->books;
         $cachedResults = $this->cache()
             ->tags($tags)
             ->get($key)['value'];
         $liveResults = (new UncachedAuthor)
             ->with("books")
-            ->find(1)
+            ->find($authorId)
             ->books;
 
         $this->assertEquals($liveResults->pluck("id"), $books->pluck("id"));
@@ -35,20 +40,25 @@ class HasManyTest extends IntegrationTestCase
 
     public function testLazyloadedHasMany()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-books.author_id_=_1-books.author_id_notnull");
+        $authorId = (new Author)
+            ->disableModelCaching()
+            ->whereHas("books")
+            ->first()
+            ->id;
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-books.author_id_=_{$authorId}-books.author_id_notnull");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
         ];
 
         $books = (new Author)
-            ->find(1)
+            ->find($authorId)
             ->books;
         $cachedResults = $this->cache()
             ->tags($tags)
             ->get($key)['value'];
         $liveResults = (new UncachedAuthor)
-            ->find(1)
+            ->find($authorId)
             ->books;
 
         $this->assertEquals($liveResults->pluck("id"), $books->pluck("id"));
