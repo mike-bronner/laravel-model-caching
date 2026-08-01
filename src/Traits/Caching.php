@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Scope;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use ReflectionClass;
@@ -237,11 +236,18 @@ trait Caching
         $model = $this->getModel() instanceof Model
             ? $this->getModel()
             : $this;
-        $query = $this->query instanceof Builder
-            ? $this->query
-            : Container::getInstance()
+        $query = $this->query
+            ?? Container::getInstance()
                 ->make("db")
                 ->query();
+
+        if (
+            $this->query
+            && method_exists($this->query, "getQuery")
+        ) {
+            $query = $this->query->getQuery();
+        }
+
         $tags = (new CacheTags($eagerLoad, $model, $query))
             ->make();
 

@@ -399,6 +399,11 @@ Cache tags are generated for the primary model, each eager-loaded relationship,
 joined tables, and morph-to target types, so only the relevant entries are
 invalidated. 🎯
 
+Joined tables include the pivot or intermediate table of a `belongsToMany`,
+`morphToMany`, `hasManyThrough`, or `hasOneThrough` relationship. Writing rows
+of that table through its own `Cachable` model therefore invalidates cached
+reads of the relationship.
+
 ### 🔗 BelongsToMany with Custom Pivot Models
 Cache invalidation works for `BelongsToMany` relationships using custom pivot
 models (`->using(CustomPivot::class)`) as long as either the parent or the

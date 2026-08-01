@@ -25,6 +25,7 @@ class BelongsToManyTest extends IntegrationTestCase
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:stores",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:book-store",
         ];
 
         $stores = (new Book)
