@@ -25,7 +25,6 @@ class BelongsToManyTest extends IntegrationTestCase
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:stores",
-            // The relation JOINs the pivot table, so it is tagged with it too.
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:book-store",
         ];
 

@@ -1,15 +1,9 @@
-<?php
-
-namespace GeneaLabs\LaravelModelCaching\Tests\Fixtures;
+<?php namespace GeneaLabs\LaravelModelCaching\Tests\Fixtures;
 
 use GeneaLabs\LaravelModelCaching\Traits\Cachable;
-use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Cachable pivot model for the role_user table.
- * Used to test that writes to a pivot table invalidate relations joining it.
- */
-class CachableRoleUser extends Pivot
+class CachableRoleUser extends Model
 {
     use Cachable;
 

@@ -242,9 +242,10 @@ trait Caching
                 ->make("db")
                 ->query();
 
-        // Relation classes hold an Eloquent builder here, not a query builder.
-        // Unwrap it as makeCacheKey() does, so joined tables get tagged.
-        if ($this->query && method_exists($this->query, "getQuery")) {
+        if (
+            $this->query
+            && method_exists($this->query, "getQuery")
+        ) {
             $query = $this->query->getQuery();
         }
 
