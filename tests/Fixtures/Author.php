@@ -53,6 +53,19 @@ class Author extends Model
             ->latestOfMany();
     }
 
+    // Composite (multi-column) `ofMany()`: the highest-priced book, with the
+    // most recent publication date breaking a price tie. Unlike the
+    // single-column relations above, this builds a nested `beforeQuery`
+    // callback on the one-of-many subquery.
+    public function latestBookByPriceThenDate() : HasOne
+    {
+        return $this->hasOne(Book::class)
+            ->ofMany([
+                "price" => "max",
+                "published_at" => "max",
+            ]);
+    }
+
     public function printers() : HasManyThrough
     {
         return $this->hasManyThrough(Printer::class, Book::class);
