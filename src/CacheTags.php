@@ -78,6 +78,19 @@ class CacheTags
             ->map(function ($join) {
                 $table = $join->table;
 
+                // `joinSub()` — and anything else joining a raw expression —
+                // stores an Expression here instead of a table name. There is
+                // no table to tag, and the stripos() below raises a TypeError
+                // on it. Eloquent's `ofMany()` relations build exactly such a
+                // join, so any query whose joins are already materialized when
+                // the tags are made (an explicit `joinSub()`, or an `ofMany()`
+                // query compiled earlier) fails there. The subquery selects
+                // from the related model's own table, which is already tagged
+                // through that model, so skipping it loses no invalidation.
+                if (! is_string($table)) {
+                    return null;
+                }
+
                 // Strip alias (e.g. "products as p" -> "products")
                 if (stripos($table, ' as ') !== false) {
                     $table = trim(explode(' as ', strtolower($table))[0]);
@@ -85,6 +98,7 @@ class CacheTags
 
                 return $table;
             })
+            ->filter()
             ->map(function ($table) use ($prefix) {
                 return $prefix . (new Str)->slug($table);
             })

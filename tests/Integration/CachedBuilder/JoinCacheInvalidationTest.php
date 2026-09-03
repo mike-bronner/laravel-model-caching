@@ -167,4 +167,42 @@ class JoinCacheInvalidationTest extends IntegrationTestCase
             'BelongsToMany query should return fresh data after its pivot table is written',
         );
     }
+
+    public function testJoinSubQueryCacheTagsAreBuiltWithoutCrashing()
+    {
+        $subQuery = DB::table('books')
+            ->select('author_id')
+            ->groupBy('author_id');
+
+        $query = (new Author)
+            ->select('authors.*')
+            ->joinSub($subQuery, 'authored', 'authored.author_id', '=', 'authors.id');
+
+        $tags = (new CacheTags(
+            $query->getEagerLoads(),
+            $query->getModel(),
+            $query
+        ))->make();
+
+        $this->assertTrue(
+            collect($tags)->contains(function ($tag) {
+                return str_contains($tag, (new Str)->slug(Author::class));
+            }),
+            'Tags should include the primary model class tag'
+        );
+    }
+
+    public function testJoinSubQueryResultsAreCached()
+    {
+        $subQuery = DB::table('books')
+            ->select('author_id')
+            ->groupBy('author_id');
+
+        $authors = (new Author)
+            ->select('authors.*')
+            ->joinSub($subQuery, 'authored', 'authored.author_id', '=', 'authors.id')
+            ->get();
+
+        $this->assertGreaterThan(0, $authors->count());
+    }
 }
