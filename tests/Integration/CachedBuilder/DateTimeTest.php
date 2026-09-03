@@ -11,7 +11,10 @@ class DateTimeTest extends IntegrationTestCase
     public function testWhereClauseWorksWithCarbonDate()
     {
         $dateTime = now()->subYears(10);
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-publish_at_>_{$dateTime}");
+        // The "-" separating the date parts is a key separator, so the value
+        // segment carries it percent-encoded.
+        $encodedDateTime = str_replace("-", "%2D", (string) $dateTime);
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-publish_at_>_{$encodedDateTime}");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
@@ -38,7 +41,7 @@ class DateTimeTest extends IntegrationTestCase
     {
         $dateTime = (new DateTime('@' . time()))
             ->sub(new DateInterval("P10Y"));
-        $dateTimeString = $dateTime->format("Y-m-d-H-i-s");
+        $dateTimeString = str_replace("-", "%2D", $dateTime->format("Y-m-d-H-i-s"));
         $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-publish_at_>_{$dateTimeString}");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",

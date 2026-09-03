@@ -12,7 +12,7 @@ class CachedBuilderRelationshipsTest extends IntegrationTestCase
             ->with("stores")
             ->has("stores")
             ->get();
-        $key = "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-exists-and_books.id_=_book_store.book_id-testing:{$this->testingSqlitePath}testing.sqlite:stores";
+        $key = "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-exists-books.id_=_book_store.book_id-testing:{$this->testingSqlitePath}testing.sqlite:stores";
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",

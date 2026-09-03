@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
+use Throwable;
 
 class CacheTags
 {
@@ -66,27 +67,20 @@ class CacheTags
             $baseQuery = $this->query->getQuery();
         }
 
-        $joins = $baseQuery->joins ?? [];
-
-        if (empty($joins)) {
-            return [];
-        }
-
         $prefix = $this->getCachePrefix();
 
-        return collect($joins)
+        return collect($baseQuery->joins ?? [])
             ->map(function ($join) {
                 $table = $join->table;
 
                 // `joinSub()` — and anything else joining a raw expression —
-                // stores an Expression here instead of a table name. There is
-                // no table to tag, and the stripos() below raises a TypeError
-                // on it. Eloquent's `ofMany()` relations build exactly such a
-                // join, so any query whose joins are already materialized when
-                // the tags are made (an explicit `joinSub()`, or an `ofMany()`
-                // query compiled earlier) fails there. The subquery selects
-                // from the related model's own table, which is already tagged
-                // through that model, so skipping it loses no invalidation.
+                // stores an Expression here instead of a table name, and the
+                // stripos() below raises a TypeError on it. Eloquent's
+                // `ofMany()` relations build exactly such a join, so any query
+                // whose joins are already materialized when the tags are made
+                // fails there. The table behind the expression is recovered
+                // from the builder below, which recorded it before Laravel
+                // compiled the subquery.
                 if (! is_string($table)) {
                     return null;
                 }
@@ -98,13 +92,64 @@ class CacheTags
 
                 return $table;
             })
-            ->filter()
+            ->merge($this->getJoinedSubqueryTables($baseQuery))
+            ->filter(function ($table) {
+                return $table !== null;
+            })
             ->map(function ($table) use ($prefix) {
                 return $prefix . (new Str)->slug($table);
             })
             ->unique()
             ->values()
             ->toArray();
+    }
+
+    protected function getJoinedSubqueryTables(mixed $baseQuery) : array
+    {
+        if (! method_exists($baseQuery, "getJoinedSubqueryTables")) {
+            return [];
+        }
+
+        return array_merge(
+            $baseQuery->getJoinedSubqueryTables(),
+            $this->getDeferredJoinedSubqueryTables($baseQuery),
+        );
+    }
+
+    /**
+     * Tables joined by a subquery that has not been built yet.
+     *
+     * Eloquent defers some of its own subquery joins into a beforeQuery()
+     * callback — `ofMany()` is the one in Laravel — and tags are made before
+     * the query runs, so those callbacks have not fired and there is nothing
+     * recorded yet. Running them on a clone materializes the joins, and the
+     * tables they read, without touching the query that will actually execute.
+     *
+     * The callbacks are shared by reference with the original query, so they
+     * run once here and again at execution. That is the same trade CacheKey
+     * already makes to build a key for an `ofMany()` query: harmless for
+     * Eloquent's idempotent, self-clearing family, observable to a custom
+     * non-idempotent callback. A callback that throws yields no tables rather
+     * than breaking tag generation, which leaves the pre-existing gap in place
+     * instead of failing the query outright.
+     */
+    protected function getDeferredJoinedSubqueryTables(mixed $baseQuery) : array
+    {
+        if (
+            ! property_exists($baseQuery, "beforeQueryCallbacks")
+            || ! $baseQuery->beforeQueryCallbacks
+        ) {
+            return [];
+        }
+
+        try {
+            $query = clone $baseQuery;
+            $query->applyBeforeQueryCallbacks();
+
+            return $query->getJoinedSubqueryTables();
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     protected function getRelatedModel($carry) : Model

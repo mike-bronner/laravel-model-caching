@@ -19,6 +19,28 @@ class CacheKey
 {
     use CachePrefixing;
 
+    // The key format joins its segments with "-" and "_", so a value holding
+    // either character is ambiguous: where("title", "a-title_=_b") builds the
+    // same key as where("title", "a")->where("title", "b"). Percent-encoding
+    // the separators removes that ambiguity. "%" is encoded as well, because an
+    // encoding whose escape character is itself unescaped is not reversible:
+    // without it the value "a%2Db" and the value "a-b" both come out as
+    // "a%2Db". strtr() rewrites only the characters it finds, so a value
+    // carrying none of the three keeps its exact previous bytes.
+    //
+    // strtr() with an array scans the subject once and never re-reads what it
+    // wrote, so it cannot encode its own output and the order of the pairs
+    // below does not matter to it. It matters to any reimplementation that
+    // replaces sequentially: a str_replace() loop that reaches "%" last encodes
+    // the "%" of the "%2D" it just wrote and turns "-" into "%252D".
+    // WhereValueEscapingTest::testSeparatorEncodingIsNotDoubleEncoded pins the
+    // output, because nothing else here would fail if this were rewritten.
+    private const KEY_SEPARATOR_ESCAPES = [
+        "%" => "%25",
+        "-" => "%2D",
+        "_" => "%5F",
+    ];
+
     protected $currentBinding = 0;
     protected $eagerLoad;
     protected $macroKey;
@@ -143,7 +165,23 @@ class CacheKey
 	    $where["second"] = $this->expressionToString($where["second"]);
         }
 
-        return "-{$where["boolean"]}_{$where["first"]}_{$where["operator"]}_{$where["second"]}";
+        return $this->getBooleanSlug($where)
+            . "-{$where["first"]}_{$where["operator"]}_{$where["second"]}";
+    }
+
+    // Every clause family emits its boolean the same way: nothing for the
+    // default "and", and a "-{boolean}" prefix otherwise. Without it,
+    // whereNot("id", 1) (boolean "and not") and orWhere("id", 1) collapse onto
+    // the same key as where("id", 1), so an "exclude" query reads the cached
+    // "only" result. Omitting the default keeps every plain where() key
+    // byte-identical to the keys this package built before.
+    protected function getBooleanSlug(array $where) : string
+    {
+        $boolean = data_get($where, "boolean", "and");
+
+        return $boolean === "and"
+            ? ""
+            : "-" . str_replace(" ", "_", $boolean);
     }
 
     protected function getCurrentBinding(string $type, $bindingFallback = null)
@@ -184,6 +222,7 @@ class CacheKey
         }
 
         $type = strtolower($where["type"]);
+        $booleanSlug = $this->getBooleanSlug($where);
         $subquery = $this->getValuesFromWhere($where);
 
         if (
@@ -195,12 +234,22 @@ class CacheKey
                 $subquery = Uuid::fromBytes($subquery);
                 $values = $this->recursiveImplode([$subquery], "_");
 
-                return "-{$where["column"]}_{$type}{$values}";
+                return "{$booleanSlug}-{$where["column"]}_{$type}{$values}";
             } catch (Throwable) {
                 // do nothing
             }
         }
 
+        // Escaping starts here, below the branch above, on purpose: that branch
+        // recognises a raw binary UUID by being exactly 16 bytes long, and
+        // encoding a 0x2D or 0x5F byte inside one would stretch it past 16 and
+        // send the value down the wrong path. Everything from here on renders
+        // values straight into the key, so from here on they are escaped —
+        // whereIn("id", ["1_2"]) and whereIn("id", [1, 2]) no longer collide.
+        // The escaping is redone from the individual values rather than applied
+        // to the string above, which is already joined on "_" and would lose
+        // the join itself.
+        $subquery = $this->getValuesFromWhere($where, escape: true);
         $placeholderCount = preg_match_all('/\?(?=(?:[^"]*"[^"]*")*[^"]*\Z)/m', $subquery);
 
         if ($placeholderCount === 0) {
@@ -210,12 +259,19 @@ class CacheKey
 
             $values = $this->recursiveImplode([$subquery], "_");
 
-            return "-{$where["column"]}_{$type}{$values}";
+            return "{$booleanSlug}-{$where["column"]}_{$type}{$values}";
         }
 
+        // The bindings substituted in below land in the key verbatim, so they
+        // are escaped for the same reason the values above are. vsprintf()
+        // reads "%" only in its format string, never in the arguments, so an
+        // encoded value passes through it untouched.
         $values = collect(data_get($this->query->bindings, "where"))
             ->slice($this->currentBinding, $placeholderCount)
-            ->values();
+            ->values()
+            ->map(function ($binding) {
+                return $this->stringifyBinding($binding);
+            });
         $this->currentBinding += $placeholderCount;
 
         $subquery = preg_replace('/\?(?=(?:[^"]*"[^"]*")*[^"]*\Z)/m', "_??_", $subquery);
@@ -223,7 +279,7 @@ class CacheKey
         $subquery = collect(vsprintf(str_replace("_??_", "%s", $subquery), $values->toArray()));
         $values = $this->recursiveImplode($subquery->toArray(), "_");
 
-        return "-{$where["column"]}_{$type}{$values}";
+        return "{$booleanSlug}-{$where["column"]}_{$type}{$values}";
     }
 
     protected function getLimitClause() : string
@@ -248,7 +304,10 @@ class CacheKey
             return "";
         }
 
-        return "-" . strtolower($where["type"]) . $this->getWhereClauses($where["query"]->wheres);
+        return $this->getBooleanSlug($where)
+            . "-"
+            . strtolower($where["type"])
+            . $this->getWhereClauses($where["query"]->wheres);
     }
 
     protected function getOffsetClause() : string
@@ -297,7 +356,7 @@ class CacheKey
         $columns = implode("_", $where["columns"]);
         $operator = str_replace(" ", "_", $where["operator"]);
         $values = implode("_", array_map(function ($value) {
-            return $this->processEnum($value);
+            return $this->escapeKeySegment($this->processEnum($value));
         }, $where["values"]));
 
         // Advance binding pointer for each value in the RowValues clause
@@ -305,7 +364,8 @@ class CacheKey
             $this->currentBinding++;
         }
 
-        return "-{$where["boolean"]}_{$columns}_{$operator}_{$values}";
+        return $this->getBooleanSlug($where)
+            . "-{$columns}_{$operator}_{$values}";
     }
 
     protected function getOtherClauses(array $where) : string
@@ -326,18 +386,7 @@ class CacheKey
         $column .= isset($where["column"]) ? $where["column"] : "";
         $column .= isset($where["columns"]) ? implode("-", $where["columns"]) : "";
 
-        // `whereNot("id", 1)` is a Basic clause with the boolean "and not",
-        // identical to `where("id", 1)` in every other respect — so without
-        // the boolean both collapse to `-id_=_1` and an "exclude" query reads
-        // the cached "only" result (and vice versa). The same holds for `or`.
-        // Only non-default booleans are emitted, so existing keys for plain
-        // `where()` clauses are unchanged.
-        $boolean = data_get($where, "boolean", "and");
-        $booleanSlug = $boolean === "and"
-            ? ""
-            : "-" . str_replace(" ", "_", $boolean);
-
-        return "{$booleanSlug}-{$column}_{$value}";
+        return $this->getBooleanSlug($where) . "-{$column}_{$value}";
     }
 
     protected function getQueryColumns(array $columns) : string
@@ -373,22 +422,19 @@ class CacheKey
             return "";
         }
 
-        $queryParts = explode("?", $where["sql"]);
-        $clause = "_{$where["boolean"]}";
+        // Substitute each binding back into the raw SQL in place of its "?",
+        // so the clause reads as the statement that will actually run.
+        $segments = explode("?", $where["sql"]);
+        $clause = array_shift($segments);
 
-        while (count($queryParts) > 1) {
-            $clause .= "_" . array_shift($queryParts);
-            $clause .= $this->getCurrentBinding("where");
+        foreach ($segments as $segment) {
+            $clause .= $this->getCurrentBinding("where") . $segment;
             $this->currentBinding++;
         }
 
-        $lastPart = array_shift($queryParts);
-
-        if ($lastPart) {
-            $clause .= "_" . $lastPart;
-        }
-
-        return "-" . str_replace(" ", "_", $clause);
+        return $this->getBooleanSlug($where)
+            . "-"
+            . str_replace(" ", "_", $clause);
     }
 
     protected function getTableSlug() : string
@@ -397,13 +443,51 @@ class CacheKey
             . ":";
     }
 
+    // A clause names itself by its type, and adds its comparison operator when
+    // it carries one. The single exception is "Basic" — the plain
+    // where("column", "=", $value) shape — which names itself by its operator
+    // alone. That exception is what keeps every existing plain-where key
+    // byte-identical; everything else needs its type, because a type is the
+    // only thing telling two clauses apart when column, operator and value all
+    // match. whereDate() and where() both compile to "= ?" against the same
+    // column, as do whereDay(5) and whereMonth(5), whose bindings are both the
+    // zero-padded "05".
+    //
+    // This replaces a hard-coded list of type names. That list is what made the
+    // key wrong twice over: it did not name Date, Day, Month, Year, Time, Sub,
+    // JsonLength or JsonBoolean, so each fell through to its operator and lost
+    // its identity; and it did not name betweenColumns, valueBetween, Like or
+    // JsonOverlaps, which carry no operator at all, so each read a key that is
+    // not there and raised "Undefined array key". Stating the rule instead of
+    // enumerating its members is what stops the next type Laravel adds from
+    // landing in one of those two holes.
     protected function getTypeClause($where) : string
     {
-        $type = in_array($where["type"], ["InRaw", "In", "NotIn", "Null", "NotNull", "between", "NotInSub", "InSub", "JsonContains", "Fulltext", "JsonContainsKey"])
-            ? strtolower($where["type"])
-            : strtolower($where["operator"]);
+        $segments = $where["type"] === "Basic"
+            ? []
+            : [strtolower($where["type"])];
 
-        return str_replace(" ", "_", $type);
+        if (data_get($where, "operator") !== null) {
+            $segments[] = strtolower($where["operator"]);
+        }
+
+        // A "Basic" clause always carries an operator, so this is only reached
+        // if something outside Laravel pushes a where array that does not.
+        // Naming it by its type is worse than nothing but better than an empty
+        // segment, which would collapse it onto every other such clause.
+        if ($segments === []) {
+            $segments[] = strtolower($where["type"]);
+        }
+
+        // whereNotBetween(), whereJsonDoesntContain() and their siblings reuse
+        // the affirmative clause's type and negate it with a separate "not"
+        // flag, so without this they share a cache key with the query that
+        // returns exactly the rows they exclude.
+        if (data_get($where, "not", false)) {
+            array_unshift($segments, "not");
+        }
+
+        return str_replace(" ", "_", implode("_", $segments));
     }
 
     protected function getValuesClause(array $where = []) : string
@@ -420,7 +504,11 @@ class CacheKey
         return "_" . $values;
     }
 
-    protected function getValuesFromWhere(array $where) : string
+    // $escape encodes each value individually, before they are joined on "_".
+    // It is off by default because most callers hand the result straight to
+    // getValuesFromBindings(), which discards it and escapes the binding
+    // instead; getInAndNotInClauses() is the caller that keeps it.
+    protected function getValuesFromWhere(array $where, bool $escape = false) : string
     {
         if (array_key_exists("value", $where)
             && is_object($where["value"])
@@ -431,17 +519,17 @@ class CacheKey
 
         if (is_array((new Arr)->get($where, "values"))) {
             $values = collect($where["values"])->flatten()->toArray();
-            return implode("_", $this->processEnums($values));
+            return implode("_", $this->processEnums($values, $escape));
         }
 
         if (is_array((new Arr)->get($where, "value"))) {
             $values = collect($where["value"])->flatten()->toArray();
-            return implode("_", $this->processEnums($values));
+            return implode("_", $this->processEnums($values, $escape));
         }
 
         $value = (new Arr)->get($where, "value", "");
 
-        return $this->processEnum($value);
+        return implode("_", $this->processEnums([$value], $escape));
     }
 
     protected function getValuesFromBindings(array $where, string $values) : string
@@ -449,23 +537,19 @@ class CacheKey
         $bindingFallback = __CLASS__ . ':UNKNOWN_BINDING';
         $currentBinding = $this->getCurrentBinding("where", $bindingFallback);
 
-        if ($currentBinding !== $bindingFallback) {
-            $values = $currentBinding;
+        if ($currentBinding === $bindingFallback) {
+            return $values;
+        }
+
+        $this->currentBinding++;
+        $values = $this->stringifyBinding($currentBinding);
+
+        if ($where["type"] === "between") {
+            $values .= "_" . $this->stringifyBinding($this->getCurrentBinding("where"));
             $this->currentBinding++;
-
-            if ($where["type"] === "between") {
-                $values .= "_" . $this->getCurrentBinding("where");
-                $this->currentBinding++;
-            }
         }
 
-        if (is_object($values)
-            && get_class($values) === "DateTime"
-        ) {
-            $values = $values->format("Y-m-d-H-i-s");
-        }
-
-        return (string) $values;
+        return $values;
     }
 
     protected function getWhereClauses(array $wheres = []) : string
@@ -579,6 +663,26 @@ class CacheKey
         return $result;
     }
 
+    // A bound value is the one key segment an application controls outright, so
+    // it is the one that has to be escaped. Values reached through
+    // getInAndNotInClauses() are deliberately left alone: that path detects a
+    // raw 16-byte binary UUID by its length, which escaping would change.
+    private function stringifyBinding(mixed $binding) : string
+    {
+        if (is_object($binding)
+            && get_class($binding) === "DateTime"
+        ) {
+            $binding = $binding->format("Y-m-d-H-i-s");
+        }
+
+        return $this->escapeKeySegment((string) $binding);
+    }
+
+    private function escapeKeySegment(string $segment) : string
+    {
+        return strtr($segment, self::KEY_SEPARATOR_ESCAPES);
+    }
+
     private function processEnum(
         BackedEnum|UnitEnum|Expression|DateTimeInterface|int|float|bool|string|null $value,
     ): string {
@@ -595,9 +699,14 @@ class CacheKey
         return "{$value}";
     }
 
-    private function processEnums(array $values): array
+    private function processEnums(array $values, bool $escape = false): array
     {
-        return array_map(fn($value) => $this->processEnum($value), $values);
+        return array_map(
+            fn($value) => $escape
+                ? $this->escapeKeySegment($this->processEnum($value))
+                : $this->processEnum($value),
+            $values,
+        );
     }
 
     private function expressionToString(Expression|string $value): string

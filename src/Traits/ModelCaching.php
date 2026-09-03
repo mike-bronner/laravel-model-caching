@@ -9,10 +9,12 @@ use GeneaLabs\LaravelModelCaching\CachedBuilder;
 use GeneaLabs\LaravelModelCaching\CachedHasManyThrough;
 use GeneaLabs\LaravelModelCaching\CachedHasOneThrough;
 use GeneaLabs\LaravelModelCaching\CachedMorphToMany;
+use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 
 // phpcs:ignore SlevomatCodingStandard.Classes.ClassLength.ClassTooLong
@@ -35,6 +37,32 @@ trait ModelCaching
         } finally {
             unset($building[$objectId]);
         }
+    }
+
+    /**
+     * Swap in the base query builder that records the table a subquery join
+     * reads from, so CacheTags can tag it after joinSub() has compiled the
+     * subquery to an Expression.
+     *
+     * A model — or anything this trait is mixed into — that already supplies
+     * its own base query builder keeps it. Recording one more table to tag is
+     * worth far less than silently replacing a builder someone else depends on,
+     * so the swap only happens when the builder is Laravel's own.
+     */
+    // phpcs:ignore SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
+    protected function newBaseQueryBuilder()
+    {
+        $builder = parent::newBaseQueryBuilder();
+
+        if ($builder::class !== QueryBuilder::class) {
+            return $builder;
+        }
+
+        return new CachedQueryBuilder(
+            $builder->getConnection(),
+            $builder->getGrammar(),
+            $builder->getProcessor(),
+        );
     }
 
     public function __get($key)

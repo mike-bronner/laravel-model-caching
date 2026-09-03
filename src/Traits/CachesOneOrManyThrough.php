@@ -61,7 +61,14 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function paginate($perPage = null, $columns = ['*'], $pageName = 'page', $page = null, $total = null)
+    /**
+     * There is deliberately no $total parameter here, unlike Buildable's
+     * paginate(). The relations this trait serves — CachedHasManyThrough and
+     * CachedHasOneThrough — inherit HasOneOrManyThrough::paginate(), which
+     * declares four parameters and runs its own count. A total accepted here
+     * could only be dropped on the floor.
+     */
+    public function paginate($perPage = null, $columns = ['*'], $pageName = 'page', $page = null)
     {
         if (! $this->isCachable()) {
             return parent::paginate($perPage, $columns, $pageName, $page);
