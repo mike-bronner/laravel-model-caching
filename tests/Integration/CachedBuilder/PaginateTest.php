@@ -189,4 +189,13 @@ class PaginateTest extends IntegrationTestCase
             "Paginator should not retain the original cached domain"
         );
     }
+
+    public function testUncachedPaginationHonorsProvidedTotal()
+    {
+        $authors = (new Author)
+            ->disableModelCaching()
+            ->paginate(3, ["*"], "page", 1, 999);
+
+        $this->assertEquals(999, $authors->total());
+    }
 }

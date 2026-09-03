@@ -183,7 +183,7 @@ trait Buildable
         $total = null,
     ) {
         if (! $this->isCachable()) {
-            return parent::paginate($perPage, $columns, $pageName, $page);
+            return parent::paginate($perPage, $columns, $pageName, $page, $total);
         }
 
         $page = $page ?: Paginator::resolveCurrentPage($pageName);
