@@ -66,7 +66,7 @@ class BooleanTest extends IntegrationTestCase
 
     public function testBooleanWhereHasRelationWithFalseConditionAndAdditionalParentRawCondition()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-exists-and_books.author_id_=_authors.id-is_famous_=_-authors.deleted_at_null-_and_title_=_Mixed_Clause");
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-exists-books.author_id_=_authors.id-is_famous_=_-authors.deleted_at_null-title_=_Mixed_Clause");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",

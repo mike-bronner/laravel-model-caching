@@ -23,7 +23,7 @@ class WhereHasMorphTest extends IntegrationTestCase
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments",
         ])
             ->get(sha1(
-                "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-nested-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-exists-and_comments.commentable_id_=_posts.id"
+                "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-nested-or-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-exists-comments.commentable_id_=_posts.id"
             ))['value'];
 
         $this->assertCount(5, $comments);
@@ -45,7 +45,7 @@ class WhereHasMorphTest extends IntegrationTestCase
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments",
         ])
             ->get(sha1(
-                "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-nested-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-exists-and_comments.commentable_id_=_posts.id-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedPost-exists-and_comments.commentable_id_=_posts.id"
+                "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-nested-or-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-exists-comments.commentable_id_=_posts.id-or-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedPost-exists-comments.commentable_id_=_posts.id"
             ))['value'];
 
         $this->assertCount(10, $comments);
@@ -71,7 +71,7 @@ class WhereHasMorphTest extends IntegrationTestCase
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments",
         ])
             ->get(sha1(
-                "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-nested-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-exists-and_comments.commentable_id_=_posts.id-subject_like_%uncached post-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedPost-exists-and_comments.commentable_id_=_posts.id-subject_like_%uncached post"
+                "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments:genealabslaravelmodelcachingtestsfixturescomment-nested-or-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post-exists-comments.commentable_id_=_posts.id-subject_like_%25uncached post-or-nested-comments.commentable_type_=_GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedPost-exists-comments.commentable_id_=_posts.id-subject_like_%25uncached post"
             ))['value'];
 
         $this->assertCount(5, $comments);

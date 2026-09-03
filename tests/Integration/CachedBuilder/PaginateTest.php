@@ -2,8 +2,11 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\StoreWithUncachedBooks;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
+use Illuminate\Support\Facades\DB;
+use ReflectionMethod;
 
 /**
 * @SuppressWarnings(PHPMD.TooManyPublicMethods)
@@ -190,12 +193,61 @@ class PaginateTest extends IntegrationTestCase
         );
     }
 
+    // disableModelCaching() cannot exercise this: it makes newQuery() return a
+    // plain Eloquent builder, so Buildable::paginate() never runs and the test
+    // measures Laravel's own paginate() instead. A cachable model eager-loading
+    // an uncachable one is the construction that reaches Buildable::paginate()
+    // with isCachable() false.
     public function testUncachedPaginationHonorsProvidedTotal()
     {
-        $authors = (new Author)
-            ->disableModelCaching()
-            ->paginate(3, ["*"], "page", 1, 999);
+        $builder = (new StoreWithUncachedBooks)->with("books");
 
-        $this->assertEquals(999, $authors->total());
+        $this->assertFalse(
+            (new ReflectionMethod($builder, "isCachable"))->invoke($builder),
+            "The builder must be a CachedBuilder that reports itself uncachable"
+        );
+
+        $countQueries = [];
+        DB::listen(function ($query) use (&$countQueries) {
+            if (str_contains(strtolower($query->sql), "count(")) {
+                $countQueries[] = $query->sql;
+            }
+        });
+
+        $stores = $builder->paginate(3, ["*"], "page", 1, 999);
+
+        $this->assertEquals(999, $stores->total());
+        $this->assertEmpty(
+            $countQueries,
+            "Passing a total is how a caller skips the count(*); running one anyway defeats it"
+        );
+    }
+
+    // CachesOneOrManyThrough::paginate() lost its inert $total parameter and now
+    // matches the four-parameter signature HasOneOrManyThrough declares. Author
+    // has the only relation in the fixtures that reaches that trait
+    // (hasManyThrough), so this is what covers the changed method: it still
+    // paginates and still caches.
+    public function testHasManyThroughPaginationIsCached()
+    {
+        $relation = (new Author)
+            ->first()
+            ->printers();
+        $key = sha1(
+            (new ReflectionMethod($relation, "makeCacheKey"))
+                ->invoke($relation, ["*"], null, "-paginate_by_2_page_1")
+        );
+        $printers = $relation->paginate(2, ["*"], "page", 1);
+
+        $cached = $this->cache()
+            ->tags((new ReflectionMethod($relation, "makeCacheTags"))->invoke($relation))
+            ->get($key);
+
+        $this->assertCount(2, $printers);
+        $this->assertNotNull($cached, "The relation pagination should have been cached");
+        $this->assertEquals(
+            $printers->pluck("id"),
+            $cached["value"]->pluck("id")
+        );
     }
 }
