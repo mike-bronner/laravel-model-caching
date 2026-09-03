@@ -326,7 +326,18 @@ class CacheKey
         $column .= isset($where["column"]) ? $where["column"] : "";
         $column .= isset($where["columns"]) ? implode("-", $where["columns"]) : "";
 
-        return "-{$column}_{$value}";
+        // `whereNot("id", 1)` is a Basic clause with the boolean "and not",
+        // identical to `where("id", 1)` in every other respect — so without
+        // the boolean both collapse to `-id_=_1` and an "exclude" query reads
+        // the cached "only" result (and vice versa). The same holds for `or`.
+        // Only non-default booleans are emitted, so existing keys for plain
+        // `where()` clauses are unchanged.
+        $boolean = data_get($where, "boolean", "and");
+        $booleanSlug = $boolean === "and"
+            ? ""
+            : "-" . str_replace(" ", "_", $boolean);
+
+        return "{$booleanSlug}-{$column}_{$value}";
     }
 
     protected function getQueryColumns(array $columns) : string
