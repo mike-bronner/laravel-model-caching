@@ -7,11 +7,22 @@ We welcome everyone to submit pull requests with:
 However, not every pull request will automatically be accepted. I will review each carefully to make sure it is in line with the direction I want the package to continue in. This might mean that some pull requests are not accepted, or might stay unmerged until a place for them can be determined.
 
 ## Testing
-- [ ] After making your changes, make sure the tests still pass.
+- [ ] After making your changes, make sure the tests still pass: `composer test`. A reachable Redis is required, because it is the cache store the suite runs against.
 - [ ] When adding new functionality, also add new tests.
 - [ ] When fixing errors, write and satisfy new unit tests that replicate the issue.
-- [ ] Make sure there are no build errors on [GitHub Actions](https://github.com/GeneaLabs/laravel-model-caching/actions).
-- [ ] All code must pass [Laravel Pint](https://laravel.com/docs/pint) validation.
+- [ ] Check that your test actually guards the fix. Revert the change, confirm the test goes red, then restore it. A test written after a fix often passes without it.
+- [ ] Run `composer analyse` and make sure PHPStan reports no new errors.
+- [ ] Make sure there are no build errors on [GitHub Actions](https://github.com/mike-bronner/laravel-model-caching/actions).
+
+### What CI enforces
+The test suite and PHPStan. `phpstan-baseline.neon` records the errors that
+already existed when the check was added, so only new ones fail the build.
+Adding to that baseline to turn a red build green defeats the point of having
+it — fix the error instead, or say in the pull request why it cannot be fixed.
+
+Pint and PHPCS are configured in this repo but are **not** enforced anywhere,
+and the tree does not currently satisfy either. Match the style of the code
+around your change rather than reformatting to satisfy a tool.
 
 ## Submitting changes
 When submitting a pull request, it is important to make sure to complete the following:

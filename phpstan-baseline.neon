@@ -1,14 +1,38 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, string given\.$#'
-			identifier: argument.type
+			message: '#^Call to function is_array\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
 			count: 1
-			path: src/CacheKey.php
+			path: src/Cache/ModelCacheRepository.php
 
 		-
-			message: '#^Ternary operator condition is always true\.$#'
-			identifier: ternary.alwaysTrue
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Cache/ModelCacheRepository.php
+
+		-
+			message: '#^Parameter \#2 \$pattern of method Redis\:\:scan\(\) expects string\|null, array\<string, int\|string\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Cache/ModelCacheRepository.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between \*NEVER\* and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Cache/ModelCacheRepository.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Cache/ModelCacheRepository.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, string given\.$#'
+			identifier: argument.type
 			count: 1
 			path: src/CacheKey.php
 
@@ -39,7 +63,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: src/CachedBelongsToMany.php
 
 		-
@@ -49,20 +73,8 @@ parameters:
 			path: src/CachedBelongsToMany.php
 
 		-
-			message: '#^Call to function is_array\(\) with int will always evaluate to false\.$#'
-			identifier: function.impossibleType
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Call to function method_exists\(\) with Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and ''getQuery'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\) and ''query'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: src/CachedBelongsToMany.php
 
@@ -79,26 +91,14 @@ parameters:
 			path: src/CachedBelongsToMany.php
 
 		-
-			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and Illuminate\\Database\\Eloquent\\Builder will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and Illuminate\\Database\\Query\\Builder will always evaluate to false\.$#'
-			identifier: instanceof.alwaysFalse
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
 			message: '#^Method GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\:\:attach\(\) with return type void returns mixed but should not return anything\.$#'
 			identifier: return.void
+			count: 1
+			path: src/CachedBelongsToMany.php
+
+		-
+			message: '#^Method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Relations\\Pivot,string\>\:\:paginate\(\) invoked with 5 parameters, 0\-4 required\.$#'
+			identifier: arguments.count
 			count: 1
 			path: src/CachedBelongsToMany.php
 
@@ -117,43 +117,7 @@ parameters:
 		-
 			message: '#^Property Illuminate\\Database\\Eloquent\\Relations\\Relation\<Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\Pivot\}\>\>\:\:\$query \(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\) on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.property
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between non\-empty\-array and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between int\<1, max\> and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
+			count: 2
 			path: src/CachedBelongsToMany.php
 
 		-
@@ -165,7 +129,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: src/CachedBuilder.php
 
 		-
@@ -181,75 +145,9 @@ parameters:
 			path: src/CachedBuilder.php
 
 		-
-			message: '#^Call to function is_array\(\) with int will always evaluate to false\.$#'
-			identifier: function.impossibleType
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 2
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\) and ''eagerLoad'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\) and ''innerBuilder'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 2
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\) and ''model'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 4
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\) and ''query'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\) and ''scopes'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Model and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Instanceof between Illuminate\\Database\\Query\\Builder and Illuminate\\Database\\Eloquent\\Builder will always evaluate to false\.$#'
-			identifier: instanceof.alwaysFalse
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Instanceof between Illuminate\\Database\\Query\\Builder and Illuminate\\Database\\Query\\Builder will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 2
 			path: src/CachedBuilder.php
 
 		-
@@ -273,43 +171,7 @@ parameters:
 		-
 			message: '#^Property Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:\$query \(Illuminate\\Database\\Query\\Builder\) on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.property
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between non\-empty\-array and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between int\<1, max\> and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
+			count: 2
 			path: src/CachedBuilder.php
 
 		-
@@ -339,7 +201,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: src/CachedHasManyThrough.php
 
 		-
@@ -349,8 +211,8 @@ parameters:
 			path: src/CachedHasManyThrough.php
 
 		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\) and ''query'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: src/CachedHasManyThrough.php
 
@@ -367,26 +229,8 @@ parameters:
 			path: src/CachedHasManyThrough.php
 
 		-
-			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and Illuminate\\Database\\Eloquent\\Builder will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/CachedHasManyThrough.php
-
-		-
 			message: '#^Parameter \#1 \$instance of method GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\:\:getModelCacheCooldown\(\) expects Illuminate\\Database\\Eloquent\\Model, \$this\(GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\) given\.$#'
 			identifier: argument.type
-			count: 1
-			path: src/CachedHasManyThrough.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: src/CachedHasManyThrough.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
 			count: 1
 			path: src/CachedHasManyThrough.php
 
@@ -417,7 +261,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: src/CachedHasOneThrough.php
 
 		-
@@ -427,8 +271,8 @@ parameters:
 			path: src/CachedHasOneThrough.php
 
 		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\) and ''query'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: src/CachedHasOneThrough.php
 
@@ -445,26 +289,8 @@ parameters:
 			path: src/CachedHasOneThrough.php
 
 		-
-			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and Illuminate\\Database\\Eloquent\\Builder will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/CachedHasOneThrough.php
-
-		-
 			message: '#^Parameter \#1 \$instance of method GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\:\:getModelCacheCooldown\(\) expects Illuminate\\Database\\Eloquent\\Model, \$this\(GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\) given\.$#'
 			identifier: argument.type
-			count: 1
-			path: src/CachedHasOneThrough.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: src/CachedHasOneThrough.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
 			count: 1
 			path: src/CachedHasOneThrough.php
 
@@ -507,7 +333,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: src/CachedModel.php
 
 		-
@@ -517,20 +343,8 @@ parameters:
 			path: src/CachedModel.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedModel\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedModel.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\CachedModel\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedModel.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\CachedModel and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: src/CachedModel.php
 
@@ -565,8 +379,26 @@ parameters:
 			path: src/CachedModel.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/CachedModel.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/CachedModel.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/CachedModel.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: src/CachedModel.php
 
@@ -597,7 +429,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: src/CachedMorphToMany.php
 
 		-
@@ -607,20 +439,14 @@ parameters:
 			path: src/CachedMorphToMany.php
 
 		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/CachedMorphToMany.php
+
+		-
 			message: '#^Call to function is_array\(\) with int will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^Call to function method_exists\(\) with Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and ''getQuery'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\) and ''query'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
 			count: 1
 			path: src/CachedMorphToMany.php
 
@@ -637,26 +463,14 @@ parameters:
 			path: src/CachedMorphToMany.php
 
 		-
-			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and Illuminate\\Database\\Eloquent\\Builder will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^Instanceof between Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\> and Illuminate\\Database\\Query\\Builder will always evaluate to false\.$#'
-			identifier: instanceof.alwaysFalse
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
 			message: '#^Method GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\:\:attach\(\) with return type void returns mixed but should not return anything\.$#'
 			identifier: return.void
+			count: 1
+			path: src/CachedMorphToMany.php
+
+		-
+			message: '#^Method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Relations\\MorphPivot,string\>\:\:paginate\(\) invoked with 5 parameters, 0\-4 required\.$#'
+			identifier: arguments.count
 			count: 1
 			path: src/CachedMorphToMany.php
 
@@ -675,18 +489,12 @@ parameters:
 		-
 			message: '#^Property Illuminate\\Database\\Eloquent\\Relations\\Relation\<Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model&object\{pivot\: Illuminate\\Database\\Eloquent\\Relations\\MorphPivot\}\>\>\:\:\$query \(Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\) on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.property
-			count: 1
+			count: 2
 			path: src/CachedMorphToMany.php
 
 		-
 			message: '#^Result of && is always false\.$#'
 			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
 			count: 1
 			path: src/CachedMorphToMany.php
 
@@ -707,18 +515,6 @@ parameters:
 			identifier: identical.alwaysFalse
 			count: 1
 			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Contracts\\Cache\\Repository\:\:flush\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: src/Console/Commands/Clear.php
 
 		-
 			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.BooleanArgumentFlag\)\)\: Unexpected token "\.BooleanArgumentFlag\)", expected ''\)'' at offset 27 on line 1$#'
@@ -771,7 +567,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Author.php
 
 		-
@@ -781,20 +577,8 @@ parameters:
 			path: tests/Fixtures/Author.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Author\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Author.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Author\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Author.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Author and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Author.php
 
@@ -829,8 +613,26 @@ parameters:
 			path: tests/Fixtures/Author.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Author.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Author.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Author.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Author.php
 
@@ -873,7 +675,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/AuthorBeginsWithScoped.php
 
 		-
@@ -883,20 +685,8 @@ parameters:
 			path: tests/Fixtures/AuthorBeginsWithScoped.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorBeginsWithScoped\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorBeginsWithScoped.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorBeginsWithScoped\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorBeginsWithScoped.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorBeginsWithScoped and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/AuthorBeginsWithScoped.php
 
@@ -931,10 +721,136 @@ parameters:
 			path: tests/Fixtures/AuthorBeginsWithScoped.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorBeginsWithScoped.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorBeginsWithScoped.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorBeginsWithScoped.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorBeginsWithScoped.php
+
+		-
+			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\)\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorExtendingGenerated.php
 
 		-
 			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCachedCustomBuilder\)\:\:\$model\.$#'
@@ -975,7 +891,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
 
 		-
@@ -985,20 +901,8 @@ parameters:
 			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCachedCustomBuilder\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCachedCustomBuilder\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCachedCustomBuilder and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
 
@@ -1033,8 +937,26 @@ parameters:
 			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
 
@@ -1077,7 +999,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/AuthorWithConditionalFillable.php
 
 		-
@@ -1087,20 +1009,8 @@ parameters:
 			path: tests/Fixtures/AuthorWithConditionalFillable.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithConditionalFillable\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithConditionalFillable.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithConditionalFillable\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithConditionalFillable.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithConditionalFillable and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/AuthorWithConditionalFillable.php
 
@@ -1135,10 +1045,136 @@ parameters:
 			path: tests/Fixtures/AuthorWithConditionalFillable.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithConditionalFillable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithConditionalFillable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithConditionalFillable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithConditionalFillable.php
+
+		-
+			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\)\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilderParent\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
 
 		-
 			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBuilder\)\:\:\$model\.$#'
@@ -1179,7 +1215,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/AuthorWithCustomBuilder.php
 
 		-
@@ -1189,20 +1225,8 @@ parameters:
 			path: tests/Fixtures/AuthorWithCustomBuilder.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBuilder\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithCustomBuilder.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBuilder\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithCustomBuilder.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBuilder and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/AuthorWithCustomBuilder.php
 
@@ -1237,8 +1261,26 @@ parameters:
 			path: tests/Fixtures/AuthorWithCustomBuilder.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithCustomBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithCustomBuilder.php
 
@@ -1281,7 +1323,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/AuthorWithDynamicFillable.php
 
 		-
@@ -1291,20 +1333,8 @@ parameters:
 			path: tests/Fixtures/AuthorWithDynamicFillable.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithDynamicFillable\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithDynamicFillable.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithDynamicFillable\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithDynamicFillable.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithDynamicFillable and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/AuthorWithDynamicFillable.php
 
@@ -1339,8 +1369,26 @@ parameters:
 			path: tests/Fixtures/AuthorWithDynamicFillable.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithDynamicFillable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithDynamicFillable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithDynamicFillable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithDynamicFillable.php
 
@@ -1383,7 +1431,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
 		-
@@ -1393,20 +1441,8 @@ parameters:
 			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithInlineGlobalScope\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithInlineGlobalScope\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithInlineGlobalScope and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
@@ -1441,14 +1477,32 @@ parameters:
 			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
 		-
-			message: '#^Parameter \#2 \$implementation of static method Illuminate\\Database\\Eloquent\\Model\:\:addGlobalScope\(\) expects \(Closure\(Illuminate\\Database\\Eloquent\\Builder\<static\>\)\: mixed\)\|Illuminate\\Database\\Eloquent\\Scope\|null, Closure\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\)\: \(GeneaLabs\\LaravelModelCaching\\CachedBuilder&Illuminate\\Database\\Eloquent\\Builder\<static\>\) given\.$#'
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
+
+		-
+			message: '#^Parameter \#2 \$implementation of static method Illuminate\\Database\\Eloquent\\Model\:\:addGlobalScope\(\) expects \(Closure\(Illuminate\\Database\\Eloquent\\Builder\<static\>\)\: mixed\)\|Illuminate\\Database\\Eloquent\\Scope\|null, Closure\(GeneaLabs\\LaravelModelCaching\\CachedBuilder\)\: \(GeneaLabs\\LaravelModelCaching\\CachedBuilder&Illuminate\\Database\\Eloquent\\Builder\<static\>\) given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
@@ -1491,7 +1545,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/AuthorWithTraitCollision.php
 
 		-
@@ -1501,20 +1555,8 @@ parameters:
 			path: tests/Fixtures/AuthorWithTraitCollision.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithTraitCollision\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithTraitCollision.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithTraitCollision\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/AuthorWithTraitCollision.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithTraitCollision and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/AuthorWithTraitCollision.php
 
@@ -1549,8 +1591,26 @@ parameters:
 			path: tests/Fixtures/AuthorWithTraitCollision.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithTraitCollision.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithTraitCollision.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithTraitCollision.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithTraitCollision.php
 
@@ -1593,7 +1653,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Book.php
 
 		-
@@ -1603,20 +1663,8 @@ parameters:
 			path: tests/Fixtures/Book.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Book\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Book.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Book\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Book.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Book and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Book.php
 
@@ -1651,8 +1699,26 @@ parameters:
 			path: tests/Fixtures/Book.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Book.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Book.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Book.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Book.php
 
@@ -1695,7 +1761,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/BookWithUncachedStore.php
 
 		-
@@ -1705,20 +1771,8 @@ parameters:
 			path: tests/Fixtures/BookWithUncachedStore.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\BookWithUncachedStore\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/BookWithUncachedStore.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\BookWithUncachedStore\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/BookWithUncachedStore.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\BookWithUncachedStore and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/BookWithUncachedStore.php
 
@@ -1753,10 +1807,136 @@ parameters:
 			path: tests/Fixtures/BookWithUncachedStore.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/BookWithUncachedStore.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/BookWithUncachedStore.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/BookWithUncachedStore.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/BookWithUncachedStore.php
+
+		-
+			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\)\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableRoleUser.php
 
 		-
 			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Comment\)\:\:\$model\.$#'
@@ -1797,7 +1977,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Comment.php
 
 		-
@@ -1807,20 +1987,8 @@ parameters:
 			path: tests/Fixtures/Comment.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Comment\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Comment.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Comment\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Comment.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Comment and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Comment.php
 
@@ -1855,10 +2023,148 @@ parameters:
 			path: tests/Fixtures/Comment.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Comment.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Comment.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Comment.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Comment.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CrossSlotDeleteRedisStore\:\:connection\(\) should return Illuminate\\Redis\\Connections\\Connection but returns GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CrossSlotDeleteConnection\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CrossSlotDeleteRedisStore.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\FakeNativeDynamoDbStore\:\:flush\(\) should never return but return statement found\.$#'
+			identifier: return.never
+			count: 1
+			path: tests/Fixtures/FakeNativeDynamoDbStore.php
+
+		-
+			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\)\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/GeneratedAuthor.php
 
 		-
 			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\History\)\:\:\$model\.$#'
@@ -1899,7 +2205,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/History.php
 
 		-
@@ -1909,20 +2215,8 @@ parameters:
 			path: tests/Fixtures/History.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\History\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/History.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\History\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/History.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\History and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/History.php
 
@@ -1957,8 +2251,26 @@ parameters:
 			path: tests/Fixtures/History.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/History.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/History.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/History.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/History.php
 
@@ -2013,7 +2325,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Image.php
 
 		-
@@ -2023,20 +2335,8 @@ parameters:
 			path: tests/Fixtures/Image.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Image\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Image.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Image\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Image.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Image and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Image.php
 
@@ -2071,8 +2371,26 @@ parameters:
 			path: tests/Fixtures/Image.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Image.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Image.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Image.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Image.php
 
@@ -2121,7 +2439,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Post.php
 
 		-
@@ -2131,20 +2449,8 @@ parameters:
 			path: tests/Fixtures/Post.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Post\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Post.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Post\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Post.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Post and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Post.php
 
@@ -2179,8 +2485,26 @@ parameters:
 			path: tests/Fixtures/Post.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Post.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Post.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Post.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Post.php
 
@@ -2217,7 +2541,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/PrefixedAuthor.php
 
 		-
@@ -2227,20 +2551,8 @@ parameters:
 			path: tests/Fixtures/PrefixedAuthor.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\PrefixedAuthor\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/PrefixedAuthor.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\PrefixedAuthor\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/PrefixedAuthor.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\PrefixedAuthor and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/PrefixedAuthor.php
 
@@ -2275,8 +2587,26 @@ parameters:
 			path: tests/Fixtures/PrefixedAuthor.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/PrefixedAuthor.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/PrefixedAuthor.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/PrefixedAuthor.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/PrefixedAuthor.php
 
@@ -2319,7 +2649,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Printer.php
 
 		-
@@ -2329,20 +2659,8 @@ parameters:
 			path: tests/Fixtures/Printer.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Printer\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Printer.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Printer\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Printer.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Printer and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Printer.php
 
@@ -2377,8 +2695,26 @@ parameters:
 			path: tests/Fixtures/Printer.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Printer.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Printer.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Printer.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Printer.php
 
@@ -2421,7 +2757,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Profile.php
 
 		-
@@ -2431,20 +2767,8 @@ parameters:
 			path: tests/Fixtures/Profile.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Profile\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Profile.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Profile\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Profile.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Profile and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Profile.php
 
@@ -2479,8 +2803,26 @@ parameters:
 			path: tests/Fixtures/Profile.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Profile.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Profile.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Profile.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Profile.php
 
@@ -2523,7 +2865,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Publisher.php
 
 		-
@@ -2533,20 +2875,8 @@ parameters:
 			path: tests/Fixtures/Publisher.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Publisher\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Publisher.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Publisher\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Publisher.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Publisher and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Publisher.php
 
@@ -2581,8 +2911,26 @@ parameters:
 			path: tests/Fixtures/Publisher.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Publisher.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Publisher.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Publisher.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Publisher.php
 
@@ -2625,7 +2973,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Role.php
 
 		-
@@ -2635,20 +2983,8 @@ parameters:
 			path: tests/Fixtures/Role.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Role\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Role.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Role\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Role.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Role and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Role.php
 
@@ -2683,8 +3019,26 @@ parameters:
 			path: tests/Fixtures/Role.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Role.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Role.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Role.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Role.php
 
@@ -2733,7 +3087,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Store.php
 
 		-
@@ -2743,20 +3097,8 @@ parameters:
 			path: tests/Fixtures/Store.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Store\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Store.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Store\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Store.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Store and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Store.php
 
@@ -2791,8 +3133,26 @@ parameters:
 			path: tests/Fixtures/Store.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Store.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Store.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Store.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Store.php
 
@@ -2835,7 +3195,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/StoreWithUncachedBooks.php
 
 		-
@@ -2845,20 +3205,8 @@ parameters:
 			path: tests/Fixtures/StoreWithUncachedBooks.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\StoreWithUncachedBooks\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/StoreWithUncachedBooks.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\StoreWithUncachedBooks\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/StoreWithUncachedBooks.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\StoreWithUncachedBooks and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/StoreWithUncachedBooks.php
 
@@ -2893,8 +3241,26 @@ parameters:
 			path: tests/Fixtures/StoreWithUncachedBooks.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/StoreWithUncachedBooks.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/StoreWithUncachedBooks.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/StoreWithUncachedBooks.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/StoreWithUncachedBooks.php
 
@@ -2937,7 +3303,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Supplier.php
 
 		-
@@ -2947,20 +3313,8 @@ parameters:
 			path: tests/Fixtures/Supplier.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Supplier\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Supplier.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Supplier\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Supplier.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Supplier and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Supplier.php
 
@@ -2995,8 +3349,26 @@ parameters:
 			path: tests/Fixtures/Supplier.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Supplier.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Supplier.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Supplier.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Supplier.php
 
@@ -3039,7 +3411,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/Tag.php
 
 		-
@@ -3049,20 +3421,8 @@ parameters:
 			path: tests/Fixtures/Tag.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Tag\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Tag.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Tag\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/Tag.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Tag and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/Tag.php
 
@@ -3097,8 +3457,26 @@ parameters:
 			path: tests/Fixtures/Tag.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Tag.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Tag.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/Tag.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Tag.php
 
@@ -3141,7 +3519,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 7
 			path: tests/Fixtures/User.php
 
 		-
@@ -3151,20 +3529,8 @@ parameters:
 			path: tests/Fixtures/User.php
 
 		-
-			message: '#^Call to function method_exists\(\) with \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\User\) and ''getModel'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/User.php
-
-		-
-			message: '#^Call to function method_exists\(\) with class\-string\<static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\User\)\> and ''hasGlobalMacro'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Fixtures/User.php
-
-		-
-			message: '#^Instanceof between GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\User and Illuminate\\Database\\Eloquent\\Model will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
 			count: 1
 			path: tests/Fixtures/User.php
 
@@ -3195,6 +3561,30 @@ parameters:
 		-
 			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\User\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
 			identifier: return.type
+			count: 1
+			path: tests/Fixtures/User.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/User.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/User.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/User.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/User.php
 

@@ -82,6 +82,11 @@ _ide_helper*.php
 /tests/database/*.sqlite-journal
 composer.lock
 
+# phpunit.xml.dist is the tracked template and the one CI runs. A local
+# phpunit.xml overrides it per-machine and is deliberately not shared, so the
+# two cannot drift apart again.
+phpunit.xml
+
 # ignore all the ai configuration files, have laravel boost manage them and the developer choose their setup
 .ai
 .agentic-tools-mcp

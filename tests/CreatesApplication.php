@@ -6,6 +6,7 @@ use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\Providers\Service as LaravelModelCachingService;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Artisan;
+use Throwable;
 
 trait CreatesApplication
 {
@@ -13,6 +14,11 @@ trait CreatesApplication
 
     protected $cache;
     protected $testingSqlitePath;
+
+    // PHPUnit runs tearDown() even for a test that skipped in setUp(), so a
+    // tearDown that talks to Redis throws where the test itself correctly
+    // skipped. Any such tearDown checks this first.
+    protected bool $redisIsAvailable = false;
 
     protected function cache(): object
     {
@@ -103,6 +109,7 @@ trait CreatesApplication
     {
         parent::setUp();
 
+        $this->skipWithoutRedis();
         $this->setUpBaseLineSqlLiteDatabase();
 
         $databasePath = $this->testDatabaseDirectory();
@@ -127,6 +134,38 @@ trait CreatesApplication
             store: app(abstract: "cache")->store(name: config(key: "laravel-model-caching.store")),
         );
         $this->flushWorkerCacheKeys();
+    }
+
+    // Redis is not optional for this suite: it is the cache store every test
+    // reads and writes. Without it, each test used to raise its own
+    // connection-refused error and none of them said what was missing.
+    // PostgreSQL, DynamoDB and Memcached all skip with a reason instead, so
+    // this brings Redis in line with them.
+    //
+    // The probe runs at the top of setUp() rather than inside
+    // flushWorkerCacheKeys(), because that method is not the first thing to
+    // reach Redis. setUpBaseLineSqlLiteDatabase() seeds cachable models, whose
+    // "created" events flush the cache, so the store is touched during
+    // seeding. Guarding one call site left that one throwing.
+    protected function skipWithoutRedis(): void
+    {
+        try {
+            app(abstract: "redis")
+                ->connection(name: "model-cache")
+                ->ping();
+
+            $this->redisIsAvailable = true;
+        } catch (Throwable $exception) {
+            $this->redisIsAvailable = false;
+            $host = env(key: "REDIS_HOST", default: "127.0.0.1");
+
+            $this->markTestSkipped(
+                "No reachable Redis server at {$host}. This suite caches "
+                . "against Redis, so every test needs one running. "
+                . "Start one, or point REDIS_HOST at an existing server. "
+                . "Reported: {$exception->getMessage()}"
+            );
+        }
     }
 
     protected function flushWorkerCacheKeys(): void

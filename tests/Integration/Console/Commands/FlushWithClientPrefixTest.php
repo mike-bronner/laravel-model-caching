@@ -23,7 +23,12 @@ class FlushWithClientPrefixTest extends IntegrationTestCase
 
     protected function tearDown() : void
     {
-        app('redis')->connection('model-cache-prefixed')->flushdb();
+        // PHPUnit still runs tearDown() when setUp() skipped the test, and
+        // setUp() skips exactly when Redis is unreachable. Flushing here
+        // unguarded turned that clean skip back into a connection error.
+        if ($this->redisIsAvailable) {
+            app('redis')->connection('model-cache-prefixed')->flushdb();
+        }
 
         parent::tearDown();
     }
