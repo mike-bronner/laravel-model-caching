@@ -11,22 +11,28 @@ However, not every pull request will automatically be accepted. I will review ea
 - [ ] When adding new functionality, also add new tests.
 - [ ] When fixing errors, write and satisfy new unit tests that replicate the issue.
 - [ ] Check that your test actually guards the fix. Revert the change, confirm the test goes red, then restore it. A test written after a fix often passes without it.
-- [ ] Run `composer analyse` and make sure PHPStan reports no new errors.
 - [ ] Make sure there are no build errors on [GitHub Actions](https://github.com/mike-bronner/laravel-model-caching/actions).
 
 ### What CI enforces
 The test suite, across PHP 8.2 to 8.5 and Laravel 11 to 13. Nothing else.
 
-PHPStan, Pint and PHPCS are all configured here and none of them runs in CI.
-`composer analyse` is worth running before you push anyway:
-`phpstan-baseline.neon` records the errors that already existed when it was
-last regenerated, so the analysis is green today and a new error stands out.
-That baseline is only accurate against the Laravel version it was generated
-on, which is why it is not a build gate.
+### Static analysis and code style
+PHPStan, Pint and PHPCS are all configured in this repo. None of them runs in
+CI, and the tree does not currently satisfy any of them:
 
-Pint and PHPCS are further behind: the tree does not currently satisfy either.
+| Tool | Command | State |
+| --- | --- | --- |
+| PHPStan (level 5) | `composer analyse` | 978 errors |
+| Pint | `vendor/bin/pint --test` | 210 files |
+| PHPCS | `vendor/bin/phpcs` | 593 errors in 24 files |
+
+So do not expect a clean run from any of them, and do not treat a red result
+as something your change caused. Run one if it helps you, and read only the
+lines that name the files you touched.
+
 Match the style of the code around your change rather than reformatting to
-satisfy a tool.
+satisfy a tool. A reformatting pass is welcome as its own pull request, and
+unwelcome mixed into a behavioural one, because it buries the actual change.
 
 ## Submitting changes
 When submitting a pull request, it is important to make sure to complete the following:

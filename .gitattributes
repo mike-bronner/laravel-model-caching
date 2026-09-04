@@ -17,7 +17,6 @@
 /CONTRIBUTING.md export-ignore
 /SECURITY.md export-ignore
 /phpcs.xml export-ignore
-/phpstan-baseline.neon export-ignore
 /phpstan.neon export-ignore
 /phpunit.xml.dist export-ignore
 /pint.json export-ignore

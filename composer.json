@@ -70,7 +70,7 @@
         "test": "phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature"
     },
     "scripts-descriptions": {
-        "analyse": "Run PHPStan against the baseline. Not enforced in CI, because the baseline is only accurate against the Laravel version it was generated on.",
+        "analyse": "Run PHPStan at level 5. Not enforced in CI, and the tree does not pass it today, so read only the lines naming files you touched.",
         "test": "Run the test suite the way CI runs it. Requires a reachable Redis."
     },
     "config": {
