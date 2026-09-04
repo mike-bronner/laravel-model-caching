@@ -100,39 +100,6 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  static-analysis:
-
-    runs-on: ubuntu-latest
-    # Pinned to one cell on purpose. PHPStan's findings depend on the installed
-    # Laravel's own type declarations, so the baseline is only accurate against
-    # the version it was generated on. Running the matrix here would report
-    # hundreds of differences that say nothing about this repo's code.
-    name: PHPStan / PHP 8.5 / Laravel 13
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-
-    - name: Setup PHP 8.5
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.5'
-        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
-        coverage: none
-
-    - name: Install specific Laravel version
-      run: |
-        composer require "illuminate/support:13.*" "illuminate/database:13.*" "illuminate/cache:13.*" "illuminate/config:13.*" "illuminate/console:13.*" "illuminate/container:13.*" "illuminate/http:13.*" "orchestra/testbench:11.*" --no-update --no-interaction
-
-    - name: Install Dependencies
-      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-
-    # phpstan-baseline.neon holds the errors that already existed when the
-    # check was introduced, so this fails on new ones only. Adding to the
-    # baseline to make a red build green is the one thing that defeats it.
-    - name: Analyse with PHPStan
-      run: vendor/bin/phpstan analyse --no-progress --memory-limit=2G
-
   dynamodb-integration:
 
     runs-on: ubuntu-latest

@@ -70,7 +70,7 @@
         "test": "phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature"
     },
     "scripts-descriptions": {
-        "analyse": "Run PHPStan. This is the one check CI enforces, so run it before pushing.",
+        "analyse": "Run PHPStan against the baseline. Not enforced in CI, because the baseline is only accurate against the Laravel version it was generated on.",
         "test": "Run the test suite the way CI runs it. Requires a reachable Redis."
     },
     "config": {

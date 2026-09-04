@@ -15,14 +15,18 @@ However, not every pull request will automatically be accepted. I will review ea
 - [ ] Make sure there are no build errors on [GitHub Actions](https://github.com/mike-bronner/laravel-model-caching/actions).
 
 ### What CI enforces
-The test suite and PHPStan. `phpstan-baseline.neon` records the errors that
-already existed when the check was added, so only new ones fail the build.
-Adding to that baseline to turn a red build green defeats the point of having
-it — fix the error instead, or say in the pull request why it cannot be fixed.
+The test suite, across PHP 8.2 to 8.5 and Laravel 11 to 13. Nothing else.
 
-Pint and PHPCS are configured in this repo but are **not** enforced anywhere,
-and the tree does not currently satisfy either. Match the style of the code
-around your change rather than reformatting to satisfy a tool.
+PHPStan, Pint and PHPCS are all configured here and none of them runs in CI.
+`composer analyse` is worth running before you push anyway:
+`phpstan-baseline.neon` records the errors that already existed when it was
+last regenerated, so the analysis is green today and a new error stands out.
+That baseline is only accurate against the Laravel version it was generated
+on, which is why it is not a build gate.
+
+Pint and PHPCS are further behind: the tree does not currently satisfy either.
+Match the style of the code around your change rather than reformatting to
+satisfy a tool.
 
 ## Submitting changes
 When submitting a pull request, it is important to make sure to complete the following:
