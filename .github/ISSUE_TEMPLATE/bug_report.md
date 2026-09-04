@@ -17,10 +17,11 @@ $model->with('otherModel')->get();
 The full stack trace from your log file.
 
 **Environment**
- - PHP: [e.g. 7.1.0]
- - OS: [e.g. Ubuntu 18.04]
- - Laravel: [e.g. 5.6.15]
- - Model Caching: [e.g. 0.2.61]
+ - PHP: [e.g. 8.4.3]
+ - OS: [e.g. Ubuntu 24.04]
+ - Laravel: [e.g. 12.28.1]
+ - Model Caching: [e.g. 13.1.8]
+ - Cache store: [e.g. Redis, Memcached, DynamoDB, file]
 
 **Additional context**
 Add any other context about the problem here.

@@ -12,15 +12,9 @@
         "genealabs/laravel-model-caching": "self.version",
         "mikebronner/laravel-model-caching": "self.version"
     },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "git@github.com:mikebronner/development-settings.git"
-        }
-    ],
     "require": {
         "php": ">=8.2",
-        "mikebronner/laravel-pivot-events": "*",
+        "mikebronner/laravel-pivot-events": "^13.1",
         "illuminate/cache": "^11.0|^12.0|^13.0",
         "illuminate/config": "^11.0|^12.0|^13.0",
         "illuminate/console": "^11.0|^12.0|^13.0",
@@ -71,11 +65,18 @@
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
+    "scripts": {
+        "analyse": "phpstan analyse --memory-limit=2G",
+        "test": "phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature"
+    },
+    "scripts-descriptions": {
+        "analyse": "Run PHPStan at level 5. Not enforced in CI, and the tree does not pass it today, so read only the lines naming files you touched.",
+        "test": "Run the test suite the way CI runs it. Requires a reachable Redis."
+    },
     "config": {
         "allow-plugins": {
             "symfony/thanks": true,
             "dealerdirect/phpcodesniffer-composer-installer": true,
-            "mikebronner/development-settings": true,
             "pestphp/pest-plugin": true
         }
     }

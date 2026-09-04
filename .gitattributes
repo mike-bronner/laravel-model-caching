@@ -1,18 +1,23 @@
 * text=auto
 
-/.github export-ignore
+# Kept out of the Composer dist archive. A consumer installs this package to
+# use it, never to develop it, so nothing below is worth the download.
+#
+# Every path here must exist. Six entries previously named files that had been
+# renamed or deleted years earlier (/.phpcs.xml, /.phpmd.xml, /.phpunit.xml,
+# /.phpunit.xml.dist, /.scrutinizer.yml, /.travis.yml), so the real config
+# files shipped while the list looked complete. `git check-attr export-ignore`
+# on the actual filenames is what settles that, not reading the list.
+/.editorconfig export-ignore
 /.gitattributes export-ignore
+/.github export-ignore
 /.gitignore export-ignore
-/.phpcs.xml export-ignore
-/.phpmd.xml export-ignore
-/.phpunit.xml export-ignore
-/.phpunit.xml.dist export-ignore
-/.scrutinizer.yml export-ignore
-/.travis.yml export-ignore
-/build
-/composer.lock
-/database.yml export-ignore
-/phpunit.xml export-ignore
+/.php-codesniffer export-ignore
+/CODE_OF_CONDUCT.md export-ignore
+/CONTRIBUTING.md export-ignore
+/SECURITY.md export-ignore
+/phpcs.xml export-ignore
+/phpstan.neon export-ignore
+/phpunit.xml.dist export-ignore
+/pint.json export-ignore
 /tests export-ignore
-/tools export-ignore
-/vendor

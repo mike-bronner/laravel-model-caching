@@ -75,9 +75,6 @@ jobs:
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql
         coverage: ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && 'xdebug' || 'none' }}
 
-    - name: Authenticate Composer for private development-settings repo
-      run: composer config --global github-oauth.github.com "${{ secrets.DEVELOPER_SETTINGS_TOKEN }}"
-
     - name: Install specific Laravel version
       run: |
         composer require "illuminate/support:${{ matrix.laravel }}" "illuminate/database:${{ matrix.laravel }}" "illuminate/cache:${{ matrix.laravel }}" "illuminate/config:${{ matrix.laravel }}" "illuminate/console:${{ matrix.laravel }}" "illuminate/container:${{ matrix.laravel }}" "illuminate/http:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-update --no-interaction
@@ -91,8 +88,10 @@ jobs:
     - name: Execute Integration and Feature tests via PHPUnit
       run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }}
 
+    # Forks never receive CODECOV_TOKEN, and fail_ci_if_error would then fail
+    # a run whose code is fine. Skip the upload there instead.
     - name: Upload coverage to Codecov
-      if: matrix.php == '8.5' && matrix.laravel == '13.*'
+      if: matrix.php == '8.5' && matrix.laravel == '13.*' && github.event.pull_request.head.repo.fork != true
       uses: codecov/codecov-action@v5
       with:
         files: coverage.xml
@@ -151,9 +150,6 @@ jobs:
         php-version: '8.4'
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql
         coverage: none
-
-    - name: Authenticate Composer for private development-settings repo
-      run: composer config --global github-oauth.github.com "${{ secrets.DEVELOPER_SETTINGS_TOKEN }}"
 
     - name: Install specific Laravel version
       run: |
@@ -266,9 +262,6 @@ jobs:
         extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql, redis, memcached
         coverage: xdebug
 
-    - name: Authenticate Composer for private development-settings repo
-      run: composer config --global github-oauth.github.com "${{ secrets.DEVELOPER_SETTINGS_TOKEN }}"
-
     - name: Install specific Laravel version
       run: |
         composer require "illuminate/support:13.*" "illuminate/database:13.*" "illuminate/cache:13.*" "illuminate/config:13.*" "illuminate/console:13.*" "illuminate/container:13.*" "illuminate/http:13.*" "orchestra/testbench:11.*" --no-update --no-interaction
@@ -283,6 +276,7 @@ jobs:
       run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature --coverage-clover coverage.xml
 
     - name: Upload Predis coverage to Codecov
+      if: github.event.pull_request.head.repo.fork != true
       uses: codecov/codecov-action@v5
       with:
         files: coverage.xml
