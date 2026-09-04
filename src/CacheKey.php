@@ -253,8 +253,10 @@ class CacheKey
         $placeholderCount = preg_match_all('/\?(?=(?:[^"]*"[^"]*")*[^"]*\Z)/m', $subquery);
 
         if ($placeholderCount === 0) {
-            if (data_get($where, "values")) {
-                $this->currentBinding += count(data_get($where, "values"));
+            $whereValues = data_get($where, "values", []);
+
+            if ($whereValues) {
+                $this->currentBinding += count($this->query->cleanBindings($whereValues));
             }
 
             $values = $this->recursiveImplode([$subquery], "_");
