@@ -38,7 +38,7 @@ class HasOneThroughTest extends IntegrationTestCase
 
     public function testLazyloadedHasOneThrough()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:histories:genealabslaravelmodelcachingtestsfixtureshistory-users.supplier_id_=_1-first");
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:histories:genealabslaravelmodelcachingtestsfixtureshistory-join_inner_users_1f027b356718-users.supplier_id_=_1-first");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixtureshistory",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:histories",

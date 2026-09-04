@@ -38,7 +38,7 @@ class HasManyThroughTest extends IntegrationTestCase
 
     public function testLazyloadedHasManyThrough()
     {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:printers:genealabslaravelmodelcachingtestsfixturesprinter-books.author_id_=_1");
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:printers:genealabslaravelmodelcachingtestsfixturesprinter-join_inner_books_bca1a55e5c9c-books.author_id_=_1");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesprinter",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:printers",
