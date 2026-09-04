@@ -8,6 +8,7 @@ use BackedEnum;
 use DateTimeInterface;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
 use Illuminate\Contracts\Database\Query\Expression;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -39,6 +40,44 @@ class CacheKey
         "%" => "%25",
         "-" => "%2D",
         "_" => "%5F",
+    ];
+
+    // Query state that a named method above writes into the key. Anything the
+    // builder carries that is in neither this list nor the one below is hashed
+    // by getUnkeyedQueryPropertiesSlug().
+    //
+    // The split exists because enumeration is what has failed here repeatedly.
+    // groupBy, joins, unions and distinct were each absent from the key, and
+    // each returned another query's rows, because no method named them and
+    // nothing noticed. Listing what *is* handled inverts that: a property this
+    // class has never heard of produces an over-specific key, which costs a
+    // cache miss, rather than a shared key, which returns wrong rows.
+    private const KEYED_QUERY_PROPERTIES = [
+        "beforeQueryCallbacks",
+        "columns",
+        "distinct",
+        "from",
+        "groups",
+        "havings",
+        "joins",
+        "limit",
+        "offset",
+        "orders",
+        "unions",
+        "wheres",
+    ];
+
+    // Builder state with no bearing on which rows come back: connection
+    // plumbing, the grammar's operator tables, and the binding array the
+    // clause walkers already read through their own channels.
+    private const UNKEYED_INFRASTRUCTURE_PROPERTIES = [
+        "bindings",
+        "bitwiseOperators",
+        "connection",
+        "grammar",
+        "operators",
+        "processor",
+        "useWritePdo",
     ];
 
     protected $currentBinding = 0;
@@ -75,14 +114,19 @@ class CacheKey
         $key .= $this->getModelSlug();
         $key .= $this->getIdColumn($idColumn ?: "");
         $key .= $this->getQueryColumns($columns);
+        $key .= $this->getDistinctClause();
+        $key .= $this->getJoinClauses();
         $key .= $this->getWhereClauses();
+        $key .= $this->getGroupByClauses();
         $key .= $this->getHavingClauses();
         $key .= $this->getWithModels();
         $key .= $this->getOrderByClauses();
         $key .= $this->getOffsetClause();
         $key .= $this->getLimitClause();
+        $key .= $this->getUnionClauses();
         $key .= $this->getBindingsSlug();
         $key .= $this->getDeferredCallbacksSlug();
+        $key .= $this->getUnkeyedQueryPropertiesSlug();
         $key .= $keyDifferentiator;
         $key .= $this->macroKey;
 
@@ -191,12 +235,17 @@ class CacheKey
 
     protected function getHavingClauses()
     {
-        return Collection::make($this->query->havings)->reduce(function ($carry, $having) {
+        $clauses = Collection::make($this->query->havings)->reduce(function ($carry, $having) {
             $value = $carry;
             $value .= $this->getHavingClause($having);
 
             return $value;
         });
+
+        // havingRaw("total > ?", [5]) stores only its SQL in the clause array
+        // and puts the 5 in the "having" binding channel, so two calls that
+        // differ only in their bindings build the same clause string.
+        return $clauses . $this->getChannelBindingsSlug("having");
     }
 
     protected function getHavingClause(array $having): string
@@ -204,10 +253,58 @@ class CacheKey
         $return = '-having';
 
         foreach ($having as $key => $value) {
-            $return .= '_' . $key . '_' . str_replace(' ', '_', $value);
+            $return .= '_' . $key . '_' . $this->stringifyHavingValue($value);
         }
 
         return $return;
+    }
+
+    // A having clause carries whatever shape its type needs: a scalar for
+    // having(), a two-element array for havingBetween(), a bool for the "not"
+    // flag, a nested Builder for having(Closure). Passing each of those to
+    // str_replace() assumed they were all strings, so having("total", ">", 5)
+    // raised a TypeError and havingBetween() folded both bounds into the
+    // literal "Array", giving every range the same key.
+    //
+    // Strings keep the exact space-to-underscore rewrite they had before, so
+    // every havingRaw() key that worked stays byte-identical.
+    private function stringifyHavingValue(mixed $value) : string
+    {
+        if (is_array($value)) {
+            return implode("_", array_map($this->stringifyHavingValue(...), $value));
+        }
+
+        if ($value instanceof QueryBuilder) {
+            return Collection::make($value->havings)
+                ->reduce(fn ($carry, $nested) => $carry . $this->getHavingClause($nested), "");
+        }
+
+        if (is_bool($value)) {
+            return $value ? "1" : "0";
+        }
+
+        if ($value === null) {
+            return "";
+        }
+
+        return str_replace(" ", "_", $this->processEnum($value));
+    }
+
+    // Bindings that live in a channel of their own rather than in "where".
+    // The clause arrays for those channels hold placeholders, not values, so
+    // the values reach the key only from here.
+    private function getChannelBindingsSlug(string $channel) : string
+    {
+        $bindings = data_get($this->query->bindings, $channel, []);
+
+        if (! $bindings) {
+            return "";
+        }
+
+        return "-{$channel}Bindings_" . implode(
+            "_",
+            array_map($this->stringifyBinding(...), $bindings),
+        );
     }
 
     protected function getIdColumn(string $idColumn) : string
@@ -217,13 +314,14 @@ class CacheKey
 
     protected function getInAndNotInClauses(array $where) : string
     {
-        if (! in_array($where["type"], ["In", "NotIn", "InRaw"])) {
+        if (! in_array($where["type"], ["In", "NotIn", "InRaw", "NotInRaw"])) {
             return "";
         }
 
         $type = strtolower($where["type"]);
         $booleanSlug = $this->getBooleanSlug($where);
         $subquery = $this->getValuesFromWhere($where);
+        $bindingCount = $this->getInClauseBindingCount($where);
 
         if (
             ! is_numeric($subquery)
@@ -233,6 +331,10 @@ class CacheKey
             try {
                 $subquery = Uuid::fromBytes($subquery);
                 $values = $this->recursiveImplode([$subquery], "_");
+                // whereIn() bound the raw UUID, so the cursor owes it a slot
+                // whichever branch renders the clause. Returning without
+                // advancing left every later clause reading one binding early.
+                $this->currentBinding += $bindingCount;
 
                 return "{$booleanSlug}-{$where["column"]}_{$type}{$values}";
             } catch (Throwable) {
@@ -253,11 +355,7 @@ class CacheKey
         $placeholderCount = preg_match_all('/\?(?=(?:[^"]*"[^"]*")*[^"]*\Z)/m', $subquery);
 
         if ($placeholderCount === 0) {
-            $whereValues = data_get($where, "values", []);
-
-            if ($whereValues) {
-                $this->currentBinding += count($this->query->cleanBindings($whereValues));
-            }
+            $this->currentBinding += $bindingCount;
 
             $values = $this->recursiveImplode([$subquery], "_");
 
@@ -282,6 +380,111 @@ class CacheKey
         $values = $this->recursiveImplode($subquery->toArray(), "_");
 
         return "{$booleanSlug}-{$where["column"]}_{$type}{$values}";
+    }
+
+    protected function getDistinctClause() : string
+    {
+        if (! property_exists($this->query, "distinct")
+            || ! $this->query->distinct
+        ) {
+            return "";
+        }
+
+        // distinct() sets true. distinct("a", "b") sets the column list.
+        if (! is_array($this->query->distinct)) {
+            return "-distinct";
+        }
+
+        return "-distinct_" . implode("_", array_map(
+            $this->expressionToString(...),
+            $this->query->distinct,
+        ));
+    }
+
+    protected function getGroupByClauses() : string
+    {
+        if (! property_exists($this->query, "groups")
+            || ! $this->query->groups
+        ) {
+            return "";
+        }
+
+        // Column names are not escaped, here or in getOrderByClauses() and
+        // getQueryColumns(). Escaping is for bound values, which an
+        // application controls outright; an identifier comes from the
+        // developer's own code.
+        $groups = array_map(
+            $this->expressionToString(...),
+            $this->query->groups,
+        );
+
+        return "-groupBy_" . implode("_", $groups)
+            . $this->getChannelBindingsSlug("groupBy");
+    }
+
+    protected function getJoinClauses() : string
+    {
+        if (! property_exists($this->query, "joins")
+            || ! $this->query->joins
+        ) {
+            return "";
+        }
+
+        // The join type separates join() from leftJoin() on one table, and the
+        // hashed ON conditions separate two joins of the same table on
+        // different columns. CacheTags already tags the joined table, but a
+        // tag is a namespace and not a key: two joins landing in the same
+        // namespace still need different keys.
+        $joins = array_map(
+            fn ($join) => $join->type
+                . "_" . $this->expressionToString($join->table)
+                . "_" . substr(
+                    sha1($this->encodeForKeyHash($this->normalizeForHash($join->wheres))),
+                    0,
+                    12,
+                ),
+            $this->query->joins,
+        );
+
+        return "-join_" . implode("_", $joins)
+            . $this->getChannelBindingsSlug("join");
+    }
+
+    protected function getUnionClauses() : string
+    {
+        if (! property_exists($this->query, "unions")
+            || ! $this->query->unions
+        ) {
+            return "";
+        }
+
+        $unions = array_map(
+            fn ($union) => (data_get($union, "all") ? "all_" : "")
+                . sha1(
+                    $union["query"]->toSql()
+                    . $this->encodeForKeyHash($union["query"]->getBindings())
+                ),
+            $this->query->unions,
+        );
+
+        return "-union_" . implode("_", $unions);
+    }
+
+    // How many binding slots an In-family clause owns.
+    //
+    // whereIn() calls addBinding(cleanBindings($values)), so its count is the
+    // value list with every Expression removed. whereIntegerInRaw() and
+    // whereIntegerNotInRaw() inline their values into the SQL and call
+    // addBinding() not at all, so they own nothing. Counting the value list
+    // for those two pushed the cursor past bindings belonging to later
+    // clauses, and those clauses then read another query's values.
+    private function getInClauseBindingCount(array $where) : int
+    {
+        if (in_array($where["type"], ["InRaw", "NotInRaw"], true)) {
+            return 0;
+        }
+
+        return count($this->query->cleanBindings(data_get($where, "values", [])));
     }
 
     protected function getLimitClause() : string
@@ -361,10 +564,9 @@ class CacheKey
             return $this->escapeKeySegment($this->processEnum($value));
         }, $where["values"]));
 
-        // Advance binding pointer for each value in the RowValues clause
-        foreach ($where["values"] as $ignored) {
-            $this->currentBinding++;
-        }
+        // whereRowValues() binds through cleanBindings() too, so an Expression
+        // among the values is inlined into the SQL and owns no binding slot.
+        $this->currentBinding += count($this->query->cleanBindings($where["values"]));
 
         return $this->getBooleanSlug($where)
             . "-{$columns}_{$operator}_{$values}";
@@ -372,7 +574,7 @@ class CacheKey
 
     protected function getOtherClauses(array $where) : string
     {
-        if (in_array($where["type"], ["Exists", "Nested", "NotExists", "Column", "raw", "In", "NotIn", "InRaw", "RowValues"])) {
+        if (in_array($where["type"], ["Exists", "Nested", "NotExists", "Column", "raw", "In", "NotIn", "InRaw", "NotInRaw", "RowValues"])) {
             return "";
         }
 
@@ -543,10 +745,21 @@ class CacheKey
             return $values;
         }
 
+        // where("column", ">", new Expression(...)) is compiled straight into
+        // the SQL and binds nothing, so consuming a slot for it would hand the
+        // next clause a value that is not its own.
+        if (data_get($where, "value") instanceof Expression) {
+            return $values;
+        }
+
         $this->currentBinding++;
         $values = $this->stringifyBinding($currentBinding);
 
-        if ($where["type"] === "between") {
+        // whereBetween() binds both bounds through cleanBindings(), so an
+        // Expression bound leaves the clause owning one slot rather than two.
+        if ($where["type"] === "between"
+            && count($this->query->cleanBindings(data_get($where, "values", []))) > 1
+        ) {
             $values .= "_" . $this->stringifyBinding($this->getCurrentBinding("where"));
             $this->currentBinding++;
         }
@@ -554,7 +767,7 @@ class CacheKey
         return $values;
     }
 
-    protected function getWhereClauses(array $wheres = []) : string
+    protected function getWhereClauses(?array $wheres = null) : string
     {
         return "" . $this->getWheres($wheres)
             ->reduce(function ($carry, $where) {
@@ -570,17 +783,25 @@ class CacheKey
             });
     }
 
-    protected function getWheres(array $wheres) : Collection
+    // A null $wheres means "the caller named no clause list", so the query's
+    // own clauses are used. An empty array means "this clause list is
+    // genuinely empty", and nothing is walked.
+    //
+    // Collapsing the two is what made getNestedClauses() recurse without end.
+    // whereExists() over a subquery carrying no where clause handed [] down,
+    // this method read that as "use $this->query->wheres", and those still
+    // hold the Exists clause that called it. The recursion has no floor, so it
+    // exhausts the stack. PHP raises no error for that: the process dies on
+    // SIGSEGV, which no handler can catch.
+    protected function getWheres(?array $wheres) : Collection
     {
-        $wheres = collect($wheres);
-
-        if ($wheres->isEmpty()
-            && property_exists($this->query, "wheres")
-        ) {
-            $wheres = collect($this->query->wheres);
+        if ($wheres !== null) {
+            return collect($wheres);
         }
 
-        return $wheres;
+        return collect(property_exists($this->query, "wheres")
+            ? $this->query->wheres
+            : []);
     }
 
     protected function getWithModels() : string
@@ -683,6 +904,63 @@ class CacheKey
     private function escapeKeySegment(string $segment) : string
     {
         return strtr($segment, self::KEY_SEPARATOR_ESCAPES);
+    }
+
+    // The backstop. Every builder property that no named method reads and that
+    // is not connection plumbing lands in one hash, so the key changes when it
+    // does. Today that covers aggregate, indexHint, groupLimit, lock,
+    // unionLimit, unionOffset, unionOrders and afterQueryCallbacks. Tomorrow it
+    // covers whatever Laravel adds, with no edit here.
+    //
+    // Only non-empty values are hashed, so a builder in its default state
+    // produces nothing and every existing key is unchanged.
+    private function getUnkeyedQueryPropertiesSlug() : string
+    {
+        $unkeyed = Collection::make(get_object_vars($this->query))
+            ->except(array_merge(
+                self::KEYED_QUERY_PROPERTIES,
+                self::UNKEYED_INFRASTRUCTURE_PROPERTIES,
+            ))
+            ->reject(fn ($value) => $value === null || $value === false || $value === [])
+            ->map($this->normalizeForHash(...))
+            ->sortKeys()
+            ->all();
+
+        if (! $unkeyed) {
+            return "";
+        }
+
+        return "-q" . substr(sha1($this->encodeForKeyHash($unkeyed)), 0, 12);
+    }
+
+    // json_encode() renders an Expression as "{}" because its value is
+    // protected, and serialize() throws on a Closure or on anything holding a
+    // PDO connection. Both would make a hash that cannot tell two queries
+    // apart, or one that fatals. Reducing every object to something printable
+    // first keeps the hash total and honest about what it can distinguish.
+    private function normalizeForHash(mixed $value) : mixed
+    {
+        if (is_array($value)) {
+            return array_map($this->normalizeForHash(...), $value);
+        }
+
+        if ($value instanceof Expression) {
+            return $this->expressionToString($value);
+        }
+
+        if ($value instanceof \Closure) {
+            return "Closure";
+        }
+
+        if ($value instanceof QueryBuilder) {
+            return $value->toSql() . $this->encodeForKeyHash($value->getBindings());
+        }
+
+        if (is_object($value)) {
+            return get_class($value);
+        }
+
+        return $value;
     }
 
     private function processEnum(

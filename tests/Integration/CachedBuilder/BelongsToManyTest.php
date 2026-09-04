@@ -21,7 +21,7 @@ class BelongsToManyTest extends IntegrationTestCase
             ->books
             ->first()
             ->id;
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:stores:genealabslaravelmodelcachingcachedbelongstomany-book_store.book_id_=_{$bookId}");
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:stores:genealabslaravelmodelcachingcachedbelongstomany-join_inner_book_store_f6999d9f3303-book_store.book_id_=_{$bookId}");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:stores",
