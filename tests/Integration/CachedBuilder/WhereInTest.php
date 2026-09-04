@@ -5,6 +5,7 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
+use Illuminate\Database\Query\Expression;
 
 class WhereInTest extends IntegrationTestCase
 {
@@ -221,5 +222,49 @@ class WhereInTest extends IntegrationTestCase
             ->get();
 
         $this->assertEquals($liveResults->pluck("id"), $books->pluck("id"));
+    }
+
+    public function testWhereInWithExpressionValueDoesNotCollideAcrossDifferentQueries()
+    {
+        $author = Author::factory()->create(["name" => "Alice", "email" => "shared@example.com"]);
+        Author::factory()->create(["name" => "Bob", "email" => "shared@example.com"]);
+
+        $resultsForAlice = (new Author)
+            ->whereIn("id", [$author->id, new Expression((string) $author->id)])
+            ->where("name", "Alice")
+            ->where("email", "shared@example.com")
+            ->get();
+        $resultsForBob = (new Author)
+            ->whereIn("id", [$author->id, new Expression((string) $author->id)])
+            ->where("name", "Bob")
+            ->where("email", "shared@example.com")
+            ->get();
+
+        $this->assertEquals(["Alice"], $resultsForAlice->pluck("name")->toArray());
+        $this->assertEquals([], $resultsForBob->pluck("name")->toArray());
+    }
+
+    public function testWhereNotInWithNoOpSubqueryDoesNotCollideAcrossDifferentQueries()
+    {
+        Author::factory()->create(["name" => "Alice", "email" => "shared@example.com"]);
+        Author::factory()->create(["name" => "Bob", "email" => "shared@example.com"]);
+
+        $noOpExclusion = function ($query) {
+            $query->select("id")->from("authors")->whereRaw("1 = 0");
+        };
+
+        $resultsForAlice = (new Author)
+            ->whereNotIn("id", $noOpExclusion)
+            ->where("name", "Alice")
+            ->where("email", "shared@example.com")
+            ->get();
+        $resultsForBob = (new Author)
+            ->whereNotIn("id", $noOpExclusion)
+            ->where("name", "Bob")
+            ->where("email", "shared@example.com")
+            ->get();
+
+        $this->assertEquals(["Alice"], $resultsForAlice->pluck("name")->toArray());
+        $this->assertEquals(["Bob"], $resultsForBob->pluck("name")->toArray());
     }
 }
