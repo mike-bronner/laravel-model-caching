@@ -1,7 +1,9 @@
 <?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithUncachedStore;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Profile;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
@@ -70,5 +72,46 @@ class WhereHasTest extends IntegrationTestCase
             ));
 
         $this->assertNull($results);
+    }
+
+    public function testWhereHasCacheIsBustedWhenRelatedTableIsWritten()
+    {
+        $author = Author::factory()->create(["name" => "John"]);
+        Book::factory()->create(["author_id" => $author->id]);
+
+        $query = fn () => (new Book)
+            ->whereHas("author", function ($query) {
+                $query->where("name", "John");
+            })
+            ->get();
+
+        $this->assertNotEmpty($query());
+
+        $author->name = "Jane";
+        $author->save();
+
+        $this->assertEmpty($query());
+    }
+
+    public function testNestedWhereHasCacheIsBustedWhenDeeplyRelatedTableIsWritten()
+    {
+        $author = Author::factory()->create(["name" => "John"]);
+        $profile = Profile::factory()->create(["author_id" => $author->id, "first_name" => "Alpha"]);
+        Book::factory()->create(["author_id" => $author->id]);
+
+        $query = fn () => (new Book)
+            ->whereHas("author", function ($query) {
+                $query->whereHas("profile", function ($query) {
+                    $query->where("first_name", "Alpha");
+                });
+            })
+            ->get();
+
+        $this->assertNotEmpty($query());
+
+        $profile->first_name = "Beta";
+        $profile->save();
+
+        $this->assertEmpty($query());
     }
 }

@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
+use SplObjectStorage;
 use Throwable;
 
 class CacheTags
@@ -52,8 +53,10 @@ class CacheTags
             ->values();
 
         $joinTags = $this->getJoinTags();
+        $subqueryWhereTags = $this->getSubqueryWhereTags();
 
         return $tags->merge($joinTags)
+            ->merge($subqueryWhereTags)
             ->unique()
             ->values()
             ->toArray();
@@ -150,6 +153,93 @@ class CacheTags
         } catch (Throwable) {
             return [];
         }
+    }
+
+    /**
+     * Returns tags for tables reached via whereHas()/whereExists()-style
+     * subqueries (recursively, including nested ones).
+     */
+    protected function getSubqueryWhereTags() : array
+    {
+        $baseQuery = $this->query;
+
+        if (method_exists($this->query, 'getQuery')) {
+            $baseQuery = $this->query->getQuery();
+        }
+
+        if (! property_exists($baseQuery, 'wheres')) {
+            return [];
+        }
+
+        $prefix = $this->getCachePrefix();
+
+        return collect($this->getSubqueryTablesFromBuilder($baseQuery, new SplObjectStorage))
+            ->map(function ($table) use ($prefix) {
+                return $prefix . (new Str)->slug($table);
+            })
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
+    protected function getSubqueryTablesFromBuilder($builder, SplObjectStorage $seen) : array
+    {
+        if (! is_object($builder) || $seen->contains($builder)) {
+            return [];
+        }
+
+        $seen->attach($builder);
+
+        $tables = collect($builder->wheres ?? [])
+            ->merge($builder->havings ?? [])
+            ->flatMap(function ($where) use ($seen) {
+                return $this->getSubqueryTablesFromWhere($where, $seen);
+            })
+            ->toArray();
+
+        foreach ($builder->joins ?? [] as $join) {
+            foreach ($join->wheres ?? [] as $where) {
+                $tables = array_merge($tables, $this->getSubqueryTablesFromWhere($where, $seen));
+            }
+        }
+
+        foreach ($builder->unions ?? [] as $union) {
+            $unionQuery = $union['query'] ?? null;
+
+            if (is_object($unionQuery)) {
+                $tables = array_merge($tables, $this->getSubqueryTablesFromBuilder($unionQuery, $seen));
+            }
+        }
+
+        return $tables;
+    }
+
+    protected function getSubqueryTablesFromWhere(array $where, SplObjectStorage $seen) : array
+    {
+        $type = $where['type'] ?? null;
+
+        if (! in_array($type, ['Exists', 'NotExists', 'Nested', 'Sub'], true)) {
+            return [];
+        }
+
+        $query = $where['query'] ?? null;
+
+        if (! is_object($query)) {
+            return [];
+        }
+
+        $tables = [];
+        $from = $query->from ?? null;
+
+        if (is_string($from)) {
+            if (stripos($from, ' as ') !== false) {
+                $from = trim(explode(' as ', strtolower($from))[0]);
+            }
+
+            $tables[] = $from;
+        }
+
+        return array_merge($tables, $this->getSubqueryTablesFromBuilder($query, $seen));
     }
 
     protected function getRelatedModel($carry) : Model
