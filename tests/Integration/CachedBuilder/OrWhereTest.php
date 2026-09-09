@@ -36,12 +36,12 @@ class OrWhereTest extends IntegrationTestCase
         ];
     }
 
-    private function assertFirstQueryWasCached($query, string $description) : void
+    private function assertFirstQueryWasCached($query, string $description, array $extraTags = []) : void
     {
         $key = sha1($this->cacheKey($query));
         $results = $query->get();
         $cached = $this->cache()
-            ->tags($this->bookTags())
+            ->tags([...$this->bookTags(), ...$extraTags])
             ->get($key);
 
         $this->assertNotNull(
@@ -163,7 +163,8 @@ class OrWhereTest extends IntegrationTestCase
                 ->whereHas("author", function ($query) {
                     $query->where("id", 2);
                 }),
-            "The whereHas-query"
+            "The whereHas-query",
+            ["genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors"]
         );
 
         $results = (new Book)

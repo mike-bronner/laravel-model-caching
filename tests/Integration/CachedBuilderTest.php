@@ -512,6 +512,7 @@ class CachedBuilderTest extends IntegrationTestCase
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
         ];
 
         $cachedResults = $this->cache()
@@ -534,6 +535,7 @@ class CachedBuilderTest extends IntegrationTestCase
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
         ];
 
         $cachedResults = $this->cache()
