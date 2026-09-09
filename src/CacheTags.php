@@ -43,8 +43,10 @@ class CacheTags
                     return [];
                 }
 
-                return [$this->getCachePrefix()
-                    . (new Str)->slug(get_class($relation->getQuery()->getModel()))];
+                $relatedModel = $relation->getQuery()->getModel();
+
+                return [$this->getCachePrefixForModel($relatedModel)
+                    . (new Str)->slug(get_class($relatedModel))];
             })
             ->filter()
             ->unique()
@@ -62,17 +64,49 @@ class CacheTags
             ->toArray();
     }
 
-    protected function getJoinTags() : array
+    /**
+     * The query builder the tags are read from.
+     *
+     * `$this->query` is an Eloquent builder on the read path and a plain query
+     * builder on the write path, and only the latter carries `joins`, `wheres`,
+     * and the recorded subquery tables.
+     */
+    protected function resolveBaseQuery() : mixed
     {
-        $baseQuery = $this->query;
-
         if (method_exists($this->query, 'getQuery')) {
-            $baseQuery = $this->query->getQuery();
+            return $this->query->getQuery();
         }
 
-        $prefix = $this->getCachePrefix();
+        return $this->query;
+    }
 
-        return collect($baseQuery->joins ?? [])
+    /**
+     * Strip a table alias, e.g. "products as p" -> "products".
+     */
+    protected function stripTableAlias(string $table) : string
+    {
+        if (stripos($table, ' as ') === false) {
+            return $table;
+        }
+
+        return trim(explode(' as ', strtolower($table))[0]);
+    }
+
+    /**
+     * Tags for the tables named by the query's own joins.
+     *
+     * A join names a bare table and no model, so unlike the subquery tags
+     * below these keep the querying model's cache prefix. A joined table
+     * belonging to a model on another connection, or to one declaring its own
+     * `$cachePrefix`, is therefore still tagged under the wrong prefix and its
+     * write does not bust this query. Closing that needs a table-name to model
+     * lookup, which cannot be made reliable: two models may map to one table.
+     */
+    protected function getJoinTags() : array
+    {
+        $baseQuery = $this->resolveBaseQuery();
+
+        return $this->makeTableTags(collect($baseQuery->joins ?? [])
             ->map(function ($join) {
                 $table = $join->table;
 
@@ -88,20 +122,32 @@ class CacheTags
                     return null;
                 }
 
-                // Strip alias (e.g. "products as p" -> "products")
-                if (stripos($table, ' as ') !== false) {
-                    $table = trim(explode(' as ', strtolower($table))[0]);
-                }
-
-                return $table;
+                return $this->stripTableAlias($table);
             })
             ->merge($this->getJoinedSubqueryTables($baseQuery))
             ->filter(function ($table) {
                 return $table !== null;
             })
-            ->map(function ($table) use ($prefix) {
-                return $prefix . (new Str)->slug($table);
+            ->map(function ($table) {
+                return ["table" => $table, "model" => null];
             })
+            ->toArray());
+    }
+
+    /**
+     * Turn table entries into tags.
+     *
+     * A null model means the caller could not identify one, and the querying
+     * model's prefix stands in — which is correct only while that model shares
+     * a connection and a `$cachePrefix` with the table's real owner.
+     *
+     * @param  array<int, array{table: string, model: Model|null}>  $entries
+     */
+    protected function makeTableTags(array $entries) : array
+    {
+        return collect($entries)
+            ->map(fn (array $entry) => $this->getCachePrefixForModel($entry["model"] ?: $this->model)
+                . (new Str)->slug($entry["table"]))
             ->unique()
             ->values()
             ->toArray();
@@ -156,32 +202,41 @@ class CacheTags
     }
 
     /**
-     * Returns tags for tables reached via whereHas()/whereExists()-style
-     * subqueries (recursively, including nested ones).
+     * Tags for tables reached through a subquery, recursively.
+     *
+     * Two sources feed this. Subqueries Laravel still holds as builders —
+     * whereHas()/whereExists() and friends — are walked out of `wheres`, and
+     * name a table but no model. Subqueries Laravel compiled to an Expression
+     * and discarded were recorded on the builder as the constraint was added
+     * (CachedQueryBuilder::getRelatedSubqueryTables()), and most of those name
+     * the owning model as well.
+     *
+     * Where a table arrives from both, the recorded entry wins and the walked
+     * one is dropped: they name the same table, but only the recorded one
+     * carries the model whose write has to bust this query, and so only it can
+     * build the prefix that model flushes under.
      */
     protected function getSubqueryWhereTags() : array
     {
-        $baseQuery = $this->query;
+        $entries = $this->getSubqueryTablesFromBuilder(
+            $this->resolveBaseQuery(),
+            new SplObjectStorage,
+        );
+        $modelledTables = collect($entries)
+            ->filter(fn (array $entry) => $entry["model"] !== null)
+            ->pluck("table")
+            ->flip();
 
-        if (method_exists($this->query, 'getQuery')) {
-            $baseQuery = $this->query->getQuery();
-        }
-
-        if (! property_exists($baseQuery, 'wheres')) {
-            return [];
-        }
-
-        $prefix = $this->getCachePrefix();
-
-        return collect($this->getSubqueryTablesFromBuilder($baseQuery, new SplObjectStorage))
-            ->map(function ($table) use ($prefix) {
-                return $prefix . (new Str)->slug($table);
-            })
-            ->unique()
+        return $this->makeTableTags(collect($entries)
+            ->reject(fn (array $entry) => $entry["model"] === null
+                && $modelledTables->has($entry["table"]))
             ->values()
-            ->toArray();
+            ->toArray());
     }
 
+    /**
+     * @return array<int, array{table: string, model: Model|null}>
+     */
     protected function getSubqueryTablesFromBuilder($builder, SplObjectStorage $seen) : array
     {
         if (! is_object($builder) || $seen->contains($builder)) {
@@ -190,12 +245,24 @@ class CacheTags
 
         $seen->attach($builder);
 
-        $tables = collect($builder->wheres ?? [])
-            ->merge($builder->havings ?? [])
-            ->flatMap(function ($where) use ($seen) {
-                return $this->getSubqueryTablesFromWhere($where, $seen);
-            })
-            ->toArray();
+        $tables = method_exists($builder, "getRelatedSubqueryTables")
+            ? $builder->getRelatedSubqueryTables()
+            : [];
+
+        // `havings` is deliberately not walked. Of the six having types
+        // Illuminate\Database\Query\Builder builds, only the nested one carries
+        // a builder, and that builder comes from forNestedWhere(), which copies
+        // `from` off the outer query. A nested having can therefore only ever
+        // name the table already tagged by getTableTagName(), so walking it
+        // cannot produce a tag, and no test can tell the walk from its absence.
+        $tables = array_merge(
+            $tables,
+            collect($builder->wheres ?? [])
+                ->flatMap(function ($where) use ($seen) {
+                    return $this->getSubqueryTablesFromWhere($where, $seen);
+                })
+                ->toArray(),
+        );
 
         foreach ($builder->joins ?? [] as $join) {
             foreach ($join->wheres ?? [] as $where) {
@@ -214,6 +281,9 @@ class CacheTags
         return $tables;
     }
 
+    /**
+     * @return array<int, array{table: string, model: Model|null}>
+     */
     protected function getSubqueryTablesFromWhere(array $where, SplObjectStorage $seen) : array
     {
         $type = $where['type'] ?? null;
@@ -232,11 +302,10 @@ class CacheTags
         $from = $query->from ?? null;
 
         if (is_string($from)) {
-            if (stripos($from, ' as ') !== false) {
-                $from = trim(explode(' as ', strtolower($from))[0]);
-            }
-
-            $tables[] = $from;
+            $tables[] = [
+                "table" => $this->stripTableAlias($from),
+                "model" => null,
+            ];
         }
 
         return array_merge($tables, $this->getSubqueryTablesFromBuilder($query, $seen));
