@@ -641,9 +641,29 @@ class CacheKey
             . str_replace(" ", "_", $clause);
     }
 
+    // `from` is not always a table name: fromSub() and fromRaw() put an
+    // Expression there, and Str::slug() casts its argument to string, which is
+    // an Error on an Expression. A derived table is keyed by a hash of the SQL
+    // it stands for, so the key does not grow with the length of the statement.
+    // A plain table name keeps the slug it has always had.
+    //
+    // The "from" bindings are hashed with it. A subquery compiles to SQL
+    // holding placeholders, so fromSub(id > 1) and fromSub(id > 2) produce
+    // byte-identical SQL and differ only there — hashing the statement alone
+    // would give two different queries one key, and serve one of them the
+    // other's rows.
     protected function getTableSlug() : string
     {
-        return (new Str)->slug($this->query->from)
+        $from = $this->query->from;
+
+        if ($from instanceof Expression) {
+            $from = "sub-" . sha1(
+                $this->expressionToString($from)
+                    . $this->encodeForKeyHash($this->query->bindings["from"] ?? []),
+            );
+        }
+
+        return (new Str)->slug($from)
             . ":";
     }
 
