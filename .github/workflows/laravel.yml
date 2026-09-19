@@ -86,7 +86,31 @@ jobs:
       run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
     - name: Execute Integration and Feature tests via PHPUnit
-      run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }}
+      env:
+        LOG_DEPRECATIONS_WHILE_TESTING: ${{ matrix.php == '8.5' && matrix.laravel == '13.*' }}
+        LOG_DEPRECATIONS_CHANNEL: stderr
+      run: |
+        vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }} 2> deprecations.log || status=$?
+        cat deprecations.log >&2
+        exit ${status:-0}
+
+    - name: Fail on a deprecation originating in src/
+      if: success() && matrix.php == '8.5' && matrix.laravel == '13.*'
+      run: |
+        # Anchor the match on the workspace root. A bare "src/" also matches
+        # vendor/laravel/framework/src/Illuminate/..., which would fail the
+        # step on code we do not own.
+        records=$(grep -F " in $GITHUB_WORKSPACE/src/" deprecations.log \
+          | sed -e 's|^\[[^]]*\] ||' -e "s|$GITHUB_WORKSPACE/||" \
+          | sort -u) || true
+
+        if [ -n "$records" ]; then
+          echo "::error::PHP deprecations originate in src/:"
+          printf '%s\n' "$records"
+          exit 1
+        fi
+
+        echo "No deprecation originates in src/."
 
     # Forks never receive CODECOV_TOKEN, and fail_ci_if_error would then fail
     # a run whose code is fine. Skip the upload there instead.
@@ -99,6 +123,36 @@ jobs:
         fail_ci_if_error: true
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  static-analysis:
+
+    runs-on: ubuntu-latest
+    name: PHPStan (level 5)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.composer/cache
+        key: static-analysis-composer-${{ hashFiles('composer.json') }}
+        restore-keys: |
+          static-analysis-composer-
+
+    - name: Setup PHP 8.4
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql
+        coverage: none
+
+    - name: Install Dependencies
+      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Run PHPStan
+      run: composer analyse
 
   dynamodb-integration:
 

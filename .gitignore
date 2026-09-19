@@ -28,6 +28,7 @@
 /tests/Browser/Screenshots
 npm-debug.log
 yarn-error.log
+/deprecations.log
 /tests/database/parallel-*/
 
 # -----------------

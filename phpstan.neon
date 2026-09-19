@@ -1,8 +1,19 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    # 970 pre-existing level-5 findings, recorded so CI can enforce the level
+    # from here on. The baseline is a debt ledger, not a permission: fix the
+    # entries you touch and delete their lines. Regenerate with
+    # `vendor/bin/phpstan analyse --generate-baseline=phpstan-baseline.neon`.
+    - phpstan-baseline.neon
 
 parameters:
     level: 5
     paths:
         - src/
         - tests/Fixtures/
+    # composer.lock is not committed, so CI resolves its own dependency set and
+    # the findings can shift under it. Without this, a baseline entry that
+    # stops matching is itself an error, and CI goes red for a finding that
+    # went away. The cost is that a stale entry is not reported either, so
+    # delete entries as you fix them.
+    reportUnmatchedIgnoredErrors: false

@@ -14,21 +14,32 @@ However, not every pull request will automatically be accepted. I will review ea
 - [ ] Make sure there are no build errors on [GitHub Actions](https://github.com/mike-bronner/laravel-model-caching/actions).
 
 ### What CI enforces
-The test suite, across PHP 8.2 to 8.5 and Laravel 11 to 13. Nothing else.
+Three things:
+
+- The test suite, across PHP 8.2 to 8.5 and Laravel 11 to 13.
+- PHPStan at level 5, on every pull request.
+- PHP deprecations originating in `src/`. The check is scoped to `src/`
+  deliberately: we own that code, and a deprecation in `vendor/` must never
+  turn this repo red.
 
 ### Static analysis and code style
-PHPStan, Pint and PHPCS are all configured in this repo. None of them runs in
-CI, and the tree does not currently satisfy any of them:
+PHPStan is enforced. Its 970 pre-existing level-5 findings are recorded in
+`phpstan-baseline.neon`, so a clean run means your change introduced nothing
+new. The baseline is a debt ledger rather than a permission: if you fix a
+finding in a file you touch, delete its entry.
+
+Pint and PHPCS are configured but run nowhere, and the tree does not satisfy
+either:
 
 | Tool | Command | State |
 | --- | --- | --- |
-| PHPStan (level 5) | `composer analyse` | 978 errors |
+| PHPStan (level 5) | `composer analyse` | clean, against a 970-entry baseline |
 | Pint | `vendor/bin/pint --test` | 210 files |
 | PHPCS | `vendor/bin/phpcs` | 593 errors in 24 files |
 
-So do not expect a clean run from any of them, and do not treat a red result
-as something your change caused. Run one if it helps you, and read only the
-lines that name the files you touched.
+So do not expect a clean run from Pint or PHPCS, and do not treat a red result
+from either as something your change caused. Run one if it helps you, and read
+only the lines that name the files you touched.
 
 Match the style of the code around your change rather than reformatting to
 satisfy a tool. A reformatting pass is welcome as its own pull request, and
