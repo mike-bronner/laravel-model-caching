@@ -1,5 +1,6 @@
 <?php namespace GeneaLabs\LaravelModelCaching;
 
+use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -394,15 +395,7 @@ class CacheTags
         $column = last(explode('.', $morphType));
         $table = $relation->getParent()->getTable();
 
-        $types = $relation->getParent()
-            ->newQuery()
-            ->getQuery()
-            ->select($column)
-            ->from($table)
-            ->whereNotNull($column)
-            ->distinct()
-            ->pluck($column)
-            ->toArray();
+        $types = $this->getMorphTypesInUse($relation, $table, $column);
 
         $tags = [];
 
@@ -415,6 +408,45 @@ class CacheTags
         }
 
         return $tags;
+    }
+
+    /**
+     * The morph types actually stored in a morphTo column.
+     *
+     * Without a morph map there is no way to know which classes a morphTo can
+     * point at other than asking the table, and that SELECT DISTINCT ran on
+     * every tag generation — once per cached query touching the relation, for
+     * reads and for flushes alike. Caching a query is not worth an uncached
+     * query each time.
+     *
+     * The answer is memoized in the cache store rather than in a static, tagged
+     * with the very table it reads. A new morph type can only appear through a
+     * write to that table, and a write to a cachable model invalidates its
+     * table tag, so the memo is dropped exactly when it stops being true. A
+     * static would instead hold a snapshot for the life of the process and leak
+     * it between requests, between queue jobs, and between tests.
+     *
+     * ModelCacheRepository already decides how a store that cannot tag is
+     * handled: it stores the entry untagged and invalidates by flushing the
+     * whole repository, so the memo is dropped there too.
+     */
+    protected function getMorphTypesInUse(MorphTo $relation, string $table, string $column) : array
+    {
+        return ModelCacheRepository::make()->rememberForever(
+            $this->getCachePrefix() . "morph-types:" . $table . ":" . $column,
+            $this->makeTableTags([["table" => $table, "model" => $relation->getParent()]]),
+            static function () use ($relation, $table, $column) : array {
+                return $relation->getParent()
+                    ->newQuery()
+                    ->getQuery()
+                    ->select($column)
+                    ->from($table)
+                    ->whereNotNull($column)
+                    ->distinct()
+                    ->pluck($column)
+                    ->toArray();
+            },
+        );
     }
 
     protected function getTagName() : string
