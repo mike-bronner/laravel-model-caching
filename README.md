@@ -30,7 +30,7 @@ deleted the relevant cache entries are flushed for you.
 
 ⚡ Typical performance improvements range from 100–900% reduction in database
 queries on read-heavy pages. 🧪 Backed by 335+ integration tests across PHP
-8.2–8.5 and Laravel 11–13.
+8.2–8.5 and Laravel 12–13.
 
 **Use this package when** your application makes many repeated Eloquent queries
 and you want a drop-in caching layer that stays in sync with your data without
@@ -80,7 +80,7 @@ $posts = Post::where('active', true)->with('comments')->paginate();
 
 ### 📋 Requirements
 - PHP 8.2+
-- Laravel 11, 12, or 13
+- Laravel 12 or 13
 
 ## 📦 Installation
 ```
@@ -510,6 +510,23 @@ before submitting a pull request.
 For breaking changes and upgrade instructions between versions, see the
 [Releases](https://github.com/GeneaLabs/laravel-model-caching/releases) page on
 GitHub.
+
+### Laravel 11 support is dropped
+
+**Laravel 11 is no longer supported.** Move to Laravel 12 or 13 before you take
+this release. Composer refuses to install it on Laravel 11.
+
+Laravel 11 stopped receiving security fixes on 12 March 2026. This package
+supports the overlap of the actively maintained Laravel and PHP versions, so
+the `illuminate/*` constraints and the CI matrix now name Laravel 12 and 13
+only.
+
+This removes leftover compatibility rather than introducing a break. The 13.0
+release already moved this package's major line. Laravel 11 was kept past it
+instead of being dropped at the time.
+
+PHP 8.2 is unaffected and stays supported. No cache key, cache tag, or runtime
+behaviour changes.
 
 ### Carbon bindings are re-keyed once
 

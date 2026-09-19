@@ -16,7 +16,7 @@ However, not every pull request will automatically be accepted. I will review ea
 ### What CI enforces
 Three things:
 
-- The test suite, across PHP 8.2 to 8.5 and Laravel 11 to 13.
+- The test suite, across PHP 8.2 to 8.5 and Laravel 12 to 13.
 - PHPStan at level 5, on every pull request.
 - PHP deprecations originating in `src/`. The check is scoped to `src/`
   deliberately: we own that code, and a deprecation in `vendor/` must never
