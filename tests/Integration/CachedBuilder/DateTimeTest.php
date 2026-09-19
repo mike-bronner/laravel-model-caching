@@ -26,7 +26,7 @@ class DateTimeTest extends IntegrationTestCase
         $expected = "2019-03-17-13-05-42";
         $whereFor = fn ($value) => [
             "type" => "Basic",
-            "column" => "publish_at",
+            "column" => "published_at",
             "operator" => ">",
             "value" => $value,
             "boolean" => "and",
@@ -80,20 +80,20 @@ class DateTimeTest extends IntegrationTestCase
     {
         $dateTime = now()->subYears(10);
         $encodedDateTime = str_replace("-", "%2D", $dateTime->format("Y-m-d-H-i-s"));
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-publish_at_>_{$encodedDateTime}");
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-published_at_>_{$encodedDateTime}");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
         ];
 
         $results = (new Book)
-            ->where("publish_at", ">", $dateTime)
+            ->where("published_at", ">", $dateTime)
             ->get();
         $cachedResults = $this->cache()
             ->tags($tags)
             ->get($key)['value'];
         $liveResults = (new UncachedBook)
-            ->where("publish_at", ">", $dateTime)
+            ->where("published_at", ">", $dateTime)
             ->get();
 
         $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
@@ -101,6 +101,9 @@ class DateTimeTest extends IntegrationTestCase
         $this->assertNotEmpty($results);
         $this->assertNotEmpty($cachedResults);
         $this->assertNotEmpty($liveResults);
+        // A predicate matching every row makes the comparison above vacuous,
+        // which is what querying the absent "publish_at" column used to do.
+        $this->assertLessThan((new UncachedBook)->count(), $liveResults->count());
     }
 
     public function testWhereClauseWorksWithDateTimeImmutableObject()
@@ -108,20 +111,20 @@ class DateTimeTest extends IntegrationTestCase
         $dateTime = (new DateTimeImmutable('@' . time()))
             ->sub(new DateInterval("P10Y"));
         $dateTimeString = str_replace("-", "%2D", $dateTime->format("Y-m-d-H-i-s"));
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-publish_at_>_{$dateTimeString}");
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-published_at_>_{$dateTimeString}");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
         ];
 
         $results = (new Book)
-            ->where("publish_at", ">", $dateTime)
+            ->where("published_at", ">", $dateTime)
             ->get();
         $cachedResults = $this->cache()
             ->tags($tags)
             ->get($key)['value'];
         $liveResults = (new UncachedBook)
-            ->where("publish_at", ">", $dateTime)
+            ->where("published_at", ">", $dateTime)
             ->get();
 
         $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
@@ -129,6 +132,9 @@ class DateTimeTest extends IntegrationTestCase
         $this->assertNotEmpty($results);
         $this->assertNotEmpty($cachedResults);
         $this->assertNotEmpty($liveResults);
+        // A predicate matching every row makes the comparison above vacuous,
+        // which is what querying the absent "publish_at" column used to do.
+        $this->assertLessThan((new UncachedBook)->count(), $liveResults->count());
     }
 
     public function testWhereClauseWorksWithDateTimeObject()
@@ -136,20 +142,20 @@ class DateTimeTest extends IntegrationTestCase
         $dateTime = (new DateTime('@' . time()))
             ->sub(new DateInterval("P10Y"));
         $dateTimeString = str_replace("-", "%2D", $dateTime->format("Y-m-d-H-i-s"));
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-publish_at_>_{$dateTimeString}");
+        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-published_at_>_{$dateTimeString}");
         $tags = [
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
         ];
 
         $results = (new Book)
-            ->where("publish_at", ">", $dateTime)
+            ->where("published_at", ">", $dateTime)
             ->get();
         $cachedResults = $this->cache()
             ->tags($tags)
             ->get($key)['value'];
         $liveResults = (new UncachedBook)
-            ->where("publish_at", ">", $dateTime)
+            ->where("published_at", ">", $dateTime)
             ->get();
 
         $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
@@ -157,5 +163,8 @@ class DateTimeTest extends IntegrationTestCase
         $this->assertNotEmpty($results);
         $this->assertNotEmpty($cachedResults);
         $this->assertNotEmpty($liveResults);
+        // A predicate matching every row makes the comparison above vacuous,
+        // which is what querying the absent "publish_at" column used to do.
+        $this->assertLessThan((new UncachedBook)->count(), $liveResults->count());
     }
 }
