@@ -161,7 +161,7 @@ trait Caching
 
             $this->modelCacheRepository()->invalidateTags($tags);
 
-            [$cacheCooldown] = $this->getModelCacheCooldown($this);
+            [$cacheCooldown] = $this->getModelCacheCooldown($this->cacheModel() ?? $this);
 
             if ($cacheCooldown) {
                 $cachePrefix = $this->getCachePrefix();
@@ -176,17 +176,31 @@ trait Caching
         }, 'cache flush failed');
     }
 
+    protected function cacheModel(): ?Model
+    {
+        if ($this instanceof Relation) {
+            return $this->getRelated();
+        }
+
+        $model = $this->model ?? null;
+
+        return $model instanceof Model
+            ? $model
+            : null;
+    }
+
     protected function getCachePrefix(): string
     {
         $cachePrefix = Container::getInstance()
             ->make("config")
             ->get("laravel-model-caching.cache-prefix", "");
+        $model = $this->cacheModel();
 
         if (
-            $this->model
-            && property_exists($this->model, "cachePrefix")
+            $model
+            && property_exists($model, "cachePrefix")
         ) {
-            $cachePrefix = $this->model->cachePrefix;
+            $cachePrefix = $model->cachePrefix;
         }
 
         $cachePrefix = $cachePrefix

@@ -8,17 +8,19 @@ trait BuilderCaching
 {
     public function all($columns = ['*']) : Collection
     {
+        $model = $this->cacheModel();
+
         if (! $this->isCachable()) {
-            $this->model->disableModelCaching();
+            $model->disableModelCaching();
         }
 
-        return $this->model->get($columns);
+        return $model->get($columns);
     }
 
     public function truncate()
     {
         if ($this->isCachable()) {
-            $this->model->flushCache();
+            $this->cacheModel()->flushCache();
         }
 
         return parent::truncate();
