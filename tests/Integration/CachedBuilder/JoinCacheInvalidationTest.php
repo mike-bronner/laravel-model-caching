@@ -109,7 +109,6 @@ class JoinCacheInvalidationTest extends IntegrationTestCase
             ->first()
             ->stores();
         $method = new ReflectionMethod($relation, 'makeCacheTags');
-        $method->setAccessible(true);
         $tags = $method->invoke($relation);
 
         $pivotTableTag = (new Str)->slug('book_store');
@@ -135,7 +134,6 @@ class JoinCacheInvalidationTest extends IntegrationTestCase
             ->first()
             ->tags();
         $method = new ReflectionMethod($relation, 'makeCacheTags');
-        $method->setAccessible(true);
         $tags = $method->invoke($relation);
 
         $pivotTableTag = (new Str)->slug('taggables');

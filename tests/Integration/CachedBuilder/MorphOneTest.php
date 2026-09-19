@@ -1,21 +1,25 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
-use Faker\Generator as Faker;
+declare(strict_types=1);
+
+namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
 class MorphOneTest extends IntegrationTestCase
 {
-    public function setUp() : void
+    public function setUp(): void
     {
         parent::setUp();
 
         (new Book)
             ->get()
             ->each(function ($book) {
-                $book->image()->create([
-                    "path" => app(Faker::class)->imageUrl(),
-                ]);
+                $book->image()
+                    ->create([
+                        "path" => $this->faker->url(),
+                    ]);
             });
         $this->cache()->flush();
     }

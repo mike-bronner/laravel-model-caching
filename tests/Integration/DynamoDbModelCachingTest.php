@@ -309,7 +309,6 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
         array $arguments = [],
     ): mixed {
         $reflectionMethod = new ReflectionMethod($target, $method);
-        $reflectionMethod->setAccessible(true);
 
         return $reflectionMethod->invokeArgs($target, $arguments);
     }

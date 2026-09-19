@@ -12,9 +12,9 @@ class UncachedBookFactory extends Factory
     {
         return [
             'author_id' => 1,
-            'title' => $this->faker->title,
+            'title' => $this->faker->title(),
             'description' => $this->faker->optional()->paragraphs(3, true),
-            'published_at' => $this->faker->dateTime,
+            'published_at' => $this->faker->dateTime(),
             'price' => $this->faker->randomFloat(2, 0, 999999),
             'publisher_id' => UncachedPublisher::factory(),
         ];

@@ -25,7 +25,6 @@ class RelationJoinCacheInvalidationTest extends IntegrationTestCase
     private function makeCacheTags(object $subject): array
     {
         $method = new ReflectionMethod($subject, 'makeCacheTags');
-        $method->setAccessible(true);
 
         return $method->invoke($subject);
     }

@@ -158,7 +158,6 @@ class CachedModelTest extends IntegrationTestCase
     {
         $class = new ReflectionClass(Author::class);
         $method = $class->getMethod('getModelCacheCooldown');
-        $method->setAccessible(true);
         $author = (new Author)
             ->first();
 
@@ -169,7 +168,6 @@ class CachedModelTest extends IntegrationTestCase
     {
         $class = new ReflectionClass(AuthorWithCooldown::class);
         $method = $class->getMethod('getModelCacheCooldown');
-        $method->setAccessible(true);
         $author = (new AuthorWithCooldown)
             ->withCacheCooldownSeconds(1)
             ->first();

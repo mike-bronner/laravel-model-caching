@@ -33,11 +33,9 @@ class AuthenticatableBelongsToManyTest extends IntegrationTestCase
     private function getCacheTagsAndKey(CachedBelongsToMany $relation): array
     {
         $reflTags = new \ReflectionMethod($relation, 'makeCacheTags');
-        $reflTags->setAccessible(true);
         $tags = $reflTags->invoke($relation);
 
         $reflKey = new \ReflectionMethod($relation, 'makeCacheKey');
-        $reflKey->setAccessible(true);
         $rawKey = $reflKey->invoke($relation);
 
         return [$tags, sha1($rawKey)];
