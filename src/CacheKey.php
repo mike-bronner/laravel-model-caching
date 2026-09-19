@@ -13,7 +13,6 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
-use Stringable;
 use Throwable;
 use UnitEnum;
 
@@ -715,13 +714,6 @@ class CacheKey
     // instead; getInAndNotInClauses() is the caller that keeps it.
     protected function getValuesFromWhere(array $where, bool $escape = false) : string
     {
-        if (array_key_exists("value", $where)
-            && is_object($where["value"])
-            && get_class($where["value"]) === "DateTime"
-        ) {
-            return $where["value"]->format("Y-m-d-H-i-s");
-        }
-
         if (is_array((new Arr)->get($where, "values"))) {
             $values = collect($where["values"])->flatten()->toArray();
             return implode("_", $this->processEnums($values, $escape));
@@ -893,10 +885,7 @@ class CacheKey
     // raw 16-byte binary UUID by its length, which escaping would change.
     private function stringifyBinding(mixed $binding) : string
     {
-        // Carbon is DateTimeInterface AND Stringable, DateTime(Immutable) is only DateTimeInterface
-        if ($binding instanceof DateTimeInterface
-            && ! $binding instanceof Stringable
-        ) {
+        if ($binding instanceof DateTimeInterface) {
             $binding = $binding->format("Y-m-d-H-i-s");
         }
 

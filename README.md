@@ -493,10 +493,11 @@ PHPStan cannot infer the custom methods from the `CachedBuilder` return type.
 Add a `@return` override annotation on your model's `newEloquentBuilder()`
 method, or add `@mixin YourCustomBuilder` to the model class.
 
-The package's own source does not currently pass PHPStan at level 5, and it
-ships no baseline. That is internal to this repository and does not affect
-analysis of your project, because your own `phpstan.neon` decides which paths
-are analysed and `vendor/` is not one of them.
+The package's own source carries 970 level-5 findings, recorded in
+`phpstan-baseline.neon` so CI can enforce the level from here on. That baseline
+is internal to this repository and does not affect analysis of your project,
+because your own `phpstan.neon` decides which paths are analysed and `vendor/`
+is not one of them.
 
 ## 🤝 Contributing
 Contributions are welcome! 🎉 Please review the
@@ -509,6 +510,26 @@ before submitting a pull request.
 For breaking changes and upgrade instructions between versions, see the
 [Releases](https://github.com/GeneaLabs/laravel-model-caching/releases) page on
 GitHub.
+
+### Carbon bindings are re-keyed once
+
+**Every cached query holding a `Carbon` binding reads cold once after this
+upgrade.** No action is needed. The old entries are not read again and expire
+on their own TTL.
+
+A `Carbon` binding used to be written into the cache key by Carbon's own
+`__toString()`, because `Carbon` is `Stringable`. It is now formatted as
+`Y-m-d-H-i-s`, which is what `DateTime` and `DateTimeImmutable` bindings have
+always used.
+
+The reason is that `__toString()` is governed by `Carbon::setToStringFormat()`,
+a process-global setter any application may call. One such call silently
+re-keyed every affected query, orphaning the existing entries with no error
+and a cache miss that looked like nothing at all. A Carbon release changing
+the default format had the same reach. Formatting the value ourselves removes
+that input from the key.
+
+Only `Carbon` bindings are affected. No other cache key or cache tag changes.
 
 ## 🔐 Security
 Please review the [Security Policy](https://github.com/GeneaLabs/laravel-model-caching/blob/master/SECURITY.md)
