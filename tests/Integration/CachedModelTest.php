@@ -2,10 +2,12 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCooldown;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithTtl;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
+use Illuminate\Support\Facades\DB;
 use ReflectionClass;
 
 class CachedModelTest extends IntegrationTestCase
@@ -216,5 +218,59 @@ class CachedModelTest extends IntegrationTestCase
         $this->assertCount(10, $authors);
         $this->assertCount(11, $authorsAfterCreate);
         $this->assertCount(11, $uncachedAuthors);
+    }
+
+    protected function countSelectQueriesForTable(string $table, callable $callback): int
+    {
+        $queryCount = 0;
+
+        DB::listen(function ($query) use (&$queryCount, $table) {
+            if (
+                str_starts_with(strtolower(trim($query->sql)), "select")
+                && str_contains($query->sql, $table)
+            ) {
+                $queryCount++;
+            }
+        });
+
+        $callback();
+
+        return $queryCount;
+    }
+
+    public function testGlobalTtlExpiresCacheAfterConfiguredSeconds()
+    {
+        config(['laravel-model-caching.ttl' => 1]);
+
+        $authors = (new Author)->get();
+
+        sleep(2);
+
+        $queryCount = $this->countSelectQueriesForTable("authors", function () {
+            (new Author)->get();
+        });
+
+        $this->assertCount(10, $authors);
+        $this->assertGreaterThan(0, $queryCount, "Expected a fresh database hit after the global TTL expired");
+    }
+
+    public function testPerModelTtlOverridesLongerGlobalTtl()
+    {
+        config(['laravel-model-caching.ttl' => 100]);
+
+        $authors = (new AuthorWithTtl)->get();
+
+        sleep(2);
+
+        $queryCount = $this->countSelectQueriesForTable("authors", function () {
+            (new AuthorWithTtl)->get();
+        });
+
+        $this->assertCount(10, $authors);
+        $this->assertGreaterThan(
+            0,
+            $queryCount,
+            "Expected the per-model TTL to expire the cache despite a much longer global TTL",
+        );
     }
 }
