@@ -13,6 +13,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
+use Stringable;
 use Throwable;
 use UnitEnum;
 
@@ -954,9 +955,14 @@ class CacheKey
         return $value;
     }
 
-    private function processEnum(
-        BackedEnum|UnitEnum|Expression|DateTimeInterface|int|float|bool|string|null $value,
-    ): string {
+    // A where() value is whatever the application passed, so the parameter
+    // cannot name the shapes it accepts: anything the union left out raised a
+    // TypeError on a query this class only means to be keying.
+    // whereJsonContains() is the plainest way to reach it, because it keeps the
+    // value it is given and encodes it only when the statement is compiled, so
+    // a Collection arrives here intact.
+    private function processEnum(mixed $value): string
+    {
         if ($value instanceof BackedEnum) {
             return (string) $value->value;
         } elseif ($value instanceof UnitEnum) {
@@ -967,7 +973,38 @@ class CacheKey
             return $value->format("Y-m-d-H-i-s");
         }
 
+        // An object with no string form cannot be interpolated below, and PHP
+        // implements Stringable automatically for every class declaring
+        // __toString(), so this covers the rest.
+        if (is_object($value) && ! $value instanceof Stringable) {
+            return $this->hashOpaqueObject($value);
+        }
+
         return "{$value}";
+    }
+
+    // The segment still has to tell two values apart, because a where() value
+    // decides which rows come back. The class name alone does not: two
+    // Collections holding different ids would share a key and one would be
+    // served the other's rows. serialize() reads private state, so it separates
+    // them, and it is stable across requests, which a key has to be.
+    //
+    // It throws on a Closure and on anything holding a PDO connection. There is
+    // no honest way to tell such a value from another of its class, so the
+    // fallback is unique per instance and never repeats: the key misses instead
+    // of returning rows that belong to a different query.
+    private function hashOpaqueObject(object $value): string
+    {
+        try {
+            $identity = serialize($value);
+        } catch (Throwable) {
+            // this will increase cache writes but beats failing outright. Every
+            // value that matches before this will keep working so this is a worst
+            // case fallback and there is currently no "do not cache" signal
+            $identity = spl_object_hash($value);
+        }
+
+        return $value::class . "-" . sha1($identity);
     }
 
     private function processEnums(array $values, bool $escape = false): array
