@@ -444,8 +444,17 @@ trait Caching
         static::$modelCacheRepositories
             ??= new \WeakMap;
 
+        if (isset(static::$modelCacheRepositories[$this])) {
+            return static::$modelCacheRepositories[$this];
+        }
+
+        $model = $this->cacheModel() ?? $this;
+        $ttl = method_exists($model, "getModelCacheTtlSeconds")
+            ? $model->getModelCacheTtlSeconds()
+            : null;
+
         return static::$modelCacheRepositories[$this]
-            ??= ModelCacheRepository::make();
+            = ModelCacheRepository::make($ttl);
     }
 
     protected function rememberModelCacheForever(

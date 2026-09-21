@@ -183,6 +183,7 @@ return [
 | `MODEL_CACHE_STORE` | `null` | 💾 Cache store name from `config/cache.php`. Uses the default store when not set. |
 | `MODEL_CACHE_USE_DATABASE_KEYING` | `true` | 🔑 Include database connection and name in cache keys. Important for multi-tenant or multi-database apps. |
 | `MODEL_CACHE_FALLBACK_TO_DB` | `false` | 🛡️ When `true`, falls back to direct database queries if the cache backend is unavailable (e.g. Redis is down) instead of throwing an exception. |
+| `MODEL_CACHE_TTL` | `null` | ⏰ Global cache expiration in seconds. Unset means cache forever. See [Cache Expiration (TTL)](#-cache-expiration-ttl) — a per-model `$cacheTtlSeconds` overrides this. |
 
 > **📝 Note:** The `cache-prefix` option is set directly in the config file (not via
 > an environment variable). For dynamic prefixes (e.g. multi-tenant), use the
@@ -441,10 +442,53 @@ ModelCache::invalidate([
 ```
 
 ### ⏰ Cache Expiration (TTL)
-Cached queries are stored indefinitely (`rememberForever`) and rely on automatic
-invalidation (see above) to stay fresh. There is no per-query TTL option. If you
-need time-based expiry, use the cool-down period feature or flush the cache on a
-schedule via the Artisan command.
+Cached queries are stored indefinitely (`rememberForever`) by default and rely
+on automatic invalidation (see above) to stay fresh. This is the right choice
+for most applications — Redis and Memcached already manage stale-record
+eviction and memory usage on their own, so a blanket expiration setting isn't
+needed just to bound memory.
+
+TTL exists as an **opt-in** safety net for the different problem of data
+written outside Eloquent entirely — a script, a direct SQL statement, another
+process — where nothing ever calls `flushCache()` or the `modelCache:clear`
+Artisan command. For a model like that, an expiration bounds how long a stale
+read can persist, without you having to remember to invalidate manually on
+every external write.
+
+**Global TTL**, via config or environment variable, applies to every cachable
+model unless overridden:
+
+```
+MODEL_CACHE_TTL=86400
+```
+
+**Per-model TTL** overrides the global value for one model. It also works with
+no global TTL set at all:
+
+```php
+<?php
+
+namespace App\Models;
+
+use GeneaLabs\LaravelModelCaching\Traits\Cachable;
+use Illuminate\Database\Eloquent\Model;
+
+class ImportedProduct extends Model
+{
+    use Cachable;
+
+    protected $cacheTtlSeconds = 3600; // 1 hour ⏱️
+}
+```
+
+An explicit `protected $cacheTtlSeconds = 0;` opts a model out of the global
+TTL entirely, caching it forever regardless of the global setting. Either
+level may be set without the other, and a model with no TTL configured at all
+keeps today's forever-cache behavior unchanged.
+
+TTL and the cool-down period above solve different problems and can be used
+together: cool-down debounces how often a *write* flushes the cache, while TTL
+bounds how long a value can live when nothing flushes it at all.
 
 ### 🧪 Testing
 In your test suite you can either disable model caching entirely or use the

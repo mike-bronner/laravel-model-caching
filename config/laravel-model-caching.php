@@ -10,4 +10,6 @@ return [
     'store' => env('MODEL_CACHE_STORE'),
 
     'fallback-to-database' => env('MODEL_CACHE_FALLBACK_TO_DB', false),
+
+    'ttl' => env('MODEL_CACHE_TTL'),
 ];
