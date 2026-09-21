@@ -195,7 +195,24 @@ class CacheTags
                 ->toArray(),
         );
 
+        // The join's own table, not only the subqueries hanging off its
+        // condition. A subquery selects `from` one table and joins the rest,
+        // and a join decides which rows come back exactly as the `from` does —
+        // whereHas() over a belongsToMany reads the pivot through this branch
+        // and nothing else names it. getJoinTags() covers the outer query's
+        // joins; these are the ones nested inside a subquery.
+        //
+        // A join whose table is an Expression (joinSub(), and anything else
+        // joining a raw expression) names no table to tag, and stripTableAlias()
+        // raises a TypeError on it, so it is skipped here as it is there.
         foreach ($builder->joins ?? [] as $join) {
+            if (is_string($join->table ?? null)) {
+                $tables[] = [
+                    "table" => $this->stripTableAlias($join->table),
+                    "model" => null,
+                ];
+            }
+
             foreach ($join->wheres ?? [] as $where) {
                 $tables = array_merge($tables, $this->getSubqueryTablesFromWhere($where, $seen));
             }

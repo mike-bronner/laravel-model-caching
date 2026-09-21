@@ -96,6 +96,21 @@ class SubqueryTagTest extends IntegrationTestCase
         );
     }
 
+    // A whereHas() over a belongsToMany reads three tables: the model's own,
+    // the related one the subquery selects from, and the pivot the subquery
+    // joins to connect them. The join is what decides which rows come back, so
+    // a write to the pivot changes this query's answer and has to bust it.
+    public function testSubqueryJoinTagsTheJoinedTable()
+    {
+        $this->assertCachedUnderTags(
+            (new Book)->whereHas("stores"),
+            array_merge($this->bookTags(), [
+                $this->prefix() . "stores",
+                $this->prefix() . "book-store",
+            ]),
+        );
+    }
+
     public function testZeroCountHasTagsTheRelatedTable()
     {
         $this->assertCachedUnderTags(
