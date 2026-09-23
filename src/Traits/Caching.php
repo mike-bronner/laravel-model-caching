@@ -182,6 +182,13 @@ trait Caching
             return $this->getRelated();
         }
 
+        // A model is its own cache model. Reading $this->model on one goes
+        // through Eloquent's magic accessors, which lazy-load a relationship
+        // named model() on every flush, and so on every write.
+        if ($this instanceof Model) {
+            return $this;
+        }
+
         $model = $this->model ?? null;
 
         return $model instanceof Model

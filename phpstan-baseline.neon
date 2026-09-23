@@ -667,6 +667,108 @@ parameters:
 			path: tests/Fixtures/AuthorBeginsWithScoped.php
 
 		-
+			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\)\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
+
+		-
 			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\)\:\:\$model\.$#'
 			identifier: property.notFound
 			count: 2
@@ -767,6 +869,108 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorExtendingGenerated.php
+
+		-
+			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\)\:\:\$model\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
 
 		-
 			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCachedCustomBuilder\)\:\:\$model\.$#'

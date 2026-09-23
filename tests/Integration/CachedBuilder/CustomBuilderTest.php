@@ -3,7 +3,9 @@
 namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
 
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
+use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorCachedQueryBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorDelegatingToModelCaching;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorExtendingGenerated;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorQueryBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCachedCustomBuilder;
@@ -187,6 +189,18 @@ class CustomBuilderTest extends IntegrationTestCase
             CachedBuilder::class,
             $builder,
             'Model with trait collision resolved via insteadof must return a CachedBuilder',
+        );
+    }
+
+    public function test_delegating_to_model_caching_keeps_the_recording_query_builder()
+    {
+        $builder = (new AuthorDelegatingToModelCaching)->newQuery();
+
+        $this->assertInstanceOf(CachedBuilder::class, $builder);
+        $this->assertInstanceOf(
+            CachedQueryBuilder::class,
+            $builder->getQuery(),
+            'A model delegating to newModelCachingEloquentBuilder() must still record subquery join tables',
         );
     }
 

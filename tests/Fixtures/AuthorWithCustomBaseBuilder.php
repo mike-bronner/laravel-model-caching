@@ -6,12 +6,10 @@ use GeneaLabs\LaravelModelCaching\Traits\Cachable;
  * A cachable Author whose base query builder comes from the class the Cachable
  * trait is mixed in over.
  *
- * The intermediate parent matters. A trait method beats a method inherited from
- * a parent class, so the package's newBaseQueryBuilder() is the one that runs
- * here — which is exactly the case where it could clobber a consumer's builder
- * without ever being asked to. (A model declaring newBaseQueryBuilder() in its
- * own class body is safe by PHP's own precedence rules: the class body beats
- * the trait, and the package's version never runs at all.)
+ * The package swaps in its recording query builder from newEloquentBuilder(),
+ * after the model's own newBaseQueryBuilder() has run, so it sees the builder
+ * this parent supplies and has to decide whether to replace it. It must leave
+ * it alone: only Laravel's own base query builder is ever swapped.
  */
 class AuthorWithCustomBaseBuilder extends AuthorWithCustomBaseBuilderParent
 {

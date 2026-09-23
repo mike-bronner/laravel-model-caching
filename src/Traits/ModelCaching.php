@@ -48,21 +48,23 @@ trait ModelCaching
      * its own base query builder keeps it. Recording one more table to tag is
      * worth far less than silently replacing a builder someone else depends on,
      * so the swap only happens when the builder is Laravel's own.
+     *
+     * This deliberately does not override newBaseQueryBuilder(). Other packages
+     * override that method in a trait too (staudenmeir/laravel-cte's
+     * QueriesExpressions is one), and a model using both traits would fail to
+     * compile with a trait method collision. newModelCachingEloquentBuilder()
+     * is this package's own method, so doing the swap there adds no new one.
      */
-    // phpcs:ignore SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
-    protected function newBaseQueryBuilder()
+    protected function useModelCachingQueryBuilder(mixed $query): mixed
     {
-        $builder = parent::newBaseQueryBuilder();
-
-        if ($builder::class !== QueryBuilder::class) {
-            return $builder;
+        if (
+            ! is_object($query)
+            || $query::class !== QueryBuilder::class
+        ) {
+            return $query;
         }
 
-        return new CachedQueryBuilder(
-            $builder->getConnection(),
-            $builder->getGrammar(),
-            $builder->getProcessor(),
-        );
+        return CachedQueryBuilder::fromBase($query);
     }
 
     public function __get($key)
@@ -201,6 +203,11 @@ trait ModelCaching
      */
     public function newModelCachingEloquentBuilder($query)
     {
+        // Done here rather than in newEloquentBuilder() so a model that
+        // resolves a newEloquentBuilder() collision by delegating to this
+        // method still gets the recording query builder.
+        $query = $this->useModelCachingQueryBuilder($query);
+
         if (! $this->isCachable()) {
             $this->isCachable = false;
 

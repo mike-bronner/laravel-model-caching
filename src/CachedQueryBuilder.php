@@ -34,6 +34,29 @@ class CachedQueryBuilder extends Builder
     protected array $relatedSubqueryTables = [];
 
     /**
+     * The recording builder for a base query builder Laravel has already made.
+     *
+     * Laravel hands a model's new query builder straight to
+     * newEloquentBuilder(), which is where the swap happens, so it arrives
+     * empty. Copying its state rather than starting over keeps any clause
+     * a caller added before passing it in.
+     */
+    public static function fromBase(Builder $query): self
+    {
+        $builder = new self(
+            $query->getConnection(),
+            $query->getGrammar(),
+            $query->getProcessor(),
+        );
+
+        foreach (get_object_vars($query) as $property => $value) {
+            $builder->{$property} = $value;
+        }
+
+        return $builder;
+    }
+
+    /**
      * Tables read by a subquery join, in the order they were joined.
      */
     public function getJoinedSubqueryTables(): array

@@ -4,6 +4,7 @@ use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
 use GeneaLabs\LaravelModelCaching\CacheTags;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorBaseQueryBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithBaseBuilderTrait;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBaseBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CachableRoleUser;
@@ -368,8 +369,7 @@ class JoinCacheInvalidationTest extends IntegrationTestCase
     // when the model is using Laravel's.
     public function testACustomBaseQueryBuilderIsNotReplaced()
     {
-        $builder = (new ReflectionMethod(new AuthorWithCustomBaseBuilder, 'newBaseQueryBuilder'))
-            ->invoke(new AuthorWithCustomBaseBuilder);
+        $builder = (new AuthorWithCustomBaseBuilder)->newQuery()->getQuery();
 
         $this->assertInstanceOf(AuthorBaseQueryBuilder::class, $builder);
         $this->assertNotInstanceOf(CachedQueryBuilder::class, $builder);
@@ -377,10 +377,29 @@ class JoinCacheInvalidationTest extends IntegrationTestCase
 
     public function testTheDefaultBaseQueryBuilderIsTheRecordingOne()
     {
-        $builder = (new ReflectionMethod(new Author, 'newBaseQueryBuilder'))
-            ->invoke(new Author);
+        $builder = (new Author)->newQuery()->getQuery();
 
         $this->assertInstanceOf(CachedQueryBuilder::class, $builder);
+    }
+
+    // Packages such as staudenmeir/laravel-cte override newBaseQueryBuilder()
+    // in a trait. A model mixing one in beside Cachable must still compile,
+    // keep that package's builder, and still be cached.
+    public function testCachableCombinesWithATraitDefiningNewBaseQueryBuilder()
+    {
+        $builder = (new AuthorWithBaseBuilderTrait)->newQuery()->getQuery();
+
+        $this->assertInstanceOf(AuthorBaseQueryBuilder::class, $builder);
+
+        $authors = (new AuthorWithBaseBuilderTrait)->where('id', '<', 5)->get();
+
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $cached = (new AuthorWithBaseBuilderTrait)->where('id', '<', 5)->get();
+
+        $this->assertNotEmpty($authors);
+        $this->assertEquals($authors->pluck('id'), $cached->pluck('id'));
+        $this->assertSame([], DB::getQueryLog(), 'The second read should be served from the cache');
     }
 
     // Not an ofMany() test on purpose. An ofMany() relation already tags the
