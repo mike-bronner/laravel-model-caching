@@ -14,6 +14,7 @@ use Illuminate\Cache\TaggableStore;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Scope;
@@ -263,8 +264,19 @@ trait Caching
             $query = $this->query->getQuery();
         }
 
-        $tags = (new CacheTags($eagerLoad, $model, $query))
-            ->make();
+        $cacheTags = new CacheTags($eagerLoad, $model, $query);
+        $tags = $cacheTags->make();
+
+        // A many-to-many relation's own query joins the pivot table, and the
+        // join tag carries the related model's prefix. A pivot-table write
+        // flushes under the pivot's prefix instead, so the relation's entry
+        // carries the same pivot tags as a parent entry eager-loading it.
+        if ($this instanceof BelongsToMany) {
+            $tags = array_values(array_unique(array_merge(
+                $tags,
+                $cacheTags->getPivotTableTags($this),
+            )));
+        }
 
         return $tags;
     }
