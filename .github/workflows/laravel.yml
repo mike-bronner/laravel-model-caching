@@ -79,8 +79,12 @@ jobs:
     - name: Copy .env
       run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
+    # Some dependencies cap their PHP version below the 8.6 nightly, which stops
+    # the install before any test runs. The nightly job ignores those upper
+    # bounds so the suite still runs early. Lower bounds stay enforced, and
+    # every other PHP version resolves strictly.
     - name: Install Dependencies
-      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist ${{ matrix.php == '8.6' && '--ignore-platform-req=php+' || '' }}
 
     - name: Execute Integration and Feature tests via PHPUnit
       env:

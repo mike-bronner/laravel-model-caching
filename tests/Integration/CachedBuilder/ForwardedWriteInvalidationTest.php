@@ -3,6 +3,8 @@
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
+use Illuminate\Database\Query\Builder;
+use PHPUnit\Framework\Attributes\RequiresMethod;
 
 class ForwardedWriteInvalidationTest extends IntegrationTestCase
 {
@@ -55,6 +57,7 @@ class ForwardedWriteInvalidationTest extends IntegrationTestCase
         });
     }
 
+    #[RequiresMethod(Builder::class, "insertOrIgnoreReturning")]
     public function testInsertOrIgnoreReturningInvalidatesCache()
     {
         $this->assertCachedTitlesMatchDatabase(function () {
