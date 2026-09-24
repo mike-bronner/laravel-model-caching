@@ -17,13 +17,13 @@ class Helper
             ->make("config")
             ->set(['laravel-model-caching.enabled' => false]);
 
-        $result = $closure();
-
-        Container::getInstance()
-            ->make("config")
-            ->set(['laravel-model-caching.enabled' => $originalSetting]);
-
-        return $result;
+        try {
+            return $closure();
+        } finally {
+            Container::getInstance()
+                ->make("config")
+                ->set(['laravel-model-caching.enabled' => $originalSetting]);
+        }
     }
 
     /**

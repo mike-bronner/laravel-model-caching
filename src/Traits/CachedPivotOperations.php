@@ -15,14 +15,16 @@ trait CachedPivotOperations
 
     protected function flushCacheForPivotOperation(): void
     {
-        if (method_exists($this->parent, 'flushCache')) {
-            $this->parent->flushCache();
-        }
+        foreach ([$this->parent, $this->getRelated()] as $model) {
+            if (! method_exists($model, 'flushCache')) {
+                continue;
+            }
 
-        $relatedModel = $this->getRelated();
-
-        if (method_exists($relatedModel, 'flushCache')) {
-            $relatedModel->flushCache();
+            $this->withCacheFallback(function () use ($model) {
+                if ($this->cacheCooldownAllowsFlush($model)) {
+                    $model->flushCache();
+                }
+            }, 'cache flush after pivot write failed');
         }
     }
 

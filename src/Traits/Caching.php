@@ -52,10 +52,11 @@ trait Caching
             $this->macroKey .= "-{$method}";
 
             if ($parameters) {
-                $this->macroKey .= implode("_", $parameters);
+                $this->macroKey .= $this->macroKeyArguments($parameters);
             }
 
             $result = $this->innerBuilder->{$method}(...$parameters);
+            $this->flushCacheAfterForwardedWrite($method);
 
             return $result === $this->innerBuilder
                 ? $this
@@ -71,11 +72,83 @@ trait Caching
             $this->macroKey .= "-{$method}";
 
             if ($parameters) {
-                $this->macroKey .= implode("_", $parameters);
+                $this->macroKey .= $this->macroKeyArguments($parameters);
             }
         }
 
+        $this->flushCacheAfterForwardedWrite($method);
+
         return $result;
+    }
+
+    protected function macroKeyArguments(array $parameters): string
+    {
+        return implode("_", array_map(function ($parameter) {
+            if (is_array($parameter)) {
+                return json_encode($parameter, JSON_PARTIAL_OUTPUT_ON_ERROR);
+            }
+
+            if ($parameter instanceof \BackedEnum) {
+                return $parameter->value;
+            }
+
+            if ($parameter instanceof \UnitEnum) {
+                return $parameter->name;
+            }
+
+            if (is_object($parameter) && ! $parameter instanceof \Stringable) {
+                return get_class($parameter);
+            }
+
+            return $parameter;
+        }, $parameters));
+    }
+
+    protected function flushCacheAfterForwardedWrite(string $method): void
+    {
+        $forwardedWrites = [
+            "insertgetid",
+            "insertorignore",
+            "insertorignorereturning",
+            "insertorignoreusing",
+            "insertusing",
+            "updatefrom",
+            "updateorinsert",
+        ];
+
+        if (
+            ! $this instanceof Builder
+            || ! in_array(strtolower($method), $forwardedWrites, true)
+        ) {
+            return;
+        }
+
+        $this->flushCacheAfterBuilderWrite($method);
+    }
+
+    protected function flushCacheAfterBuilderWrite(string $operation): void
+    {
+        $isEnabled = Container::getInstance()
+            ->make("config")
+            ->get("laravel-model-caching.enabled");
+
+        if (! $isEnabled) {
+            return;
+        }
+
+        $this->withCacheFallback(function () {
+            $model = $this->cacheModel();
+
+            if ($model && ! $this->cacheCooldownAllowsFlush($model)) {
+                return;
+            }
+
+            $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
+
+            if ($model) {
+                $this->flushMorphToRelatedCaches($model);
+            }
+        }, "cache flush failed during {$operation}");
     }
 
     public function applyScopes()
@@ -343,24 +416,27 @@ trait Caching
         }
 
         $this->withCacheFallback(function () use ($instance, $relationship) {
-            [$cacheCooldown, $invalidatedAt] = $this->getModelCacheCooldown($instance);
-
-            if (! $cacheCooldown) {
-                $instance->flushCache();
-                $this->flushMorphToRelatedCaches($instance);
-                $this->flushRelationshipCache($instance, $relationship);
-
+            if (! $this->cacheCooldownAllowsFlush($instance)) {
                 return;
             }
 
-            $this->setCacheCooldownSavedAtTimestamp($instance);
-
-            if ((new Carbon)->now()->diffInSeconds($invalidatedAt, true) >= $cacheCooldown) {
-                $instance->flushCache();
-                $this->flushMorphToRelatedCaches($instance);
-                $this->flushRelationshipCache($instance, $relationship);
-            }
+            $instance->flushCache();
+            $this->flushMorphToRelatedCaches($instance);
+            $this->flushRelationshipCache($instance, $relationship);
         }, 'cache flush after persisting failed');
+    }
+
+    protected function cacheCooldownAllowsFlush(Model $instance): bool
+    {
+        [$cacheCooldown, $invalidatedAt] = $this->getModelCacheCooldown($instance);
+
+        if (! $cacheCooldown) {
+            return true;
+        }
+
+        $this->setCacheCooldownSavedAtTimestamp($instance);
+
+        return (new Carbon)->now()->diffInSeconds($invalidatedAt, true) >= $cacheCooldown;
     }
 
     protected static $morphToMethodCache = [];

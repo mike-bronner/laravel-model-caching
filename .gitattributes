@@ -3,8 +3,12 @@
 # Kept out of the Composer dist archive. A consumer installs this package to
 # use it, never to develop it, so nothing below is worth the download.
 #
-# What a consumer needs is short: /src, /composer.json, /config, /LICENSE and
-# /README.md. Everything else in the repository is listed below.
+# What a consumer needs is short: /src, /composer.json, /config, /LICENSE,
+# /README.md and /resources. Everything else in the repository is listed below.
+#
+# /resources holds the Laravel Boost guidelines this package hands to the
+# applications that install it. Boost reads them out of the installed package
+# directory, so excluding them here would ship a package that offers nothing.
 #
 # Every path here must exist. Six entries previously named files that had been
 # renamed or deleted years earlier (/.phpcs.xml, /.phpmd.xml, /.phpunit.xml,
@@ -22,7 +26,6 @@
 /.github export-ignore
 /.gitignore export-ignore
 /.phive export-ignore
-/.php-codesniffer export-ignore
 /.vscode export-ignore
 /AGENTS.md export-ignore
 /CLAUDE.md export-ignore
@@ -32,7 +35,7 @@
 /SECURITY.md export-ignore
 /docker-compose.yml export-ignore
 /phive export-ignore
-/phpcs.xml export-ignore
+/phpcs.xml.dist export-ignore
 /phpmd.xml export-ignore
 /phpstan-baseline.neon export-ignore
 /phpstan.neon export-ignore

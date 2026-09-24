@@ -167,9 +167,7 @@ trait ModelCaching
             $class = get_called_class();
             $instance = new $class;
 
-            $instance->withCacheFallback(function () use ($instance) {
-                $instance->flushCache();
-            }, 'cache flush failed during destroy');
+            $instance->checkCooldownAndFlushAfterPersisting($instance);
         }
 
         return $result;
@@ -192,12 +190,14 @@ trait ModelCaching
      *   remain callable at runtime (AC3).
      * - No custom builder → plain CachedBuilder (existing behaviour).
      *
-     * **Larastan / PHPStan (AC5):** When a custom builder is wrapped rather than
-     * returned directly, static analysis tools cannot infer the custom methods
-     * from the `CachedBuilder` return type.  Add a `@return CustomBuilder`
-     * override annotation on your model's `newQuery()` (or `query()`) call-site,
-     * or use the `@mixin` approach described in the package README to suppress
-     * false-positive "undefined method" errors at level 5+.
+     * **Larastan / PHPStan (AC5):** A model states its builder type by
+     * overriding `newEloquentBuilder()` with a `@return CachedBuilder<static>`
+     * docblock that calls the trait's `newEloquentBuilder()` through an alias,
+     * as the package README shows. Calling this method from that override
+     * instead skips the recursion guard in `newEloquentBuilder()`. A custom
+     * builder that is wrapped rather than returned directly has no static type
+     * that describes the wrapper, so make it extend `CachedBuilder` when static
+     * analysis has to see its methods.
      */
     public function newModelCachingEloquentBuilder($query)
     {

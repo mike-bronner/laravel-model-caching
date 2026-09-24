@@ -39,6 +39,42 @@ One consequence of that follows from it. The block is composed from whatever
 block before you commit it. Guidance that belongs to another project reaches
 this file the same way the right guidance does.
 
+## Which half wins
+
+The hand written half wins. Where the two halves disagree, follow the hand
+written half and do not weigh the two against each other.
+
+The reason is what each half knows. The hand written half was written about
+this repository. The generated block is composed from a guideline set that
+lives on the machine rather than in this project, so it describes the common
+case, and the common case is a Laravel application. This repository is not
+one. Wherever the generated block assumes an application, it is wrong here,
+whatever it happens to say on the day you read it.
+
+That test is the durable one, so apply it rather than the list below. The list
+describes the block as it stands today and it will not survive the next
+compose.
+
+As this is written, the generated block carries Laravel's stock application
+guidance instead of this project's own, because a gating problem in the shared
+settings package stopped the project set from composing. While that is still
+true, expect the block to contradict the hand written half in these ways.
+
+- It opens by calling this project a Laravel application. It is a package. See
+  "What this repository is" below.
+- It tells you to run `php artisan` for several different commands. There is
+  no such binary here. Use `vendor/bin/testbench`.
+- It tells you to use `php artisan tinker`. There is no tinker binary and no
+  tinker tool on the MCP server. The Laravel Boost section below lists the
+  tools that server actually returns.
+- It covers frontend bundling and tells you to ask about `npm run build`.
+  There is no frontend here and no `package.json`.
+- It covers deploying to Laravel Cloud. A package is released, not deployed.
+
+Check that list against the block before you lean on it. If the block no
+longer says these things, the gating problem has been fixed and the list is
+stale. The rule above it is not.
+
 ## What this repository is
 
 This is a Laravel **package**, not a Laravel application.

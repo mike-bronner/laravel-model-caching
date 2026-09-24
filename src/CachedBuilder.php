@@ -35,6 +35,38 @@ class CachedBuilder extends Builder
         return $this->innerBuilder;
     }
 
+    public function upsert(array $values, $uniqueBy, $update = null)
+    {
+        $result = $this->executeOnInnerOrParent('upsert', [$values, $uniqueBy, $update]);
+        $this->flushCacheAfterBuilderWrite('upsert');
+
+        return $result;
+    }
+
+    public function touch($column = null)
+    {
+        $result = $this->executeOnInnerOrParent('touch', [$column]);
+        $this->flushCacheAfterBuilderWrite('touch');
+
+        return $result;
+    }
+
+    public function incrementEach(array $columns, array $extra = [])
+    {
+        $result = $this->executeOnInnerOrParent('incrementEach', [$columns, $extra]);
+        $this->flushCacheAfterBuilderWrite('incrementEach');
+
+        return $result;
+    }
+
+    public function decrementEach(array $columns, array $extra = [])
+    {
+        $result = $this->executeOnInnerOrParent('decrementEach', [$columns, $extra]);
+        $this->flushCacheAfterBuilderWrite('decrementEach');
+
+        return $result;
+    }
+
     public function setModel(Model $model)
     {
         $this->innerBuilder?->setModel($model);

@@ -30,7 +30,7 @@ deleted the relevant cache entries are flushed for you.
 
 ⚡ Typical performance improvements range from 100–900% reduction in database
 queries on read-heavy pages. 🧪 Backed by 335+ integration tests across PHP
-8.2–8.5 and Laravel 12–13.
+8.3–8.5 and Laravel 12–13.
 
 **Use this package when** your application makes many repeated Eloquent queries
 and you want a drop-in caching layer that stays in sync with your data without
@@ -79,7 +79,7 @@ $posts = Post::where('active', true)->with('comments')->paginate();
 | Database | ❌ |
 
 ### 📋 Requirements
-- PHP 8.2+
+- PHP 8.3+
 - Laravel 12 or 13
 
 ## 📦 Installation
@@ -330,6 +330,16 @@ ModelCache::runDisabled(function () {
 });
 ```
 
+`runDisabled()` restores the setting when the closure returns or throws.
+Writes inside the closure do not invalidate anything, on purpose, and
+`flushCache()` does nothing there either. Invalidate after the closure
+returns:
+
+```php
+ModelCache::runDisabled(fn () => MyModel::whereKey($id)->update($changes));
+ModelCache::invalidate(MyModel::class);
+```
+
 > **💡 Tip:** Use option 1 in seeders to avoid pulling stale cached data during
 > reseeds.
 
@@ -368,9 +378,18 @@ Comment::withCacheCooldownSeconds()->get();
 Comment::withCacheCooldownSeconds(30)->get();
 ```
 
-Once activated, writes during the cool-down window will not flush the cache.
-After the window expires, the next write triggers a flush and re-warms the
-cache. 🔄
+Once activated, writes during the cool-down window do not flush the cache.
+That covers model events, `destroy()`, pivot operations and every builder
+write in the *Cache Invalidation* table, `increment()` included. An explicit
+`flushCache()` or `ModelCache::invalidate()`, and a write through a different
+model class on the same table, still flush, because the window belongs to one
+model class. Cool-down does not hold for a model that declares `$cachePrefix`,
+and on pivot writes it is not guaranteed when the two models declare different
+`$cachePrefix` values (#643).
+
+After the window expires, the next cached read of the model flushes its cache
+and ends the window, even if no write comes first. A write after expiry
+flushes as well. 🔄
 
 ### 🛡️ Graceful Fallback
 When enabled, if the cache backend (e.g. Redis) is unavailable the package logs
@@ -391,9 +410,16 @@ Cache is automatically flushed when:
 | Model deleted | Flush only if rows were actually deleted |
 | Model force-deleted | Flush only if rows were actually deleted |
 | Pivot `attach` / `detach` / `sync` / `updateExistingPivot` | Flush relationship cache |
-| `increment` / `decrement` | Flush model cache |
-| `insert` / `update` (builder) | Flush model cache |
+| `increment` / `decrement` / `incrementEach` / `decrementEach` | Flush model cache |
+| `insert` / `insertGetId` / `insertOrIgnore` / `insertOrIgnoreReturning` / `insertUsing` / `insertOrIgnoreUsing` (builder) | Flush model cache |
+| `update` / `upsert` / `updateOrInsert` / `updateFrom` / `touch` (builder) | Flush model cache |
 | `truncate` | Flush model cache |
+
+Builder writes flush with or without model events, so `saveQuietly()`,
+`deleteQuietly()` and `withoutEvents()` still invalidate. A write that skips the
+model's builder does not: `DB::table(...)`, or a base query builder taken with
+`toBase()` or `getQuery()`. Call `ModelCache::invalidate(Post::class)` after
+one of those.
 
 Cache tags are generated for the primary model, each eager-loaded relationship,
 joined tables, and morph-to target types, so only the relevant entries are
@@ -422,9 +448,9 @@ php artisan modelCache:clear
 ```
 
 > **ℹ️ Scope of the full clear (no `--model`)** — how much is removed depends on the cache driver:
-> - **Redis** (with a cache-store prefix) — only the model-cache keys are scanned and deleted; other keys on the same connection are left intact. This honors both the connection-level client prefix (`database.redis.options.prefix`) and the cache-store prefix, and works on the phpredis **and** Predis clients, single-node or cluster (`CROSSSLOT`-safe).
+> - **Redis** (any cache-store prefix, including none) — only this package's entries and cool-down keys are deleted, found through the `genealabs:laravel-model-caching:` prefix on every tag and cool-down key it writes. Every other key is left intact, including the application's own entries under the same store prefix. This honors both the connection-level client prefix (`database.redis.options.prefix`) and the cache-store prefix, and works on the phpredis **and** Predis clients, single-node or cluster (`CROSSSLOT`-safe).
 > - **DynamoDB** — rotates a package-wide namespace key; no destructive table scan (see the DynamoDB section).
-> - **Memcached, file, database, or un-prefixed Redis** — these cannot scope a clear by prefix, so the **entire** cache store is flushed. Give the model cache a dedicated store (see the *Custom Cache Store* section) so a full clear never touches unrelated data.
+> - **Memcached, file, database, or array** — these cannot scope a clear by prefix, so the **entire** cache store is flushed. Give the model cache a dedicated store (see the *Custom Cache Store* section) so a full clear never touches unrelated data.
 
 **🔧 Programmatic via Facade:**
 ```php
@@ -470,28 +496,59 @@ store like Redis). No additional configuration is needed.
 
 ### 🔍 Static Analysis (Larastan / PHPStan)
 The package is compatible with [Larastan](https://github.com/larastan/larastan)
-at level 5 and above. Because the `Cachable` trait wraps Eloquent's builder,
-PHPStan may report "undefined method" errors for methods like `cache()` or
-`flushCache()` on your models. To resolve these, add a `@mixin` annotation to
-your cached model:
+at level 5 and above. With no annotation, the scopes `disableCache()` and
+`withCacheCooldownSeconds()` resolve anywhere in a query chain, and
+`flushCache()` resolves on a model instance.
+
+A query chain that ends in a `CachedBuilder` method does not: Larastan types
+`Post::where(...)` as Eloquent's own builder, so `->flushCache()` and
+`->cache()` on it are reported as undefined methods. Declare the builder type
+on your cached model:
 
 ```php
+use GeneaLabs\LaravelModelCaching\CachedBuilder;
 use GeneaLabs\LaravelModelCaching\Traits\Cachable;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * @mixin \GeneaLabs\LaravelModelCaching\CachedBuilder<\Illuminate\Database\Eloquent\Model>
- */
 class Post extends Model
 {
-    use Cachable;
+    use Cachable {
+        newEloquentBuilder as cachableNewEloquentBuilder;
+    }
+
+    /**
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @return CachedBuilder<static>
+     */
+    public function newEloquentBuilder($query)
+    {
+        return $this->cachableNewEloquentBuilder($query);
+    }
 }
 ```
 
-If you use a **custom Eloquent builder** that gets wrapped by `CachedBuilder`,
-PHPStan cannot infer the custom methods from the `CachedBuilder` return type.
-Add a `@return` override annotation on your model's `newEloquentBuilder()`
-method, or add `@mixin YourCustomBuilder` to the model class.
+Call the trait's method through the alias, as shown. Calling
+`newModelCachingEloquentBuilder()` from the override skips the trait's
+recursion guard, and a subclass that uses `Cachable` again then recurses until
+PHP crashes. Keep the return type in the docblock. A native `: CachedBuilder`
+return type throws `TypeError` while caching is disabled, because the model
+then returns Eloquent's own builder.
+
+The annotation describes the builder while caching is enabled. With caching
+disabled, through `MODEL_CACHE_ENABLED=false` or inside `runDisabled()`, the
+model returns Eloquent's own builder, so a chained `flushCache()` or `cache()`
+throws `BadMethodCallException` there even though PHPStan accepts it.
+
+A `@mixin CachedBuilder` annotation does not help. It applies to calls on the
+model, never to the builder a chain returns.
+
+If you use a **custom Eloquent builder**, make it extend `CachedBuilder` and
+declare it generic (`@template TModel of Model`, `@extends
+CachedBuilder<TModel>`), then name it in the return type above as
+`YourBuilder<static>`. A custom builder that does not extend `CachedBuilder` is
+wrapped at runtime, and no return type describes the wrapper: `@mixin
+YourBuilder` on the model covers static calls such as `Post::popular()`, but
+not the same method later in a chain.
 
 The package's own source carries pre-existing level-5 findings, recorded in
 `phpstan-baseline.neon` so CI can enforce the level from here on. That baseline
@@ -511,6 +568,14 @@ For breaking changes and upgrade instructions between versions, see the
 [Releases](https://github.com/GeneaLabs/laravel-model-caching/releases) page on
 GitHub.
 
+### PHP 8.2 support is dropped
+
+**PHP 8.2 is no longer supported.** Move to PHP 8.3 or later before you take
+this release. Composer refuses to install it on PHP 8.2.
+
+The `php` constraint and the CI matrix now start at PHP 8.3. No cache key,
+cache tag, or runtime behaviour changes.
+
 ### Laravel 11 support is dropped
 
 **Laravel 11 is no longer supported.** Move to Laravel 12 or 13 before you take
@@ -525,7 +590,7 @@ This removes leftover compatibility rather than introducing a break. The 13.0
 release already moved this package's major line. Laravel 11 was kept past it
 instead of being dropped at the time.
 
-PHP 8.2 is unaffected and stays supported. No cache key, cache tag, or runtime
+PHP 8.2 was unaffected by that release. No cache key, cache tag, or runtime
 behaviour changes.
 
 ### Carbon bindings are re-keyed once

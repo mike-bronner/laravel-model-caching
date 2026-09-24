@@ -26,7 +26,8 @@ This document stays the authority on what the project expects of a change.
 ### What CI enforces
 Three things:
 
-- The test suite, across PHP 8.2 to 8.5 and Laravel 12 to 13.
+- The test suite, across PHP 8.3 to 8.5 and Laravel 12 to 13. PHP 8.6 runs
+  too, but a failure there does not fail the build until 8.6 is released.
 - PHPStan at level 5, on every pull request.
 - PHP deprecations originating in `src/`. The check is scoped to `src/`
   deliberately: we own that code, and a deprecation in `vendor/` must never

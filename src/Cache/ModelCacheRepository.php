@@ -20,7 +20,7 @@ use Throwable;
 class ModelCacheRepository
 {
     protected const DYNAMODB_NAMESPACE_PREFIX = 'genealabs:laravel-model-caching:dynamodb:v1:';
-
+    protected const KEY_PREFIX = 'genealabs:laravel-model-caching:';
     public const SERIALIZED_VALUE_PREFIX = 'genealabs:lmc:v1:serialized:';
 
     public function __construct(
@@ -185,10 +185,7 @@ class ModelCacheRepository
 
         $store = $this->repository->getStore();
 
-        if (
-            $store instanceof RedisStore
-            && $store->getPrefix() !== ''
-        ) {
+        if ($store instanceof RedisStore) {
             $this->flushRedisStoreByPrefix($store);
 
             return;
@@ -212,28 +209,62 @@ class ModelCacheRepository
         [$clientPrefix, $restoreClientPrefix] = $this->neutralizeClientPrefix($client);
 
         try {
-            $pattern = $clientPrefix . $store->getPrefix() . '*';
-            // The initial SCAN cursor differs by client: phpredis (with
-            // SCAN_RETRY) treats 0 as "iteration complete" and needs null, while
-            // Predis rejects null with "ERR invalid cursor" and needs 0.
-            $cursor = $client instanceof ClientInterface ? 0 : null;
+            $storePrefix = $clientPrefix . $store->getPrefix();
+            $escapedStorePrefix = addcslashes($storePrefix, '*?[]^\\');
+            $tagSetPattern = $escapedStorePrefix . 'tag:' . static::KEY_PREFIX . '*:entries';
 
-            do {
-                $result = $connection->scan($cursor, ['match' => $pattern, 'count' => 1000]);
-
-                if ($result === false) {
-                    break;
+            foreach ($this->scanRedisKeys($connection, $client, $tagSetPattern) as $tagSetKeys) {
+                foreach ($tagSetKeys as $tagSetKey) {
+                    $this->deleteTaggedEntries($connection, $tagSetKey, $storePrefix);
                 }
+            }
 
-                [$cursor, $keys] = $result;
+            $packageKeyPattern = $escapedStorePrefix . '*' . static::KEY_PREFIX . '*';
 
-                if (is_array($keys) && $keys !== []) {
-                    $this->deleteRedisKeys($connection, $keys);
-                }
-            } while ((int) $cursor !== 0);
+            foreach ($this->scanRedisKeys($connection, $client, $packageKeyPattern) as $keys) {
+                $this->deleteRedisKeys($connection, $keys);
+            }
         } finally {
             $restoreClientPrefix();
         }
+    }
+
+    protected function scanRedisKeys($connection, object $client, string $pattern): \Generator
+    {
+        $cursor = $client instanceof ClientInterface ? 0 : null;
+
+        do {
+            $result = $connection->scan($cursor, ['match' => $pattern, 'count' => 1000]);
+
+            if ($result === false) {
+                break;
+            }
+
+            [$cursor, $keys] = $result;
+
+            if (is_array($keys) && $keys !== []) {
+                yield $keys;
+            }
+        } while ((int) $cursor !== 0);
+    }
+
+    protected function deleteTaggedEntries($connection, string $tagSetKey, string $storePrefix): void
+    {
+        $start = 0;
+
+        do {
+            $members = $connection->zrange($tagSetKey, $start, $start + 999);
+            $members = is_array($members) ? $members : [];
+
+            if ($members !== []) {
+                $this->deleteRedisKeys(
+                    $connection,
+                    array_map(fn (string $member): string => $storePrefix . $member, $members),
+                );
+            }
+
+            $start += 1000;
+        } while (count($members) === 1000);
     }
 
     /**
