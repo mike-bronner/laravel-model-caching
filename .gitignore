@@ -116,3 +116,6 @@ opencode.json
 /storage/logs
 # mike-bronner/laravel-development-settings: project entries go below this line. Anything above it is lost on the next sync.
 !AGENTS.md
+!CLAUDE.md
+phpunit.xml
+/deprecations.log
