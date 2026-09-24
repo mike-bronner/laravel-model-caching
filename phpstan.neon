@@ -11,14 +11,6 @@ parameters:
     paths:
         - src/
         - tests/Fixtures/
-    # These two fixtures use Cachable directly, and PHPStan reports the trait's
-    # pre-existing findings again inside every such class. Analysing them would
-    # need about 56 baseline entries for debt that is already recorded. They
-    # exist only for AliasedBuilderInheritanceTest, a runtime regression test.
-    # Remove this exclusion once the trait's findings are fixed.
-    excludePaths:
-        - tests/Fixtures/AuthorWithAliasedBuilder.php
-        - tests/Fixtures/AuthorExtendingAliasedBuilder.php
     # composer.lock is not committed, so CI resolves its own dependency set and
     # the findings can shift under it. Without this, a baseline entry that
     # stops matching is itself an error, and CI goes red for a finding that

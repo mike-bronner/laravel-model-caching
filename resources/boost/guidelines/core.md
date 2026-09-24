@@ -244,55 +244,26 @@ chain, and `flushCache()` resolves on a model instance.
 
 A query chain that ends in a `CachedBuilder` method does not. Larastan types
 `Post::where(...)` as Eloquent's own builder, so `->flushCache()` and
-`->cache()` on it are reported as undefined methods. Declare the builder type
-on the model:
+`->cache()` on it are reported as undefined methods. `CachedBuilder` is not
+generic, so naming it as the model's builder type trades these errors for
+others: Larastan then no longer finds the scopes above, and query results lose
+their model type. A `@mixin CachedBuilder` on the model does not reach a chain
+either. Do not add a `newEloquentBuilder()` override for this. Use the calls
+that resolve instead:
 
 ```php
-use GeneaLabs\LaravelModelCaching\CachedBuilder;
-use GeneaLabs\LaravelModelCaching\Traits\Cachable;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Post;
+use GeneaLabs\LaravelModelCaching\Facades\ModelCache;
 
-class Post extends Model
-{
-    use Cachable {
-        newEloquentBuilder as cachableNewEloquentBuilder;
-    }
-
-    /**
-     * @param  \Illuminate\Database\Query\Builder  $query
-     * @return CachedBuilder<static>
-     */
-    public function newEloquentBuilder($query)
-    {
-        return $this->cachableNewEloquentBuilder($query);
-    }
-}
+(new Post)->flushCache();
+ModelCache::invalidate(Post::class);
 ```
 
-Call the trait's method through the alias, as shown. Do not call
-`newModelCachingEloquentBuilder()` from the override: that skips the trait's
-recursion guard, and a subclass that uses `Cachable` again then recurses until
-PHP crashes. Keep the return type in the docblock. A native `: CachedBuilder`
-return type throws `TypeError` while caching is disabled, because the model
-then returns Eloquent's own builder.
-
-The annotation describes the builder while caching is enabled. With caching
-disabled, through the `enabled` config value or inside `runDisabled()`, the
-model returns Eloquent's own builder instead, so a chained `flushCache()` or
-`cache()` throws `BadMethodCallException` there even though PHPStan accepts it.
-
-Do not use `@mixin CachedBuilder` for this. A mixin applies to calls on the
-model and never to the builder a chain returns, so it leaves the errors in
-place.
-
-A custom builder gets the same treatment when it extends `CachedBuilder`.
-Register it as usual, with `#[UseEloquentBuilder]` or `protected static string
-$builder`. Declare it generic, with `@template TModel of Model` and
-`@extends CachedBuilder<TModel>`, and name it in the return type as
-`YourBuilder<static>`. A custom builder that does not extend `CachedBuilder` is
-wrapped at runtime, and no return type describes the wrapper. `@mixin
-YourBuilder` on the model then covers static calls such as `Post::popular()`,
-but not the same method later in a chain.
+Both do nothing while caching is disabled, through the `enabled` config value
+or inside `runDisabled()`. A chained `flushCache()` or `cache()` throws
+`BadMethodCallException` there instead, because the model then returns
+Eloquent's own builder. Suppressing the PHPStan error on a chain is the
+consuming project's own choice, and that runtime case still applies to it.
 
 ## Testing
 

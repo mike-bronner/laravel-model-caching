@@ -110,8 +110,8 @@ dependency of the package, so `composer update` brings it in.
 
 ### The guidelines compose themselves
 
-`mikebronner/development-settings` is also a dev dependency, and it is a
-Composer plugin. After every install and update it composes the Boost
+`mike-bronner/laravel-development-settings` is also a dev dependency, and it
+is a Composer plugin. After every install and update it composes the Boost
 guidelines into this file, through a runner it ships for package repositories
 like this one. There is nothing to configure and nothing to run by hand.
 

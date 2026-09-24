@@ -189,15 +189,6 @@ trait ModelCaching
      *   delegates unknown method calls to the inner builder so custom methods
      *   remain callable at runtime (AC3).
      * - No custom builder → plain CachedBuilder (existing behaviour).
-     *
-     * **Larastan / PHPStan (AC5):** A model states its builder type by
-     * overriding `newEloquentBuilder()` with a `@return CachedBuilder<static>`
-     * docblock that calls the trait's `newEloquentBuilder()` through an alias,
-     * as the package README shows. Calling this method from that override
-     * instead skips the recursion guard in `newEloquentBuilder()`. A custom
-     * builder that is wrapped rather than returned directly has no static type
-     * that describes the wrapper, so make it extend `CachedBuilder` when static
-     * analysis has to see its methods.
      */
     public function newModelCachingEloquentBuilder($query)
     {
