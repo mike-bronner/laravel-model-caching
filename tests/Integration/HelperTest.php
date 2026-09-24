@@ -36,4 +36,41 @@ class HelperTest extends IntegrationTestCase
         $this->assertNull($cachedResults1);
         $this->assertEquals($authors->toArray(), $cachedResults2->toArray());
     }
+
+    public function testCachingIsReEnabledWhenTheClosureThrows()
+    {
+        $thrown = null;
+
+        try {
+            app("model-cache")->runDisabled(function () {
+                throw new \RuntimeException("closure failed");
+            });
+        } catch (\RuntimeException $exception) {
+            $thrown = $exception;
+        }
+
+        $this->assertSame("closure failed", $thrown?->getMessage());
+        $this->assertTrue(config("laravel-model-caching.enabled"));
+        $this->assertTrue((new Author)->isCachable());
+    }
+
+    public function testWritesInsideTheClosureNeedInvalidatingAfterwards()
+    {
+        $before = (new Author)->orderBy("id")->pluck("name");
+
+        app("model-cache")->runDisabled(function () {
+            $author = (new Author)->findOrFail(1);
+            $author->name = "renamed while disabled";
+            $author->save();
+        });
+
+        $staleNames = (new Author)->orderBy("id")->pluck("name");
+        app("model-cache")->invalidate(Author::class);
+        $freshNames = (new Author)->orderBy("id")->pluck("name");
+        $liveNames = (new UncachedAuthor)->orderBy("id")->pluck("name");
+
+        $this->assertEquals($before, $staleNames);
+        $this->assertNotEquals($before, $liveNames);
+        $this->assertEquals($liveNames, $freshNames);
+    }
 }

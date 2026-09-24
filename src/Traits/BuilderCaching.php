@@ -19,9 +19,7 @@ trait BuilderCaching
 
     public function truncate()
     {
-        if ($this->isCachable()) {
-            $this->cacheModel()->flushCache();
-        }
+        $this->flushCacheAfterBuilderWrite('truncate');
 
         return parent::truncate();
     }

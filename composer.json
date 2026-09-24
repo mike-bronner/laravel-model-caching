@@ -13,7 +13,7 @@
         "mikebronner/laravel-model-caching": "self.version"
     },
     "require": {
-        "php": ">=8.2",
+        "php": ">=8.3",
         "mikebronner/laravel-pivot-events": "^13.1",
         "illuminate/cache": "^12.0|^13.0",
         "illuminate/config": "^12.0|^13.0",
@@ -30,11 +30,11 @@
         "larastan/larastan": "^2.0|^3.0",
         "laravel/boost": "^2.0",
         "laravel/pint": "^1.27",
+        "mike-bronner/clean-code": "^0.1",
+        "mike-bronner/laravel-development-settings": "^0.3.1",
         "orchestra/testbench": "^10.0|^11.0",
         "phpunit/phpunit": "^11.5|^12.5",
         "predis/predis": "^2.0|^3.0",
-        "slevomat/coding-standard": "^7.0|^8.14",
-        "squizlabs/php_codesniffer": "^3.6|^4.0",
         "symfony/thanks": "^1.2"
     },
     "autoload": {
@@ -68,13 +68,14 @@
         "test": "phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature"
     },
     "scripts-descriptions": {
-        "analyse": "Run PHPStan at level 5. Enforced in CI on every pull request. The 970 pre-existing findings are recorded in phpstan-baseline.neon, so a clean run means you introduced nothing new.",
+        "analyse": "Run PHPStan at level 5. Enforced in CI on every pull request. The pre-existing findings are recorded in phpstan-baseline.neon, so a clean run means you introduced nothing new.",
         "test": "Run the test suite the way CI runs it. Requires a reachable Redis."
     },
     "config": {
         "allow-plugins": {
             "symfony/thanks": true,
-            "dealerdirect/phpcodesniffer-composer-installer": true
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "mike-bronner/laravel-development-settings": true
         }
     }
 }

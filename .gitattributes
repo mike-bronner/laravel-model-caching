@@ -3,21 +3,43 @@
 # Kept out of the Composer dist archive. A consumer installs this package to
 # use it, never to develop it, so nothing below is worth the download.
 #
+# What a consumer needs is short: /src, /composer.json, /config, /LICENSE,
+# /README.md and /resources. Everything else in the repository is listed below.
+#
+# /resources holds the Laravel Boost guidelines this package hands to the
+# applications that install it. Boost reads them out of the installed package
+# directory, so excluding them here would ship a package that offers nothing.
+#
 # Every path here must exist. Six entries previously named files that had been
 # renamed or deleted years earlier (/.phpcs.xml, /.phpmd.xml, /.phpunit.xml,
 # /.phpunit.xml.dist, /.scrutinizer.yml, /.travis.yml), so the real config
-# files shipped while the list looked complete. `git check-attr export-ignore`
-# on the actual filenames is what settles that, not reading the list.
+# files shipped while the list looked complete. Listing a real archive is what
+# settles that, not reading the list and not `git check-attr export-ignore`.
+# The attribute query reports a file inside an excluded directory as
+# unspecified, so it cannot tell a working exclusion from a missing one.
+#
+# The agent instruction files are excluded from the archive only. Both stay
+# tracked, so every clone still receives them.
+/.devcontainer export-ignore
 /.editorconfig export-ignore
 /.gitattributes export-ignore
 /.github export-ignore
 /.gitignore export-ignore
-/.php-codesniffer export-ignore
+/.phive export-ignore
+/.vscode export-ignore
+/AGENTS.md export-ignore
+/CLAUDE.md export-ignore
 /CODE_OF_CONDUCT.md export-ignore
 /CONTRIBUTING.md export-ignore
+/ISSUE_TEMPLATE.md export-ignore
 /SECURITY.md export-ignore
-/phpcs.xml export-ignore
+/docker-compose.yml export-ignore
+/phive export-ignore
+/phpcs.xml.dist export-ignore
+/phpmd.xml export-ignore
+/phpstan-baseline.neon export-ignore
 /phpstan.neon export-ignore
 /phpunit.xml.dist export-ignore
 /pint.json export-ignore
 /tests export-ignore
+/tools export-ignore

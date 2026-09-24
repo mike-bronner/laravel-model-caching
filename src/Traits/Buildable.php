@@ -51,9 +51,7 @@ trait Buildable
 
     public function decrement($column, $amount = 1, array $extra = [])
     {
-        $this->withCacheFallback(function () {
-            $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
-        }, 'cache flush failed during decrement');
+        $this->flushCacheAfterBuilderWrite('decrement');
 
         return $this->executeOnInnerOrParent('decrement', [$column, $amount, $extra]);
     }
@@ -63,9 +61,7 @@ trait Buildable
         $result = $this->executeOnInnerOrParent('delete', []);
 
         if ($result) {
-            $this->withCacheFallback(function () {
-                $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
-            }, 'cache flush failed during delete');
+            $this->flushCacheAfterBuilderWrite('delete');
         }
 
         return $result;
@@ -108,9 +104,7 @@ trait Buildable
         $result = $this->executeOnInnerOrParent('forceDelete', []);
 
         if ($result) {
-            $this->withCacheFallback(function () {
-                $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
-            }, 'cache flush failed during forceDelete');
+            $this->flushCacheAfterBuilderWrite('forceDelete');
         }
 
         return $result;
@@ -130,9 +124,7 @@ trait Buildable
 
     public function increment($column, $amount = 1, array $extra = [])
     {
-        $this->withCacheFallback(function () {
-            $this->modelCacheRepository()->invalidateTags($this->makeCacheTags());
-        }, 'cache flush failed during increment');
+        $this->flushCacheAfterBuilderWrite('increment');
 
         return $this->executeOnInnerOrParent('increment', [$column, $amount, $extra]);
     }
@@ -146,9 +138,7 @@ trait Buildable
 
     public function insert(array $values)
     {
-        if (property_exists($this, "model")) {
-            $this->checkCooldownAndFlushAfterPersisting($this->model);
-        }
+        $this->flushCacheAfterBuilderWrite('insert');
 
         return $this->executeOnInnerOrParent('insert', [$values]);
     }
@@ -249,9 +239,7 @@ trait Buildable
 
     public function update(array $values)
     {
-        if (property_exists($this, "model")) {
-            $this->checkCooldownAndFlushAfterPersisting($this->model);
-        }
+        $this->flushCacheAfterBuilderWrite('update');
 
         return $this->executeOnInnerOrParent('update', [$values]);
     }

@@ -167,9 +167,7 @@ trait ModelCaching
             $class = get_called_class();
             $instance = new $class;
 
-            $instance->withCacheFallback(function () use ($instance) {
-                $instance->flushCache();
-            }, 'cache flush failed during destroy');
+            $instance->checkCooldownAndFlushAfterPersisting($instance);
         }
 
         return $result;
@@ -191,13 +189,6 @@ trait ModelCaching
      *   delegates unknown method calls to the inner builder so custom methods
      *   remain callable at runtime (AC3).
      * - No custom builder → plain CachedBuilder (existing behaviour).
-     *
-     * **Larastan / PHPStan (AC5):** When a custom builder is wrapped rather than
-     * returned directly, static analysis tools cannot infer the custom methods
-     * from the `CachedBuilder` return type.  Add a `@return CustomBuilder`
-     * override annotation on your model's `newQuery()` (or `query()`) call-site,
-     * or use the `@mixin` approach described in the package README to suppress
-     * false-positive "undefined method" errors at level 5+.
      */
     public function newModelCachingEloquentBuilder($query)
     {
