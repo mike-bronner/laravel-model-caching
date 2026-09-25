@@ -1,289 +1,210 @@
 # Instructions for AI coding agents
 
-This file is the entry point for any AI coding agent working in this
-repository. It is procedure: how to set up, what to run, and when to stop.
+This file is for an AI coding agent that contributes to this repository. It
+covers what the package is, the standards a change must meet, and the process
+from issue to review.
 
-`CONTRIBUTING.md` is the authority on what this project expects of a change.
-Read it. Where this file and `CONTRIBUTING.md` cover the same ground,
-`CONTRIBUTING.md` wins and this file is a restatement for convenience.
+`CONTRIBUTING.md` is the authority on what the project expects of any change.
+This file adds what an agent needs on top of it.
 
-## How this file is maintained
+## What this package is
 
-This file has two halves, and they have different owners.
+This package caches Eloquent query results and invalidates them from model
+events.
 
-Everything you are reading now is the hand written half. It is the project's
-own rules, and no tool produces it.
+It is a Laravel **package**, not a Laravel application. Other people's
+applications install it, so their code depends on how it behaves.
 
-Laravel Boost writes the other half. It wraps what it generates in a
-laravel-boost-guidelines block, appended at the end of this file the first time
-and replaced in place after that. The replacement touches that block and
-nothing else, so the hand written half survives every regeneration.
+Cache keys and cache tags are its contract with those applications. A new key
+format makes every consumer read cold for those queries after they upgrade. A
+new tag format changes which cached results an invalidation reaches.
 
-Never write that block's opening tag anywhere in the hand written half, not
-even quoted as an example. Boost replaces from the first opening tag it finds
-to the end of the file, so a tag in the prose makes it delete everything below,
-which is how the hand written half was lost once already. The block is named
-here without its angle brackets for that reason.
+### Run console commands through `vendor/bin/testbench`
 
-That tells you where to edit. Change the hand written half here. Never change
-anything inside the generated block, because the next compose discards it. The
-block is composed from the `.ai/guidelines` directory, so a change to the
-generated half belongs there.
-
-`.ai/guidelines` is not tracked here, and version control ignores it. The
-shared settings package installs it, and the Laravel Boost section below covers
-how that works.
-
-One consequence of that follows from it. The block is composed from whatever
-`.ai/guidelines` holds on the machine that ran the command, so read a generated
-block before you commit it. Guidance that belongs to another project reaches
-this file the same way the right guidance does.
-
-## Which half wins
-
-The hand written half wins. Where the two halves disagree, follow the hand
-written half and do not weigh the two against each other.
-
-The reason is what each half knows. The hand written half was written about
-this repository. The generated block is composed from a guideline set that
-lives on the machine rather than in this project, so it describes the common
-case, and the common case is a Laravel application. This repository is not
-one. Wherever the generated block assumes an application, it is wrong here,
-whatever it happens to say on the day you read it.
-
-That test is the durable one, so apply it rather than the list below. The list
-describes the block as it stands today and it will not survive the next
-compose.
-
-As this is written, the generated block carries Laravel's stock application
-guidance instead of this project's own, because a gating problem in the shared
-settings package stopped the project set from composing. While that is still
-true, expect the block to contradict the hand written half in these ways.
-
-- It opens by calling this project a Laravel application. It is a package. See
-  "What this repository is" below.
-- It tells you to run `php artisan` for several different commands. There is
-  no such binary here. Use `vendor/bin/testbench`.
-- It tells you to use `php artisan tinker`. There is no tinker binary and no
-  tinker tool on the MCP server. The Laravel Boost section below lists the
-  tools that server actually returns.
-- It covers frontend bundling and tells you to ask about `npm run build`.
-  There is no frontend here and no `package.json`.
-- It covers deploying to Laravel Cloud. A package is released, not deployed.
-
-Check that list against the block before you lean on it. If the block no
-longer says these things, the gating problem has been fixed and the list is
-stale. The rule above it is not.
-
-## What this repository is
-
-This is a Laravel **package**, not a Laravel application.
-
-That single fact invalidates most command lines copied from Laravel's own
-documentation. There is no `artisan` binary at the repository root, no
-`bootstrap/app.php`, and no application config directory. A console command
-that a Laravel application would reach through `php artisan` is reached here
-through the Orchestra Testbench console binary that Composer installs:
+There is no `artisan` file in this repository, so `php artisan` fails here.
+Orchestra Testbench ships a console that stands in for it:
 
 ```
 vendor/bin/testbench <command>
 ```
 
-Do not write `php artisan` anywhere in this repository and do not tell a
-developer to run it. It will fail.
+Laravel's documentation and the generated block at the end of this file both
+say `php artisan`. Console commands that inspect the application run through
+testbench instead, as in `vendor/bin/testbench config:show app.name`. They
+report on the application testbench boots, which is not a real one.
+
+The `make:` generators do not work here. `make:class` writes into
+`workbench/app/` under the `Workbench\App` namespace, not into `src/`.
+`make:test` fails with an error. So create each new file by hand, next to its
+siblings, and copy their structure. That keeps it in the package's namespace
+and layout.
+
+Run tests with `composer test`, or with `vendor/bin/phpunit` exactly as shown
+under "Run the checks". Both pass this repository's `phpunit.xml.dist`, so the
+suite runs as CI runs it.
+
+The generated block is written for Laravel applications. Where it disagrees
+with this file, this file wins, because this file is written for this package.
+
+Do not edit the generated block. `composer update` rewrites it, so an edit
+there is lost.
 
 ## Setup
 
-`composer.lock` is not committed, so there is no `composer install` path.
+The developer runs setup, not you:
 
 ```
 composer update
 ```
 
-That resolves and installs everything, including the dev tooling this file
-refers to.
+`composer.lock` is not committed, so there is no `composer install` path. The
+update installs the dev tooling. It then runs the Laravel Boost installer,
+which composes the Laravel Boost guidelines into the end of this file.
 
-## Laravel Boost
+Never run `composer update` yourself. Tell the developer that it needs running,
+and wait until they confirm it has finished. The installer asks the person at
+the terminal which features and agents to set up. Run by an agent, it asks
+nothing and takes its defaults. Those defaults are not the developer's
+choices.
 
-Laravel Boost is this project's documentation and live-state tool. It is a dev
-dependency of the package, so `composer update` brings it in.
+Never commit a change to the generated block. Its content depends on the Boost
+version installed and on the answers given to the installer. So a change there
+comes from your setup, not from your fix. Leave it unstaged, because it would
+be a drive-by change in your pull request.
 
-### The guidelines compose themselves
+## Laravel Boost is required
 
-`mike-bronner/laravel-development-settings` is also a dev dependency, and it
-is a Composer plugin. After every install and update it composes the Boost
-guidelines into this file, through a runner it ships for package repositories
-like this one. There is nothing to configure and nothing to run by hand.
+Answer every question about Laravel, Eloquent or the cache contracts with
+Boost's `search-docs` tool. It searches Laravel's hosted ecosystem
+documentation. Memory stops at your training date, so it can describe APIs that
+have since changed.
 
-The runner does the whole job itself. It boots an application rooted at this
-directory in process, so no configuration file has to relocate the base path.
-It creates the framework directories that boot needs, so none of them are
-tracked here. It registers Boost's commands explicitly, because Boost otherwise
-registers them only when the console is running. It writes `boost.json` from
-the agents it detects when that file is absent.
+`search-docs` searches every version of that documentation at once. It cannot
+see this repository's dependencies, so its `packages` filter has no effect
+here. Each result carries a `package@version` label. Use the results for the
+major versions that `composer.json` supports. Write code that runs on each of
+those majors, because CI tests every one. An API that exists in only one major
+breaks consumers on the others. `composer show <package>` reports the version
+installed locally.
 
-`boost.json` and everything else Boost writes are per-developer and listed in
-`.gitignore`, so your own tool configuration is never committed and never
-overwritten by anyone else's. `AGENTS.md` and `CLAUDE.md` are the exceptions
-and stay tracked.
+Register the Boost MCP server with your agent. This is the entry for Claude
+Code's `.mcp.json`. Other agents take the same command and arguments:
 
-Do not run `boost:install` yourself to get guidelines. This repository is a
-package and has no application base path of its own, so the installer resolves
-one from the testbench skeleton inside `vendor` and composes from there rather
-than from here. `composer update` is the path that reaches this repository, and
-it runs on its own.
-
-### Register the MCP server with your agent
-
-The MCP server is the one part you still set up by hand, because the plugin
-does not touch your agent's configuration. Confirm the server answers first:
-
+```json
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "php",
+            "args": ["vendor/bin/testbench", "boost:mcp"]
+        }
+    }
+}
 ```
-printf '%s\n{"jsonrpc":"2.0","method":"notifications/initialized"}\n{"jsonrpc":"2.0","id":2,"method":"tools/list"}\n' \
-  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"c","version":"1"}}}' \
-  | vendor/bin/testbench boost:mcp
-```
 
-That same command line, without the `printf` pipe, is the one to put in your
-agent's MCP server configuration. Boost's own installer writes `php artisan
-boost:mcp` instead, and that binary does not exist in a package. Use the
-testbench form above.
+Boost's own installer writes `php artisan boost:mcp` as the command. That fails
+here for the reason above, so replace it with the entry shown.
 
-A working server returns an `initialize` result naming `Laravel Boost` and then
-lists ten tools:
+**If Boost is unreachable, stop.** Tell the developer that `composer update`
+needs running and that the server needs registering as shown. Then wait for
+them to confirm both. Do not run the update yourself, for the reason under
+"Setup". Do not fall back to grepping `vendor/`, because source text is not
+documentation.
 
-`application-info`, `browser-logs`, `database-connections`, `database-query`,
-`database-schema`, `get-absolute-url`, `last-error`, `read-log-entries`,
-`record-rule`, `search-docs`.
+## Development standards
 
-There is no `tinker` tool in that list. Do not reach for one.
+### Prove each new test red, then green
 
-### Use `search-docs` for framework questions
+Revert your fix and run the new test. Confirm that it fails. Then restore the
+fix and confirm that it passes. A test written after its fix often passes
+without it, and such a test guards nothing.
 
-`search-docs` returns version-correct documentation for the packages actually
-installed here. Use it for any question about Laravel, Eloquent, the cache
-contracts, or PHPUnit behaviour.
-
-### Stop if Boost is unreachable
-
-If `search-docs` is not available to you, **stop and report it**. Do not fall
-back to grepping `vendor/`.
-
-The reason is that the two are not substitutes. Grep reads source text. Boost
-reads the live, resolved state of this installation and returns documentation
-matched to the versions in it. A silent fall back to grep produces answers that
-look sourced and are not, which is the failure Boost exists to prevent. Say the
-tool is missing and let the setup be fixed.
-
-## Operating modes
-
-Agents work here in one of two modes. The rules are the same in both. What
-differs is what you do when you reach a stop condition.
-
-**Supervised.** A developer is present and reading your output. Raise the
-question with them and wait for an answer before you continue.
-
-**Unattended.** You are part of an autonomous team with no one to ask. Record
-the blocker where the work is tracked, which is the issue or pull request you
-are working from, and stop. Do not resolve the question yourself and do not
-continue past it on an assumption.
-
-Neither mode guesses.
-
-## Stop conditions
-
-Reach one of these and you stop, in the mode's own way.
-
-- **Laravel Boost is unreachable.** Covered above.
-- **The change alters the package's public API.** Anything a consuming
-  application can call, extend, or configure. This package is installed by
-  other people's applications, so a signature change is their breakage.
-- **The change alters a cache key or a cache tag format.** Cache keys are the
-  sharp edge here. A key format change makes every consumer read cold for those
-  queries after they upgrade, which is a release-note decision rather than an
-  implementation detail.
-- **The test suite will not go green.** Do not delete a failing test, do not
-  mark it skipped, and do not weaken an assertion to get past it. Report the
-  failure instead.
-- **The change would add new entries to the PHPStan baseline.** The baseline is
-  a record of debt that already exists, not a place to put new debt. See below.
-
-## Running the checks
-
-### Tests
+### Run the checks
 
 ```
 composer test
+composer analyse
 ```
 
-The suite requires a **reachable Redis** on the default port, because Redis is
-the cache store it runs against. A Redis that is not running is the usual cause
-of a wall of failures that have nothing to do with your change.
-
-Run one test while you iterate:
+`composer test` needs a reachable Redis on the default port, because Redis is
+the cache store the suite runs against. To run one test while you iterate:
 
 ```
 vendor/bin/phpunit --configuration phpunit.xml.dist --filter <testName>
 ```
 
-Before you trust a test you wrote for a fix, revert the fix and confirm the
-test goes red. A test written after a fix very often passes without it, and
-such a test guards nothing. `CONTRIBUTING.md` and the pull request template
-both ask for this, and it is the step most often skipped.
+### Treat the PHPStan baseline as a debt ledger
 
-### Static analysis
+`composer analyse` runs PHPStan at level 5 against `phpstan-baseline.neon`.
+The baseline records findings that existed before, so a clean run means your
+change added nothing new.
 
-```
-composer analyse
-```
+- If you fix a finding in a file you touch, delete its entry. The ledger then
+  shrinks as the code improves.
+- Never add an entry for a finding your change introduced. That records new
+  debt as old debt.
+- Never regenerate the whole baseline. That absorbs your new findings with the
+  old ones.
 
-PHPStan runs at level 5. `phpstan.neon` includes `phpstan-baseline.neon`, which
-records the pre-existing findings so that the level can be enforced from here
-on. A clean run therefore means your change introduced nothing new.
+### Match the style of the surrounding code
 
-Treat the baseline as a debt ledger and not as permission. If you fix a finding
-in a file you are already touching, delete its entry. Never add an entry to
-silence a finding your own change introduced, and never regenerate the whole
-baseline to make a run go green, because that absorbs the new finding along
-with the old ones.
+Copy the style of the code around your change. Do not reformat to satisfy Pint
+or PHPCS. Neither passes on this tree, and a reformat mixed into a behavioural
+change buries that change. `CONTRIBUTING.md` lists the coding conventions and
+the state of each tool.
 
-### Code style
+### Stop conditions
 
-```
-vendor/bin/pint --test
-vendor/bin/phpcs src tests
-```
+Stop if your change would do any of these:
 
-Neither is clean on this tree and neither runs in CI. A red result from either
-is almost certainly pre-existing and almost certainly not caused by your
-change. `CONTRIBUTING.md` lists every code-quality tool this project
-configures, with the command for each and the state it is in. Read only the
-lines that name the files you touched.
+- **Change the public API.** That is anything a consuming application can
+  call, extend or configure. A signature change breaks their code.
+- **Change the format of a cache key or a cache tag.** Every consumer's cache
+  changes on upgrade, so this is a release decision.
+- **Leave the suite red.** Do not delete, skip or weaken a failing test,
+  because that hides the failure.
+- **Add an entry to the PHPStan baseline.** The baseline is for debt that
+  already exists.
 
-Match the style of the code around your change rather than reformatting to
-satisfy a tool. A reformatting pass is welcome as its own pull request and
-unwelcome mixed into a behavioural one, because it buries the actual change.
-`CONTRIBUTING.md` has the coding conventions themselves, including four-space
-indentation and the spacing rules.
+When you reach one, post the question in the linked issue and stop. These are
+the maintainer's decisions, so do not make them yourself.
 
-## Commits and pull requests
+## Process
 
-Commit subjects follow Conventional Commits with a Gitmoji, as the history
-shows:
+Follow these steps in order.
 
-```
-fix: 🐛 Build a cache key for a DateTimeImmutable binding
-test: ✅ Harden ofMany cache-key coverage
-```
+1. **Start from an issue.** Every pull request links an issue that exists
+   before it. Open one first if you need to. The issue is where the maintainer
+   agrees that the change is wanted.
+2. **Name the branch `fix/<issue>-<slug>`**, for example
+   `fix/625-cache-tag-gaps`. The number ties the branch to its issue.
+3. **Keep to one issue per pull request.** Change only what the issue
+   describes. Drive-by fixes make the review harder, so open a new issue for
+   each one instead.
+4. **Write commits in Conventional Commits with a Gitmoji**, as in
+   `fix: 🐛 Build a cache key for a DateTimeImmutable binding`. Run
+   `git log --oneline` to see the format. The type tells a reader what kind of
+   change each commit is. The Gitmoji makes the log quick to scan. Keep each
+   commit to one change, so the history reads as a list of changes.
+5. **Open the pull request from `.github/PULL_REQUEST_TEMPLATE.md`.** Fill in
+   every section. `gh pr create --body` and `--fill` skip the template, so fill
+   in a copy and pass it with `--body-file`. Open it ready for review, not as a
+   draft, and request a review from @mikebronner. A draft asks nobody to look
+   at it.
+6. **Show the red-then-green proof in the pull request.** Paste the test output
+   from the unfixed code and from the fixed code. The reviewer cannot see your
+   local run.
+7. **Answer every review comment in its own thread.** Reply with the commit
+   that fixes it, or with the reason you did not change it. Push new commits on
+   top. Never force-push over reviewed commits, because that erases what the
+   reviewer read.
 
-Run `git log --oneline` to see the convention in use before you write one.
+## Disclosure
 
-Keep a commit to one coherent change. Do not mix a reformatting pass into a
-behavioural one.
+The pull request states that an AI agent wrote it. A named human attests that
+they read the diff and ran the suite. The template has a section for both.
 
-`.github/PULL_REQUEST_TEMPLATE.md` sets out what a pull request body must
-contain. Fill it in rather than replacing it, and say plainly if your change
-touches a cache key.
+The reviewer needs to know how the change was made. A person also has to stand
+behind it, because an agent cannot answer for its work after the session ends.
 
 ===
 

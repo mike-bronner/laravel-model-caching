@@ -8,13 +8,17 @@ However, not every pull request will automatically be accepted. I will review ea
 
 ## Using an AI coding agent
 If you work with an AI coding agent, point it at [`AGENTS.md`](AGENTS.md) in
-the repository root. It carries the setup procedure, the commands that actually
-work in a package repository rather than an application, how to reach Laravel
-Boost here, and the conditions under which an agent must stop and ask rather
-than guess. `CLAUDE.md` is a pointer to the same file.
+the repository root. It says what this package is. It sets the standards an
+agent's change must meet. It also sets the issue, pull request and review
+process to follow. It names the conditions under which an agent stops and asks
+in the issue. `CLAUDE.md` is a pointer to the same file.
+
+A pull request written with an agent says so, and a named person attests that
+they read the diff and ran the suite. The pull request template has a section
+for both.
 
 This document stays the authority on what the project expects of a change.
-`AGENTS.md` is procedure written for agents and does not replace it.
+`AGENTS.md` applies it to agents and does not replace it.
 
 ## Testing
 - [ ] After making your changes, make sure the tests still pass: `composer test`. A reachable Redis is required, because it is the cache store the suite runs against.
@@ -61,6 +65,7 @@ When submitting a pull request, it is important to make sure to complete the fol
 - [ ] Add a descriptive header that explains in a single sentence what problem the PR solves.
 - [ ] Add a detailed description explaining the change and why it's needed.
 - [ ] Explain why you think it should be implemented one way vs. another, highlight performance improvements, etc.
+- [ ] Complete the AI disclosure section of the pull request template.
 
 ## Coding conventions
 Start reading our code and you'll get the hang of it. We optimize for readability:
