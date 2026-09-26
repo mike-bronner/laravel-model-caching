@@ -1,4 +1,8 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Traits;
+<?php
+
+declare(strict_types=1);
+
+namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use GeneaLabs\LaravelPivotEvents\Traits\FiresPivotEventsTrait;
 
@@ -15,20 +19,18 @@ trait CachedPivotOperations
 
     protected function flushCacheForPivotOperation(): void
     {
-        foreach ([$this->parent, $this->getRelated()] as $model) {
-            if (! method_exists($model, 'flushCache')) {
-                continue;
-            }
-
-            $this->withCacheFallback(function () use ($model) {
-                if ($this->cacheCooldownAllowsFlush($model)) {
-                    $model->flushCache();
-                }
-            }, 'cache flush after pivot write failed');
-        }
+        collect([$this->parent, $this->getRelated()])
+            ->filter(fn ($model) => method_exists($model, 'flushCache'))
+            ->each(function ($model): void {
+                $this->withCacheFallback(function () use ($model) {
+                    if ($this->cacheCooldownAllowsFlush($model)) {
+                        $model->flushCache();
+                    }
+                }, 'cache flush after pivot write failed');
+            });
     }
 
-    public function sync($ids, $detaching = true)
+    public function sync($ids, $detaching = true): array|false
     {
         $wasCachable = $this->isCachable;
         $this->isCachable = false;
@@ -46,13 +48,13 @@ trait CachedPivotOperations
         return $result;
     }
 
-    public function attach($ids, array $attributes = [], $touch = true)
+    public function attach($ids, array $attributes = [], $touch = true): void
     {
         $wasCachable = $this->isCachable;
         $this->isCachable = false;
 
         try {
-            $result = $this->traitAttach($ids, $attributes, $touch);
+            $this->traitAttach($ids, $attributes, $touch);
         } finally {
             $this->isCachable = $wasCachable;
         }
@@ -60,11 +62,9 @@ trait CachedPivotOperations
         if (! $this->isSyncing) {
             $this->flushCacheForPivotOperation();
         }
-
-        return $result;
     }
 
-    public function detach($ids = null, $touch = true)
+    public function detach($ids = null, $touch = true): int
     {
         $wasCachable = $this->isCachable;
         $this->isCachable = false;
@@ -82,7 +82,7 @@ trait CachedPivotOperations
         return $result;
     }
 
-    public function updateExistingPivot($id, array $attributes, $touch = true)
+    public function updateExistingPivot($id, array $attributes, $touch = true): int
     {
         $wasCachable = $this->isCachable;
         $this->isCachable = false;

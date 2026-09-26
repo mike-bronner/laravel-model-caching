@@ -209,4 +209,54 @@ class QueryPartCacheKeyTest extends IntegrationTestCase
             );
         }
     }
+
+    // The tests above name one column, one join or one union each, so the "_"
+    // that joins several of them is never written. These pin that separator,
+    // because a key that spells it differently is a different key, and every
+    // consumer's cache for such a query would go cold on upgrade.
+    public function testSeveralGroupByColumnsAreJoinedByUnderscores(): void
+    {
+        $key = $this->cacheKey((new Book)->groupBy("author_id", "publisher_id"));
+
+        $this->assertStringEndsWith("-groupBy_author_id_publisher_id", $key);
+    }
+
+    public function testSeveralGroupByBindingsAreJoinedByUnderscores(): void
+    {
+        $key = $this->cacheKey((new Book)->groupByRaw("author_id + ? + ?", [1, 2]));
+
+        $this->assertStringEndsWith("-groupByBindings_1_2", $key);
+    }
+
+    public function testSeveralDistinctColumnsAreJoinedByUnderscores(): void
+    {
+        $key = $this->cacheKey((new Book)->distinct("author_id", "publisher_id"));
+
+        $this->assertStringEndsWith("-distinct_author_id_publisher_id", $key);
+    }
+
+    public function testSeveralJoinsAreJoinedByUnderscores(): void
+    {
+        $key = $this->cacheKey((new Book)
+            ->join("authors", "authors.id", "=", "books.author_id")
+            ->leftJoin("publishers", "publishers.id", "=", "books.publisher_id"));
+
+        $this->assertMatchesRegularExpression(
+            "/-join_inner_authors_[0-9a-f]{12}_left_publishers_[0-9a-f]{12}(-|$)/",
+            $key,
+        );
+    }
+
+    public function testSeveralUnionsAreJoinedByUnderscores(): void
+    {
+        $key = $this->cacheKey((new Book)
+            ->where("id", 1)
+            ->union(DB::table("books")->where("id", 2))
+            ->unionAll(DB::table("books")->where("id", 3)));
+
+        $this->assertMatchesRegularExpression(
+            "/-union_[0-9a-f]{40}_all_[0-9a-f]{40}(-|$)/",
+            $key,
+        );
+    }
 }

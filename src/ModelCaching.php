@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching;
 
 use Illuminate\Database\Eloquent\Builder;
@@ -28,7 +30,7 @@ class ModelCaching
         self::$builder = $builder;
     }
 
-    public static function builder()
+    public static function builder() : string
     {
         return self::$builder;
     }

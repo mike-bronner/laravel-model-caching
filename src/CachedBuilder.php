@@ -35,7 +35,7 @@ class CachedBuilder extends Builder
         return $this->innerBuilder;
     }
 
-    public function upsert(array $values, $uniqueBy, $update = null)
+    public function upsert(array $values, $uniqueBy, $update = null): int
     {
         $result = $this->executeOnInnerOrParent('upsert', [$values, $uniqueBy, $update]);
         $this->flushCacheAfterBuilderWrite('upsert');
@@ -43,7 +43,7 @@ class CachedBuilder extends Builder
         return $result;
     }
 
-    public function touch($column = null)
+    public function touch($column = null): int|false
     {
         $result = $this->executeOnInnerOrParent('touch', [$column]);
         $this->flushCacheAfterBuilderWrite('touch');
@@ -51,7 +51,7 @@ class CachedBuilder extends Builder
         return $result;
     }
 
-    public function incrementEach(array $columns, array $extra = [])
+    public function incrementEach(array $columns, array $extra = []): int
     {
         $result = $this->executeOnInnerOrParent('incrementEach', [$columns, $extra]);
         $this->flushCacheAfterBuilderWrite('incrementEach');
@@ -59,7 +59,7 @@ class CachedBuilder extends Builder
         return $result;
     }
 
-    public function decrementEach(array $columns, array $extra = [])
+    public function decrementEach(array $columns, array $extra = []): int
     {
         $result = $this->executeOnInnerOrParent('decrementEach', [$columns, $extra]);
         $this->flushCacheAfterBuilderWrite('decrementEach');
@@ -67,7 +67,7 @@ class CachedBuilder extends Builder
         return $result;
     }
 
-    public function setModel(Model $model)
+    public function setModel(Model $model): static
     {
         $this->innerBuilder?->setModel($model);
 
@@ -102,13 +102,14 @@ class CachedBuilder extends Builder
         // If Laravel renames or removes them, this will break. There are no public
         // accessors for `scopes` or `afterQueryCallbacks` as of Laravel 12.
         // `getRemovedScopes()` exists but returns values only (no setter).
-        foreach (['scopes', 'removedScopes', 'afterQueryCallbacks'] as $prop) {
-            $p = self::$builderReflection->getProperty($prop);
-            $p->setValue($this->innerBuilder, $p->getValue($this));
-        }
+        collect(['scopes', 'removedScopes', 'afterQueryCallbacks'])
+            ->each(function (string $prop): void {
+                $p = self::$builderReflection->getProperty($prop);
+                $p->setValue($this->innerBuilder, $p->getValue($this));
+            });
     }
 
-    public function __clone()
+    public function __clone(): void
     {
         if ($this->innerBuilder) {
             $this->innerBuilder = clone $this->innerBuilder;
@@ -141,7 +142,7 @@ class CachedBuilder extends Builder
      * it would without this override. Tag building never becomes the thing that
      * throws, and it never swallows a failure Laravel would have surfaced.
      */
-    protected function getRelationWithoutConstraints($relation)
+    protected function getRelationWithoutConstraints($relation): mixed
     {
         $resolved = parent::getRelationWithoutConstraints($relation);
 
@@ -165,7 +166,7 @@ class CachedBuilder extends Builder
      * A Relation passed in already resolved is recorded here too, since it
      * never reaches the choke point, and recording it costs no call at all.
      */
-    public function has($relation, $operator = ">=", $count = 1, $boolean = "and", ?Closure $callback = null)
+    public function has($relation, $operator = ">=", $count = 1, $boolean = "and", ?Closure $callback = null): static
     {
         if (! is_string($relation) || str_contains($relation, ".")) {
             $this->recordRelatedSubqueryTables($relation);

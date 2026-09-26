@@ -64,9 +64,6 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "scripts": {
-        "post-update-cmd": [
-            "vendor/bin/testbench boost:install"
-        ],
         "analyse": "phpstan analyse --memory-limit=2G",
         "test": "phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature"
     },

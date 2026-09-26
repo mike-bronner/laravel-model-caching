@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use Illuminate\Database\Eloquent\Collection;
@@ -17,21 +19,23 @@ trait BuilderCaching
         return $model->get($columns);
     }
 
-    public function truncate()
+    public function truncate() : static
     {
         $this->flushCacheAfterBuilderWrite('truncate');
 
-        return parent::truncate();
+        parent::truncate();
+
+        return $this;
     }
 
-    public function withoutGlobalScope($scope)
+    public function withoutGlobalScope($scope) : static
     {
         array_push($this->withoutGlobalScopes, $scope);
 
         return parent::withoutGlobalScope($scope);
     }
 
-    public function withoutGlobalScopes(?array $scopes = null)
+    public function withoutGlobalScopes(?array $scopes = null) : static
     {
         if ($scopes !== null) {
             $this->withoutGlobalScopes = $scopes;

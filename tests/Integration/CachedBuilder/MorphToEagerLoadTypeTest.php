@@ -9,6 +9,8 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Comment;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use ReflectionMethod;
 
 /**
  * Tests for issue #539: Eager-loaded morphTo resolves wrong type from cache.
@@ -189,5 +191,31 @@ class MorphToEagerLoadTypeTest extends IntegrationTestCase
             $fresh->commentable->title,
             'Comment cache should be invalidated when an eager-loaded Book is updated.'
         );
+    }
+
+    // With a morph map registered, an eager-loaded morphTo is tagged with every
+    // mapped class that exists, in map order, and a mapped name that is not a
+    // class is skipped. The map is global, so it is cleared again afterwards.
+    public function testMorphMapTagsEveryMappedClassThatExists(): void
+    {
+        Relation::morphMap([
+            "post" => Post::class,
+            "missing" => "GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\DoesNotExist",
+            "book" => Book::class,
+        ], false);
+
+        try {
+            $builder = (new Comment)->with("commentable");
+            $tags = (new ReflectionMethod($builder, "makeCacheTags"))->invoke($builder);
+        } finally {
+            Relation::morphMap([], false);
+        }
+
+        $this->assertSame([
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturescomment",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturespost",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments",
+        ], $tags);
     }
 }

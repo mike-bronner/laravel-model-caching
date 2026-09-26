@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\Paginator;
@@ -16,7 +18,7 @@ trait Buildable
 {
     use CachedValueRetrievable;
 
-    public function avg($column)
+    public function avg($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::avg($column);
@@ -27,7 +29,7 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function count($columns = "*")
+    public function count($columns = "*"): int
     {
         if (! $this->isCachable()) {
             return parent::count($columns);
@@ -38,7 +40,7 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function exists()
+    public function exists(): bool
     {
         if (! $this->isCachable()) {
             return parent::exists();
@@ -49,14 +51,14 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function decrement($column, $amount = 1, array $extra = [])
+    public function decrement($column, $amount = 1, array $extra = []): int
     {
         $this->flushCacheAfterBuilderWrite('decrement');
 
         return $this->executeOnInnerOrParent('decrement', [$column, $amount, $extra]);
     }
 
-    public function delete()
+    public function delete(): mixed
     {
         $result = $this->executeOnInnerOrParent('delete', []);
 
@@ -70,7 +72,7 @@ trait Buildable
     /**
      * @SuppressWarnings(PHPMD.ShortVariable)
      */
-    public function find($id, $columns = ["*"])
+    public function find($id, $columns = ["*"]): Model|EloquentCollection|null
     {
         if (! $this->isCachable()) {
             return parent::find($id, $columns);
@@ -87,7 +89,7 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function first($columns = ["*"])
+    public function first($columns = ["*"]): ?Model
     {
         if (! $this->isCachable()) {
             return parent::first($columns);
@@ -99,7 +101,7 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function forceDelete()
+    public function forceDelete(): mixed
     {
         $result = $this->executeOnInnerOrParent('forceDelete', []);
 
@@ -110,7 +112,7 @@ trait Buildable
         return $result;
     }
 
-    public function get($columns = ["*"])
+    public function get($columns = ["*"]): EloquentCollection
     {
         if (! $this->isCachable()) {
             return parent::get($columns);
@@ -122,28 +124,30 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function increment($column, $amount = 1, array $extra = [])
+    public function increment($column, $amount = 1, array $extra = []): int
     {
         $this->flushCacheAfterBuilderWrite('increment');
 
         return $this->executeOnInnerOrParent('increment', [$column, $amount, $extra]);
     }
 
-    public function inRandomOrder($seed = '')
+    public function inRandomOrder($seed = ''): static
     {
         $this->isCachable = false;
 
-        return parent::inRandomOrder($seed);
+        parent::inRandomOrder($seed);
+
+        return $this;
     }
 
-    public function insert(array $values)
+    public function insert(array $values): bool
     {
         $this->flushCacheAfterBuilderWrite('insert');
 
         return $this->executeOnInnerOrParent('insert', [$values]);
     }
 
-    public function max($column)
+    public function max($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::max($column);
@@ -154,7 +158,7 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function min($column)
+    public function min($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::min($column);
@@ -171,7 +175,7 @@ trait Buildable
         $pageName = "page",
         $page = null,
         $total = null,
-    ) {
+    ): LengthAwarePaginator {
         if (! $this->isCachable()) {
             return parent::paginate($perPage, $columns, $pageName, $page, $total);
         }
@@ -205,16 +209,11 @@ trait Buildable
 
     protected function recursiveImplodeWithKey(array $items, string $glue = "_"): string
     {
-        $result = "";
-
-        foreach ($items as $key => $value) {
-            $result .= $glue . $key . $glue . $value;
-        }
-
-        return $result;
+        return collect($items)
+            ->reduce(fn (string $result, $value, $key) => $result . $glue . $key . $glue . $value, "");
     }
 
-    public function pluck($column, $key = null)
+    public function pluck($column, $key = null): Collection
     {
         if (! $this->isCachable()) {
             return parent::pluck($column, $key);
@@ -226,7 +225,7 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function sum($column)
+    public function sum($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::sum($column);
@@ -237,14 +236,14 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function update(array $values)
+    public function update(array $values): int
     {
         $this->flushCacheAfterBuilderWrite('update');
 
         return $this->executeOnInnerOrParent('update', [$values]);
     }
 
-    public function value($column)
+    public function value($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::value($column);
@@ -255,7 +254,7 @@ trait Buildable
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function cachedValue(array $arguments, string $cacheKey)
+    public function cachedValue(array $arguments, string $cacheKey): mixed
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
         $cacheTags = $this->makeCacheTags();
@@ -290,7 +289,7 @@ trait Buildable
         string $cacheKey,
         array $cacheTags,
         string $method,
-    ) {
+    ): mixed {
         if ($result["key"] === $cacheKey) {
             return $result["value"];
         }
@@ -312,7 +311,7 @@ trait Buildable
         string $cacheKey,
         array $cacheTags,
         string $method,
-    ) {
+    ): array {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
         }
@@ -360,12 +359,13 @@ trait Buildable
             $models = $value->filter(fn ($item) => $item instanceof Model);
         }
 
-        foreach ($models as $model) {
-            $dispatcher->dispatch("eloquent.retrieved: " . get_class($model), $model);
-        }
+        collect($models)
+            ->each(function (Model $model) use ($dispatcher): void {
+                $dispatcher->dispatch("eloquent.retrieved: " . get_class($model), $model);
+            });
     }
 
-    protected function executeOnInnerOrParent(string $method, array $arguments)
+    protected function executeOnInnerOrParent(string $method, array $arguments): mixed
     {
         if (property_exists($this, 'innerBuilder') && $this->innerBuilder) {
             $this->syncStateToInner();

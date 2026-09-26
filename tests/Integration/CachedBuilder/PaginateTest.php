@@ -250,4 +250,16 @@ class PaginateTest extends IntegrationTestCase
             $cached["value"]->pluck("id")
         );
     }
+
+    // A page passed as an array, such as page[size]=1&page[number]=2, reaches
+    // the key through recursiveImplodeWithKey(). Each key and value is written
+    // after its own "_", and the key format depends on that exact spelling.
+    public function testArrayPageIsWrittenIntoTheKeyAsKeyValuePairs(): void
+    {
+        $builder = (new Author)->newQuery();
+        $segment = (new ReflectionMethod($builder, "recursiveImplodeWithKey"))
+            ->invoke($builder, ["size" => 1, "number" => 2]);
+
+        $this->assertSame("_size_1_number_2", $segment);
+    }
 }

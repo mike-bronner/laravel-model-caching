@@ -312,4 +312,25 @@ class DynamoDbModelCachingTest extends IntegrationTestCase
 
         return $reflectionMethod->invokeArgs($target, $arguments);
     }
+
+    // On DynamoDB a query key carries the global version and then one version
+    // per tag. The tags are filtered, deduplicated and sorted first, so the
+    // order a caller lists them in never changes the key. The versions are
+    // seeded so that the whole key can be spelled out.
+    public function testVersionedKeyJoinsTheGlobalAndSortedTagVersions(): void
+    {
+        $repository = ModelCacheRepository::make();
+        $store = app('cache')->store('dynamodb-model');
+        $store->forever($this->invokeProtectedMethod($repository, 'globalVersionKey'), 'global');
+        $store->forever($this->invokeProtectedMethod($repository, 'tagVersionKey', ['tag-a']), 'version-a');
+        $store->forever($this->invokeProtectedMethod($repository, 'tagVersionKey', ['tag-b']), 'version-b');
+
+        $key = $this->invokeProtectedMethod(
+            $repository,
+            'itemKey',
+            ['query', ['tag-b', '', 'tag-a', 'tag-b'], false],
+        );
+
+        $this->assertSame('query:versions:global:version-a:version-b', $key);
+    }
 }

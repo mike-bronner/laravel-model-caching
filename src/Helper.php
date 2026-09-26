@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching;
 
 use Illuminate\Container\Container;
@@ -7,7 +9,7 @@ use InvalidArgumentException;
 
 class Helper
 {
-    public function runDisabled(callable $closure)
+    public function runDisabled(callable $closure): mixed
     {
         $originalSetting = Container::getInstance()
             ->make("config")
@@ -41,9 +43,10 @@ class Helper
     {
         $modelClasses = is_array($modelClasses) ? $modelClasses : [$modelClasses];
 
-        foreach ($modelClasses as $modelClass) {
-            $this->invalidateModel($modelClass);
-        }
+        collect($modelClasses)
+            ->each(function ($modelClass): void {
+                $this->invalidateModel($modelClass);
+            });
     }
 
     protected function invalidateModel(string $modelClass): void
