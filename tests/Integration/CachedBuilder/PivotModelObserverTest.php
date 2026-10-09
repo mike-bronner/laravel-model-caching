@@ -2,13 +2,10 @@
 
 declare(strict_types=1);
 
-namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
-
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Observers\RoleUserObserver;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Role;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\RoleUser;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,106 +18,81 @@ use Illuminate\Support\Facades\DB;
  *   [AC2] sync(), attach(), and detach() operations on relationships with
  *         custom pivots trigger pivot model events.
  */
-class PivotModelObserverTest extends IntegrationTestCase
-{
-    public function setUp(): void
-    {
-        parent::setUp();
 
-        RoleUser::observe(RoleUserObserver::class);
-        RoleUserObserver::reset();
-    }
+beforeEach(function () {
+    RoleUser::observe(RoleUserObserver::class);
+    RoleUserObserver::reset();
+});
 
-    public function tearDown(): void
-    {
-        RoleUserObserver::reset();
+afterEach(function () {
+    RoleUserObserver::reset();
+});
 
-        parent::tearDown();
-    }
+// -------------------------------------------------------------------------
+// AC1 + AC2: Observer fires on sync() with caching enabled
+// -------------------------------------------------------------------------
+test('pivot observer fires on sync with caching enabled', function () {
+    $userId = (int) DB::table('role_user')->value('user_id');
+    $user = (new User)->find($userId);
 
-    private function userIdWithRoles(): int
-    {
-        return (int) DB::table('role_user')->value('user_id');
-    }
+    // Warm the cache by accessing the relationship.
+    $user->rolesWithCustomPivot;
 
-    // -------------------------------------------------------------------------
-    // AC1 + AC2: Observer fires on sync() with caching enabled
-    // -------------------------------------------------------------------------
+    // Sync to new roles — should fire creating/created on the pivot observer.
+    $newRoles = Role::factory()->count(2)->create();
+    RoleUserObserver::reset();
+    $user->rolesWithCustomPivot()->sync($newRoles->pluck('id')->toArray());
 
-    public function testPivotObserverFiresOnSyncWithCachingEnabled(): void
-    {
-        $userId = $this->userIdWithRoles();
-        $user = (new User)->find($userId);
+    expect(RoleUserObserver::$events['creating'] ?? 0)->toBeGreaterThan(
+        0,
+        'Pivot observer "creating" event should fire during sync() with caching enabled.',
+    );
+    expect(RoleUserObserver::$events['created'] ?? 0)->toBeGreaterThan(
+        0,
+        'Pivot observer "created" event should fire during sync() with caching enabled.',
+    );
+});
 
-        // Warm the cache by accessing the relationship.
-        $user->rolesWithCustomPivot;
+// -------------------------------------------------------------------------
+// AC2: Observer fires on attach() with caching enabled
+// -------------------------------------------------------------------------
+test('pivot observer fires on attach with caching enabled', function () {
+    $userId = (int) DB::table('role_user')->value('user_id');
+    $user = (new User)->find($userId);
 
-        // Sync to new roles — should fire creating/created on the pivot observer.
-        $newRoles = Role::factory()->count(2)->create();
-        RoleUserObserver::reset();
-        $user->rolesWithCustomPivot()->sync($newRoles->pluck('id')->toArray());
+    $newRole = Role::factory()->create();
+    RoleUserObserver::reset();
+    $user->rolesWithCustomPivot()->attach($newRole->id);
 
-        $this->assertGreaterThan(
-            0,
-            RoleUserObserver::$events['creating'] ?? 0,
-            'Pivot observer "creating" event should fire during sync() with caching enabled.'
-        );
-        $this->assertGreaterThan(
-            0,
-            RoleUserObserver::$events['created'] ?? 0,
-            'Pivot observer "created" event should fire during sync() with caching enabled.'
-        );
-    }
+    expect(RoleUserObserver::$events['creating'] ?? 0)->toBeGreaterThan(
+        0,
+        'Pivot observer "creating" event should fire during attach() with caching enabled.',
+    );
+    expect(RoleUserObserver::$events['created'] ?? 0)->toBeGreaterThan(
+        0,
+        'Pivot observer "created" event should fire during attach() with caching enabled.',
+    );
+});
 
-    // -------------------------------------------------------------------------
-    // AC2: Observer fires on attach() with caching enabled
-    // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// AC2: Observer fires on detach() with caching enabled
+// -------------------------------------------------------------------------
+test('pivot observer fires on detach with caching enabled', function () {
+    $userId = (int) DB::table('role_user')->value('user_id');
+    $user = (new User)->find($userId);
+    $roles = $user->rolesWithCustomPivot;
+    expect($roles)->not->toBeEmpty();
 
-    public function testPivotObserverFiresOnAttachWithCachingEnabled(): void
-    {
-        $userId = $this->userIdWithRoles();
-        $user = (new User)->find($userId);
+    $firstRoleId = $roles->first()->id;
+    RoleUserObserver::reset();
+    $user->rolesWithCustomPivot()->detach($firstRoleId);
 
-        $newRole = Role::factory()->create();
-        RoleUserObserver::reset();
-        $user->rolesWithCustomPivot()->attach($newRole->id);
-
-        $this->assertGreaterThan(
-            0,
-            RoleUserObserver::$events['creating'] ?? 0,
-            'Pivot observer "creating" event should fire during attach() with caching enabled.'
-        );
-        $this->assertGreaterThan(
-            0,
-            RoleUserObserver::$events['created'] ?? 0,
-            'Pivot observer "created" event should fire during attach() with caching enabled.'
-        );
-    }
-
-    // -------------------------------------------------------------------------
-    // AC2: Observer fires on detach() with caching enabled
-    // -------------------------------------------------------------------------
-
-    public function testPivotObserverFiresOnDetachWithCachingEnabled(): void
-    {
-        $userId = $this->userIdWithRoles();
-        $user = (new User)->find($userId);
-        $roles = $user->rolesWithCustomPivot;
-        $this->assertNotEmpty($roles);
-
-        $firstRoleId = $roles->first()->id;
-        RoleUserObserver::reset();
-        $user->rolesWithCustomPivot()->detach($firstRoleId);
-
-        $this->assertGreaterThan(
-            0,
-            RoleUserObserver::$events['deleting'] ?? 0,
-            'Pivot observer "deleting" event should fire during detach() with caching enabled.'
-        );
-        $this->assertGreaterThan(
-            0,
-            RoleUserObserver::$events['deleted'] ?? 0,
-            'Pivot observer "deleted" event should fire during detach() with caching enabled.'
-        );
-    }
-}
+    expect(RoleUserObserver::$events['deleting'] ?? 0)->toBeGreaterThan(
+        0,
+        'Pivot observer "deleting" event should fire during detach() with caching enabled.',
+    );
+    expect(RoleUserObserver::$events['deleted'] ?? 0)->toBeGreaterThan(
+        0,
+        'Pivot observer "deleted" event should fire during detach() with caching enabled.',
+    );
+});

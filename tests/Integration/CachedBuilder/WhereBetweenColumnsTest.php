@@ -1,94 +1,70 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
-use ReflectionMethod;
 
 // whereBetweenColumns() carries no "operator", so the cache key builder used to
 // read a key that is not there and raise "Undefined array key". Under Laravel's
 // default error handler that converts to an ErrorException, so the query threw
 // instead of returning rows.
-class WhereBetweenColumnsTest extends IntegrationTestCase
-{
-    private function cacheKey($query) : string
-    {
-        return (new ReflectionMethod($query, "makeCacheKey"))
-            ->invoke($query);
-    }
 
-    private function keyPrefix() : string
-    {
-        return "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite"
-            . ":books:genealabslaravelmodelcachingtestsfixturesbook";
-    }
+test('where between columns produces a cache key without raising a warning', function () {
+    $query = (new Book)->whereBetweenColumns("published_at", ["created_at", "updated_at"]);
 
-    public function testWhereBetweenColumnsProducesACacheKeyWithoutRaisingAWarning()
-    {
-        $query = (new Book)->whereBetweenColumns("published_at", ["created_at", "updated_at"]);
+    expect(cacheKey($query))->toEqual(
+        keyPrefix() . "-published_at_betweencolumns_created_at_updated_at",
+    );
+});
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-published_at_betweencolumns_created_at_updated_at",
-            $this->cacheKey($query)
-        );
-    }
+test('where not between columns produces a different cache key', function () {
+    $between = (new Book)->whereBetweenColumns("published_at", ["created_at", "updated_at"]);
+    $notBetween = (new Book)->whereNotBetweenColumns("published_at", ["created_at", "updated_at"]);
 
-    public function testWhereNotBetweenColumnsProducesADifferentCacheKey()
-    {
-        $between = (new Book)->whereBetweenColumns("published_at", ["created_at", "updated_at"]);
-        $notBetween = (new Book)->whereNotBetweenColumns("published_at", ["created_at", "updated_at"]);
+    expect(cacheKey($between))->toEqual(
+        keyPrefix() . "-published_at_betweencolumns_created_at_updated_at",
+    );
+    expect(cacheKey($notBetween))->toEqual(
+        keyPrefix() . "-published_at_not_betweencolumns_created_at_updated_at",
+    );
+});
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-published_at_betweencolumns_created_at_updated_at",
-            $this->cacheKey($between)
-        );
-        $this->assertEquals(
-            $this->keyPrefix() . "-published_at_not_betweencolumns_created_at_updated_at",
-            $this->cacheKey($notBetween)
-        );
-    }
+test('where between columns returns rows rather than throwing', function () {
+    $results = (new Book)
+        ->whereBetweenColumns("published_at", ["created_at", "updated_at"])
+        ->get();
+    $liveResults = (new UncachedBook)
+        ->whereBetweenColumns("published_at", ["created_at", "updated_at"])
+        ->get();
 
-    public function testWhereBetweenColumnsReturnsRowsRatherThanThrowing()
-    {
-        $results = (new Book)
-            ->whereBetweenColumns("published_at", ["created_at", "updated_at"])
-            ->get();
-        $liveResults = (new UncachedBook)
-            ->whereBetweenColumns("published_at", ["created_at", "updated_at"])
-            ->get();
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+});
 
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-    }
+test('where not between columns returns its own results after where between columns was cached', function () {
+    $betweenQuery = (new Book)
+        ->whereBetweenColumns("published_at", ["created_at", "updated_at"]);
+    $betweenKey = sha1(cacheKey($betweenQuery));
+    $betweenResults = $betweenQuery->get();
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+    ];
 
-    public function testWhereNotBetweenColumnsReturnsItsOwnResultsAfterWhereBetweenColumnsWasCached()
-    {
-        $betweenQuery = (new Book)
-            ->whereBetweenColumns("published_at", ["created_at", "updated_at"]);
-        $betweenKey = sha1($this->cacheKey($betweenQuery));
-        $betweenResults = $betweenQuery->get();
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
-        ];
+    $cached = $this->cache()
+        ->tags($tags)
+        ->get($betweenKey);
 
-        $cached = $this->cache()
-            ->tags($tags)
-            ->get($betweenKey);
+    expect($cached)->not->toBeNull(
+        "The first query must populate the cache, or the second query has nothing to collide with",
+    );
+    expect($cached["value"]->pluck("id"))->toEqual($betweenResults->pluck("id"));
 
-        $this->assertNotNull(
-            $cached,
-            "The first query must populate the cache, or the second query has nothing to collide with"
-        );
-        $this->assertEquals($betweenResults->pluck("id"), $cached["value"]->pluck("id"));
+    $results = (new Book)
+        ->whereNotBetweenColumns("published_at", ["created_at", "updated_at"])
+        ->get();
+    $liveResults = (new UncachedBook)
+        ->whereNotBetweenColumns("published_at", ["created_at", "updated_at"])
+        ->get();
 
-        $results = (new Book)
-            ->whereNotBetweenColumns("published_at", ["created_at", "updated_at"])
-            ->get();
-        $liveResults = (new UncachedBook)
-            ->whereNotBetweenColumns("published_at", ["created_at", "updated_at"])
-            ->get();
-
-        $this->assertNotEmpty($results);
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-    }
-}
+    expect($results)->not->toBeEmpty();
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+});

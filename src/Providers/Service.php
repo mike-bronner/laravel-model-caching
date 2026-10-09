@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching\Providers;
 
 use GeneaLabs\LaravelModelCaching\Console\Commands\Clear;
@@ -12,7 +14,7 @@ class Service extends ServiceProvider
 {
     protected $defer = false;
 
-    public function boot()
+    public function boot(): void
     {
         $configPath = __DIR__ . '/../../config/laravel-model-caching.php';
         $this->mergeConfigFrom($configPath, 'laravel-model-caching');
@@ -25,7 +27,7 @@ class Service extends ServiceProvider
         ], "config");
     }
 
-    public function register()
+    public function register(): void
     {
         $this->app->bind("model-cache", Helper::class);
     }

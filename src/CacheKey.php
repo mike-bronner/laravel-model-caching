@@ -228,12 +228,12 @@ class CacheKey
             : "-" . str_replace(" ", "_", $boolean);
     }
 
-    protected function getCurrentBinding(string $type, $bindingFallback = null)
+    protected function getCurrentBinding(string $type, $bindingFallback = null) : mixed
     {
         return data_get($this->query->bindings, "{$type}.{$this->currentBinding}", $bindingFallback);
     }
 
-    protected function getHavingClauses()
+    protected function getHavingClauses() : string
     {
         $clauses = Collection::make($this->query->havings)->reduce(function ($carry, $having) {
             $value = $carry;
@@ -250,13 +250,11 @@ class CacheKey
 
     protected function getHavingClause(array $having): string
     {
-        $return = '-having';
-
-        foreach ($having as $key => $value) {
-            $return .= '_' . $key . '_' . $this->stringifyHavingValue($value);
-        }
-
-        return $return;
+        return collect($having)
+            ->reduce(
+                fn (string $carry, $value, $key) => $carry . '_' . $key . '_' . $this->stringifyHavingValue($value),
+                '-having',
+            );
     }
 
     // A having clause carries whatever shape its type needs: a scalar for
@@ -271,7 +269,9 @@ class CacheKey
     private function stringifyHavingValue(mixed $value) : string
     {
         if (is_array($value)) {
-            return implode("_", array_map($this->stringifyHavingValue(...), $value));
+            return collect($value)
+                ->map($this->stringifyHavingValue(...))
+                ->implode("_");
         }
 
         if ($value instanceof QueryBuilder) {
@@ -301,10 +301,9 @@ class CacheKey
             return "";
         }
 
-        return "-{$channel}Bindings_" . implode(
-            "_",
-            array_map($this->stringifyBinding(...), $bindings),
-        );
+        return "-{$channel}Bindings_" . collect($bindings)
+            ->map($this->stringifyBinding(...))
+            ->implode("_");
     }
 
     protected function getIdColumn(string $idColumn) : string
@@ -395,10 +394,9 @@ class CacheKey
             return "-distinct";
         }
 
-        return "-distinct_" . implode("_", array_map(
-            $this->expressionToString(...),
-            $this->query->distinct,
-        ));
+        return "-distinct_" . collect($this->query->distinct)
+            ->map($this->expressionToString(...))
+            ->implode("_");
     }
 
     protected function getGroupByClauses() : string
@@ -413,12 +411,11 @@ class CacheKey
         // getQueryColumns(). Escaping is for bound values, which an
         // application controls outright; an identifier comes from the
         // developer's own code.
-        $groups = array_map(
-            $this->expressionToString(...),
-            $this->query->groups,
-        );
+        $groups = collect($this->query->groups)
+            ->map($this->expressionToString(...))
+            ->implode("_");
 
-        return "-groupBy_" . implode("_", $groups)
+        return "-groupBy_" . $groups
             . $this->getChannelBindingsSlug("groupBy");
     }
 
@@ -435,18 +432,17 @@ class CacheKey
         // different columns. CacheTags already tags the joined table, but a
         // tag is a namespace and not a key: two joins landing in the same
         // namespace still need different keys.
-        $joins = array_map(
-            fn ($join) => $join->type
+        $joins = collect($this->query->joins)
+            ->map(fn ($join) => $join->type
                 . "_" . $this->expressionToString($join->table)
                 . "_" . substr(
                     sha1($this->encodeForKeyHash($this->normalizeForHash($join->wheres))),
                     0,
                     12,
-                ),
-            $this->query->joins,
-        );
+                ))
+            ->implode("_");
 
-        return "-join_" . implode("_", $joins)
+        return "-join_" . $joins
             . $this->getChannelBindingsSlug("join");
     }
 
@@ -458,16 +454,15 @@ class CacheKey
             return "";
         }
 
-        $unions = array_map(
-            fn ($union) => (data_get($union, "all") ? "all_" : "")
+        $unions = collect($this->query->unions)
+            ->map(fn ($union) => (data_get($union, "all") ? "all_" : "")
                 . sha1(
                     $union["query"]->toSql()
                     . $this->encodeForKeyHash($union["query"]->getBindings())
-                ),
-            $this->query->unions,
-        );
+                ))
+            ->implode("_");
 
-        return "-union_" . implode("_", $unions);
+        return "-union_" . $unions;
     }
 
     // How many binding slots an In-family clause owns.
@@ -560,9 +555,11 @@ class CacheKey
 
         $columns = implode("_", $where["columns"]);
         $operator = str_replace(" ", "_", $where["operator"]);
-        $values = implode("_", array_map(function ($value) {
-            return $this->escapeKeySegment($this->processEnum($value));
-        }, $where["values"]));
+        $values = collect($where["values"])
+            ->map(function ($value) {
+                return $this->escapeKeySegment($this->processEnum($value));
+            })
+            ->implode("_");
 
         // whereRowValues() binds through cleanBindings() too, so an Expression
         // among the values is inlined into the SQL and owns no binding slot.
@@ -606,18 +603,18 @@ class CacheKey
         if (property_exists($this->query, "columns")
             && $this->query->columns
         ) {
-            $columns = array_map(function ($column) {
-                return $this->expressionToString($column);
-            }, $this->query->columns);
-
-            return "_" . implode("_", $columns);
+            return "_" . collect($this->query->columns)
+                ->map(function ($column) {
+                    return $this->expressionToString($column);
+                })
+                ->implode("_");
         }
 
-        $columns = array_map(function ($column) {
-            return $this->expressionToString($column);
-        }, $columns);
-
-        return "_" . implode("_", $columns);
+        return "_" . collect($columns)
+            ->map(function ($column) {
+                return $this->expressionToString($column);
+            })
+            ->implode("_");
     }
 
     protected function getRawClauses(array $where) : string
@@ -855,28 +852,23 @@ class CacheKey
 
     protected function recursiveImplode(array $items, string $glue = ",") : string
     {
-        $result = "";
+        return collect($items)
+            ->reduce(function (string $result, $value) use ($glue) {
+                if (is_string($value)) {
+                    $value = str_replace('"', '', $value);
+                    $value = explode(" ", $value);
 
-        foreach ($items as $value) {
-            if (is_string($value)) {
-                $value = str_replace('"', '', $value);
-                $value = explode(" ", $value);
-
-                if (count($value) === 1) {
-                    $value = $value[0];
+                    if (count($value) === 1) {
+                        $value = $value[0];
+                    }
                 }
-            }
 
-            if (is_array($value)) {
-                $result .= $this->recursiveImplode($value, $glue);
+                if (is_array($value)) {
+                    return $result . $this->recursiveImplode($value, $glue);
+                }
 
-                continue;
-            }
-
-            $result .= $glue . $value;
-        }
-
-        return $result;
+                return $result . $glue . $value;
+            }, "");
     }
 
     // A bound value is the one key segment an application controls outright, so
@@ -908,10 +900,8 @@ class CacheKey
     private function getUnkeyedQueryPropertiesSlug() : string
     {
         $unkeyed = Collection::make(get_object_vars($this->query))
-            ->except(array_merge(
-                self::KEYED_QUERY_PROPERTIES,
-                self::UNKEYED_INFRASTRUCTURE_PROPERTIES,
-            ))
+            ->except(collect(self::KEYED_QUERY_PROPERTIES)
+                ->merge(self::UNKEYED_INFRASTRUCTURE_PROPERTIES))
             ->reject(fn ($value) => $value === null || $value === false || $value === [])
             ->map($this->normalizeForHash(...))
             ->sortKeys()
@@ -932,7 +922,9 @@ class CacheKey
     private function normalizeForHash(mixed $value) : mixed
     {
         if (is_array($value)) {
-            return array_map($this->normalizeForHash(...), $value);
+            return collect($value)
+                ->map($this->normalizeForHash(...))
+                ->all();
         }
 
         if ($value instanceof Expression) {
@@ -972,12 +964,11 @@ class CacheKey
 
     private function processEnums(array $values, bool $escape = false): array
     {
-        return array_map(
-            fn($value) => $escape
+        return collect($values)
+            ->map(fn ($value) => $escape
                 ? $this->escapeKeySegment($this->processEnum($value))
-                : $this->processEnum($value),
-            $values,
-        );
+                : $this->processEnum($value))
+            ->all();
     }
 
     private function expressionToString(Expression|string $value): string

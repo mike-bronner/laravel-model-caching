@@ -2,124 +2,111 @@
 
 declare(strict_types=1);
 
-namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
-
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Database\Eloquent\Builder;
 
-class MagicMethodProxyTest extends IntegrationTestCase
-{
-    protected function tearDown(): void
-    {
-        $reflection = new \ReflectionClass(Builder::class);
-        $macros = $reflection->getStaticPropertyValue('macros');
-        unset($macros['type'], $macros['ofType'], $macros['customFilter']);
-        $reflection->setStaticPropertyValue('macros', $macros);
+afterEach(function () {
+    $reflection = new \ReflectionClass(Builder::class);
+    $macros = $reflection->getStaticPropertyValue('macros');
+    unset($macros['type'], $macros['ofType'], $macros['customFilter']);
+    $reflection->setStaticPropertyValue('macros', $macros);
+});
 
-        parent::tearDown();
-    }
+test('global macro proxy does not throw bad method call exception', function () {
+    Builder::macro('type', function (string $type) {
+        /** @var Builder $this */
+        return $this->where('name', 'like', "%{$type}%");
+    });
 
-    public function testGlobalMacroProxyDoesNotThrowBadMethodCallException(): void
-    {
-        Builder::macro('type', function (string $type) {
-            /** @var Builder $this */
-            return $this->where('name', 'like', "%{$type}%");
-        });
+    Author::factory()->count(3)->create(['name' => 'ZZZFICTION-UNIQUE-TEST Author']);
+    Author::factory()->count(2)->create(['name' => 'ZZZOTHER-UNIQUE-TEST Author']);
 
-        Author::factory()->count(3)->create(['name' => 'ZZZFICTION-UNIQUE-TEST Author']);
-        Author::factory()->count(2)->create(['name' => 'ZZZOTHER-UNIQUE-TEST Author']);
+    $fictionAuthors = Author::type('ZZZFICTION-UNIQUE-TEST')->get();
 
-        $fictionAuthors = Author::type('ZZZFICTION-UNIQUE-TEST')->get();
+    expect($fictionAuthors)->not->toBeEmpty();
+    expect($fictionAuthors)->toHaveCount(3);
+});
 
-        $this->assertNotEmpty($fictionAuthors);
-        $this->assertCount(3, $fictionAuthors);
-    }
+test('global macro produces distinct cache keys', function () {
+    Builder::macro('type', function (string $type) {
+        /** @var Builder $this */
+        return $this->where('name', 'like', "%{$type}%");
+    });
 
-    public function testGlobalMacroProducesDistinctCacheKeys(): void
-    {
-        Builder::macro('type', function (string $type) {
-            /** @var Builder $this */
-            return $this->where('name', 'like', "%{$type}%");
-        });
+    Author::factory()->create(['name' => 'ZZZFICTION-UNIQUE Author']);
+    Author::factory()->create(['name' => 'ZZZNONFICTION-UNIQUE Author']);
 
-        Author::factory()->create(['name' => 'ZZZFICTION-UNIQUE Author']);
-        Author::factory()->create(['name' => 'ZZZNONFICTION-UNIQUE Author']);
+    $fiction = Author::type('ZZZFICTION-UNIQUE')->get();
+    $nonFiction = Author::type('ZZZNONFICTION-UNIQUE')->get();
 
-        $fiction = Author::type('ZZZFICTION-UNIQUE')->get();
-        $nonFiction = Author::type('ZZZNONFICTION-UNIQUE')->get();
+    expect($fiction)->toHaveCount(1);
+    expect($nonFiction)->toHaveCount(1);
+    expect($nonFiction->first()->id)->not->toEqual($fiction->first()->id);
+});
 
-        $this->assertCount(1, $fiction);
-        $this->assertCount(1, $nonFiction);
-        $this->assertNotEquals($fiction->first()->id, $nonFiction->first()->id);
-    }
+test('two different global macros produce distinct cache keys', function () {
+    Builder::macro('ofType', function (string $type) {
+        /** @var Builder $this */
+        return $this->where('name', 'like', "%{$type}%");
+    });
 
-    public function testTwoDifferentGlobalMacrosProduceDistinctCacheKeys(): void
-    {
-        Builder::macro('ofType', function (string $type) {
-            /** @var Builder $this */
-            return $this->where('name', 'like', "%{$type}%");
-        });
+    Builder::macro('customFilter', function (string $value) {
+        /** @var Builder $this */
+        return $this->where('email', 'like', "%{$value}%");
+    });
 
-        Builder::macro('customFilter', function (string $value) {
-            /** @var Builder $this */
-            return $this->where('email', 'like', "%{$value}%");
-        });
+    Author::factory()->create(['name' => 'ZZZSCIENCE-UNIQUE Author', 'email' => 'zzzsci-unique@example.com']);
+    Author::factory()->create(['name' => 'ZZZHISTORY-UNIQUE Author', 'email' => 'zzzhistory-unique@example.com']);
 
-        Author::factory()->create(['name' => 'ZZZSCIENCE-UNIQUE Author', 'email' => 'zzzsci-unique@example.com']);
-        Author::factory()->create(['name' => 'ZZZHISTORY-UNIQUE Author', 'email' => 'zzzhistory-unique@example.com']);
+    $byName = Author::ofType('ZZZSCIENCE-UNIQUE')->get();
+    $byEmail = Author::customFilter('zzzhistory-unique')->get();
 
-        $byName = Author::ofType('ZZZSCIENCE-UNIQUE')->get();
-        $byEmail = Author::customFilter('zzzhistory-unique')->get();
+    expect($byName)->toHaveCount(1);
+    expect($byEmail)->toHaveCount(1);
+    expect($byEmail->first()->id)->not->toEqual($byName->first()->id);
+});
 
-        $this->assertCount(1, $byName);
-        $this->assertCount(1, $byEmail);
-        $this->assertNotEquals($byName->first()->id, $byEmail->first()->id);
-    }
+test('global macro results are cached', function () {
+    Builder::macro('type', function (string $type) {
+        /** @var Builder $this */
+        return $this->where('name', 'like', "%{$type}%");
+    });
 
-    public function testGlobalMacroResultsAreCached(): void
-    {
-        Builder::macro('type', function (string $type) {
-            /** @var Builder $this */
-            return $this->where('name', 'like', "%{$type}%");
-        });
+    Author::factory()->create(['name' => 'ZZZCACHED-UNIQUE Author']);
+    Author::factory()->create(['name' => 'ZZZCACHED-UNIQUE Author 2']);
 
-        Author::factory()->create(['name' => 'ZZZCACHED-UNIQUE Author']);
-        Author::factory()->create(['name' => 'ZZZCACHED-UNIQUE Author 2']);
+    $first = Author::type('ZZZCACHED-UNIQUE')->get();
+    $second = Author::type('ZZZCACHED-UNIQUE')->get();
 
-        $first = Author::type('ZZZCACHED-UNIQUE')->get();
-        $second = Author::type('ZZZCACHED-UNIQUE')->get();
+    expect($first)->toHaveCount(2);
+    expect($second)->toHaveCount(
+        2,
+        'Repeated call with same args should return identical cached results.',
+    );
+    expect($second->pluck('id')->sort()->values()->toArray())->toEqual(
+        $first->pluck('id')->sort()->values()->toArray(),
+        'Both calls should return the same records (from cache).',
+    );
+});
 
-        $this->assertCount(2, $first);
-        $this->assertCount(2, $second, 'Repeated call with same args should return identical cached results.');
-        $this->assertEquals(
-            $first->pluck('id')->sort()->values()->toArray(),
-            $second->pluck('id')->sort()->values()->toArray(),
-            'Both calls should return the same records (from cache).'
-        );
-    }
+test('existing builder methods still work with cached builder', function () {
+    Author::factory()->create(['name' => 'Alice']);
+    Author::factory()->create(['name' => 'Bob']);
 
-    public function testExistingBuilderMethodsStillWorkWithCachedBuilder(): void
-    {
-        Author::factory()->create(['name' => 'Alice']);
-        Author::factory()->create(['name' => 'Bob']);
+    $result = Author::where('name', 'Alice')->get();
 
-        $result = Author::where('name', 'Alice')->get();
+    expect($result)->toHaveCount(1);
+    expect($result->first()->name)->toEqual('Alice');
+});
 
-        $this->assertCount(1, $result);
-        $this->assertEquals('Alice', $result->first()->name);
-    }
+test('local scope still works through cached builder', function () {
+    Author::factory()->create(['name' => 'Alpha Author']);
+    Author::factory()->create(['name' => 'Beta Author']);
 
-    public function testLocalScopeStillWorksThroughCachedBuilder(): void
-    {
-        Author::factory()->create(['name' => 'Alpha Author']);
-        Author::factory()->create(['name' => 'Beta Author']);
+    $alphas = Author::startsWithA()->get();
+    $uncachedAlphas = (new UncachedAuthor)->startsWithA()->get();
 
-        $alphas = Author::startsWithA()->get();
-        $uncachedAlphas = (new UncachedAuthor)->startsWithA()->get();
-
-        $this->assertEquals($uncachedAlphas->count(), $alphas->count());
-        $this->assertTrue($alphas->every(fn ($a) => str_starts_with($a->name, 'A')));
-    }
-}
+    expect($alphas->count())->toEqual($uncachedAlphas->count());
+    expect($alphas->every(fn ($a) => str_starts_with($a->name, 'A')))->toBeTrue();
+});

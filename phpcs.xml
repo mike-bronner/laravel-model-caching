@@ -1,4 +1,13 @@
 <?xml version="1.0"?>
 <ruleset>
-    <rule ref="./.php-codesniffer/MikeBronner/ruleset.xml" />
+    <description>The CleanCode standard over the whole project.</description>
+
+    <file>.</file>
+    <exclude-pattern type="relative">^bootstrap/cache/*</exclude-pattern>
+    <exclude-pattern type="relative">^node_modules/*</exclude-pattern>
+    <exclude-pattern type="relative">^public/*</exclude-pattern>
+    <exclude-pattern type="relative">^storage/*</exclude-pattern>
+    <exclude-pattern type="relative">^vendor/*</exclude-pattern>
+
+    <rule ref="CleanCode"/>
 </ruleset>

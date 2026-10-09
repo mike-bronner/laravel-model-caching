@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching\Console\Commands;
 
 use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
@@ -12,7 +14,7 @@ class Clear extends Command
     protected $signature = 'modelCache:clear {--model=}';
     protected $description = 'Flush cache for a given model. If no model is given, entire model-cache is flushed.';
 
-    public function handle()
+    public function handle(): int
     {
         $option = $this->option('model');
 

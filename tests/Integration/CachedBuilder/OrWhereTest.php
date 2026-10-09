@@ -1,9 +1,7 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
-use ReflectionMethod;
 
 // An "or" clause widens a result set; its "and" twin narrows it. They used to
 // share a cache key in every clause family except Basic, so the cheaper query
@@ -14,260 +12,175 @@ use ReflectionMethod;
 // nested group the moment an "or" appears, which moves the key on its own — a
 // test written against Author cannot tell that apart from the boolean landing
 // in the key.
-class OrWhereTest extends IntegrationTestCase
-{
-    private function cacheKey($query) : string
-    {
-        return (new ReflectionMethod($query, "makeCacheKey"))
-            ->invoke($query);
-    }
 
-    private function keyPrefix() : string
-    {
-        return "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite"
-            . ":books:genealabslaravelmodelcachingtestsfixturesbook";
-    }
+test('or where produces different cache key than where', function () {
+    $and = (new Book)->where("id", 1)->where("id", 2);
+    $or = (new Book)->where("id", 1)->orWhere("id", 2);
 
-    private function bookTags() : array
-    {
-        return [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
-        ];
-    }
+    expect(cacheKey($and))->toEqual(keyPrefix() . "-id_=_1-id_=_2");
+    expect(cacheKey($or))->toEqual(keyPrefix() . "-id_=_1-or-id_=_2");
+});
 
-    private function assertFirstQueryWasCached($query, string $description, array $extraTags = []) : void
-    {
-        $key = sha1($this->cacheKey($query));
-        $results = $query->get();
-        $cached = $this->cache()
-            ->tags([...$this->bookTags(), ...$extraTags])
-            ->get($key);
+test('or where returns its own results after where was cached', function () {
+    assertFirstQueryWasCached(
+        (new Book)->where("id", 1)->where("id", 2),
+        "The and-query"
+    );
 
-        $this->assertNotNull(
-            $cached,
-            "{$description} must populate the cache, or the second query has nothing to collide with"
-        );
-        $this->assertEquals($results->pluck("id"), $cached["value"]->pluck("id"));
-    }
+    $results = (new Book)->where("id", 1)->orWhere("id", 2)->get();
+    $liveResults = (new UncachedBook)->where("id", 1)->orWhere("id", 2)->get();
 
-    public function testOrWhereProducesDifferentCacheKeyThanWhere()
-    {
-        $and = (new Book)->where("id", 1)->where("id", 2);
-        $or = (new Book)->where("id", 1)->orWhere("id", 2);
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+    expect($results)->toHaveCount(2);
+});
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-id_=_2",
-            $this->cacheKey($and)
-        );
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-or-id_=_2",
-            $this->cacheKey($or)
-        );
-    }
+test('or where closure produces different cache key than where closure', function () {
+    $and = (new Book)
+        ->where("id", 1)
+        ->where(function ($query) {
+            $query->where("id", 2);
+        });
+    $or = (new Book)
+        ->where("id", 1)
+        ->orWhere(function ($query) {
+            $query->where("id", 2);
+        });
 
-    public function testOrWhereReturnsItsOwnResultsAfterWhereWasCached()
-    {
-        $this->assertFirstQueryWasCached(
-            (new Book)->where("id", 1)->where("id", 2),
-            "The and-query"
-        );
+    expect(cacheKey($and))->toEqual(keyPrefix() . "-id_=_1-nested-id_=_2");
+    expect(cacheKey($or))->toEqual(keyPrefix() . "-id_=_1-or-nested-id_=_2");
+});
 
-        $results = (new Book)->where("id", 1)->orWhere("id", 2)->get();
-        $liveResults = (new UncachedBook)->where("id", 1)->orWhere("id", 2)->get();
-
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-        $this->assertCount(2, $results);
-    }
-
-    public function testOrWhereClosureProducesDifferentCacheKeyThanWhereClosure()
-    {
-        $and = (new Book)
+test('or where closure returns its own results after where closure was cached', function () {
+    assertFirstQueryWasCached(
+        (new Book)
             ->where("id", 1)
             ->where(function ($query) {
                 $query->where("id", 2);
-            });
-        $or = (new Book)
-            ->where("id", 1)
-            ->orWhere(function ($query) {
-                $query->where("id", 2);
-            });
+            }),
+        "The and-query"
+    );
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-nested-id_=_2",
-            $this->cacheKey($and)
-        );
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-or-nested-id_=_2",
-            $this->cacheKey($or)
-        );
-    }
+    $results = (new Book)
+        ->where("id", 1)
+        ->orWhere(function ($query) {
+            $query->where("id", 2);
+        })
+        ->get();
+    $liveResults = (new UncachedBook)
+        ->where("id", 1)
+        ->orWhere(function ($query) {
+            $query->where("id", 2);
+        })
+        ->get();
 
-    public function testOrWhereClosureReturnsItsOwnResultsAfterWhereClosureWasCached()
-    {
-        $this->assertFirstQueryWasCached(
-            (new Book)
-                ->where("id", 1)
-                ->where(function ($query) {
-                    $query->where("id", 2);
-                }),
-            "The and-query"
-        );
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+    expect($results)->toHaveCount(2);
+});
 
-        $results = (new Book)
-            ->where("id", 1)
-            ->orWhere(function ($query) {
-                $query->where("id", 2);
-            })
-            ->get();
-        $liveResults = (new UncachedBook)
-            ->where("id", 1)
-            ->orWhere(function ($query) {
-                $query->where("id", 2);
-            })
-            ->get();
+test('or where has produces different cache key than where has', function () {
+    $and = (new Book)
+        ->where("id", 1)
+        ->whereHas("author", function ($query) {
+            $query->where("id", 2);
+        });
+    $or = (new Book)
+        ->where("id", 1)
+        ->orWhereHas("author", function ($query) {
+            $query->where("id", 2);
+        });
+    $existsClause = "-exists-books.author_id_=_authors.id-id_=_2-authors.deleted_at_null";
 
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-        $this->assertCount(2, $results);
-    }
+    expect(cacheKey($and))->toEqual(keyPrefix() . "-id_=_1" . $existsClause);
+    expect(cacheKey($or))->toEqual(keyPrefix() . "-id_=_1-or" . $existsClause);
+});
 
-    public function testOrWhereHasProducesDifferentCacheKeyThanWhereHas()
-    {
-        $and = (new Book)
+test('or where has returns its own results after where has was cached', function () {
+    assertFirstQueryWasCached(
+        (new Book)
             ->where("id", 1)
             ->whereHas("author", function ($query) {
                 $query->where("id", 2);
-            });
-        $or = (new Book)
-            ->where("id", 1)
-            ->orWhereHas("author", function ($query) {
-                $query->where("id", 2);
-            });
-        $existsClause = "-exists-books.author_id_=_authors.id-id_=_2-authors.deleted_at_null";
+            }),
+        "The whereHas-query",
+        ["genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors"]
+    );
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1" . $existsClause,
-            $this->cacheKey($and)
-        );
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-or" . $existsClause,
-            $this->cacheKey($or)
-        );
-    }
+    $results = (new Book)
+        ->where("id", 1)
+        ->orWhereHas("author", function ($query) {
+            $query->where("id", 2);
+        })
+        ->get();
+    $liveResults = (new UncachedBook)
+        ->where("id", 1)
+        ->orWhereHas("author", function ($query) {
+            $query->where("id", 2);
+        })
+        ->get();
 
-    public function testOrWhereHasReturnsItsOwnResultsAfterWhereHasWasCached()
-    {
-        $this->assertFirstQueryWasCached(
-            (new Book)
-                ->where("id", 1)
-                ->whereHas("author", function ($query) {
-                    $query->where("id", 2);
-                }),
-            "The whereHas-query",
-            ["genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors"]
-        );
+    expect($results)->not->toBeEmpty();
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+});
 
-        $results = (new Book)
-            ->where("id", 1)
-            ->orWhereHas("author", function ($query) {
-                $query->where("id", 2);
-            })
-            ->get();
-        $liveResults = (new UncachedBook)
-            ->where("id", 1)
-            ->orWhereHas("author", function ($query) {
-                $query->where("id", 2);
-            })
-            ->get();
+test('or where in produces different cache key than where in', function () {
+    $and = (new Book)->where("id", 1)->whereIn("id", [1, 2]);
+    $or = (new Book)->where("id", 1)->orWhereIn("id", [1, 2]);
 
-        $this->assertNotEmpty($results);
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-    }
+    expect(cacheKey($and))->toEqual(keyPrefix() . "-id_=_1-id_in_1_2");
+    expect(cacheKey($or))->toEqual(keyPrefix() . "-id_=_1-or-id_in_1_2");
+});
 
-    public function testOrWhereInProducesDifferentCacheKeyThanWhereIn()
-    {
-        $and = (new Book)->where("id", 1)->whereIn("id", [1, 2]);
-        $or = (new Book)->where("id", 1)->orWhereIn("id", [1, 2]);
+test('or where in returns its own results after where in was cached', function () {
+    assertFirstQueryWasCached(
+        (new Book)->where("id", 1)->whereIn("id", [1, 2]),
+        "The whereIn-query"
+    );
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-id_in_1_2",
-            $this->cacheKey($and)
-        );
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-or-id_in_1_2",
-            $this->cacheKey($or)
-        );
-    }
+    $results = (new Book)->where("id", 1)->orWhereIn("id", [1, 2])->get();
+    $liveResults = (new UncachedBook)->where("id", 1)->orWhereIn("id", [1, 2])->get();
 
-    public function testOrWhereInReturnsItsOwnResultsAfterWhereInWasCached()
-    {
-        $this->assertFirstQueryWasCached(
-            (new Book)->where("id", 1)->whereIn("id", [1, 2]),
-            "The whereIn-query"
-        );
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+    expect($results)->toHaveCount(2);
+});
 
-        $results = (new Book)->where("id", 1)->orWhereIn("id", [1, 2])->get();
-        $liveResults = (new UncachedBook)->where("id", 1)->orWhereIn("id", [1, 2])->get();
+test('or where not in produces different cache key than where not in', function () {
+    $and = (new Book)->where("id", 1)->whereNotIn("id", [1, 2]);
+    $or = (new Book)->where("id", 1)->orWhereNotIn("id", [1, 2]);
 
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-        $this->assertCount(2, $results);
-    }
+    expect(cacheKey($and))->toEqual(keyPrefix() . "-id_=_1-id_notin_1_2");
+    expect(cacheKey($or))->toEqual(keyPrefix() . "-id_=_1-or-id_notin_1_2");
+});
 
-    public function testOrWhereNotInProducesDifferentCacheKeyThanWhereNotIn()
-    {
-        $and = (new Book)->where("id", 1)->whereNotIn("id", [1, 2]);
-        $or = (new Book)->where("id", 1)->orWhereNotIn("id", [1, 2]);
+test('or where not in returns its own results after where not in was cached', function () {
+    assertFirstQueryWasCached(
+        (new Book)->where("id", 1)->whereNotIn("id", [1, 2]),
+        "The whereNotIn-query"
+    );
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-id_notin_1_2",
-            $this->cacheKey($and)
-        );
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-or-id_notin_1_2",
-            $this->cacheKey($or)
-        );
-    }
+    $results = (new Book)->where("id", 1)->orWhereNotIn("id", [1, 2])->get();
+    $liveResults = (new UncachedBook)->where("id", 1)->orWhereNotIn("id", [1, 2])->get();
 
-    public function testOrWhereNotInReturnsItsOwnResultsAfterWhereNotInWasCached()
-    {
-        $this->assertFirstQueryWasCached(
-            (new Book)->where("id", 1)->whereNotIn("id", [1, 2]),
-            "The whereNotIn-query"
-        );
+    expect($results)->not->toBeEmpty();
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+});
 
-        $results = (new Book)->where("id", 1)->orWhereNotIn("id", [1, 2])->get();
-        $liveResults = (new UncachedBook)->where("id", 1)->orWhereNotIn("id", [1, 2])->get();
+test('or where integer in raw produces different cache key than where integer in raw', function () {
+    $and = (new Book)->where("id", 1)->whereIntegerInRaw("id", [1, 2]);
+    $or = (new Book)->where("id", 1)->orWhereIntegerInRaw("id", [1, 2]);
 
-        $this->assertNotEmpty($results);
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-    }
+    expect(cacheKey($and))->toEqual(keyPrefix() . "-id_=_1-id_inraw_1_2");
+    expect(cacheKey($or))->toEqual(keyPrefix() . "-id_=_1-or-id_inraw_1_2");
+});
 
-    public function testOrWhereIntegerInRawProducesDifferentCacheKeyThanWhereIntegerInRaw()
-    {
-        $and = (new Book)->where("id", 1)->whereIntegerInRaw("id", [1, 2]);
-        $or = (new Book)->where("id", 1)->orWhereIntegerInRaw("id", [1, 2]);
+test('or where integer in raw returns its own results after where integer in raw was cached', function () {
+    assertFirstQueryWasCached(
+        (new Book)->where("id", 1)->whereIntegerInRaw("id", [1, 2]),
+        "The whereIntegerInRaw-query"
+    );
 
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-id_inraw_1_2",
-            $this->cacheKey($and)
-        );
-        $this->assertEquals(
-            $this->keyPrefix() . "-id_=_1-or-id_inraw_1_2",
-            $this->cacheKey($or)
-        );
-    }
+    $results = (new Book)->where("id", 1)->orWhereIntegerInRaw("id", [1, 2])->get();
+    $liveResults = (new UncachedBook)->where("id", 1)->orWhereIntegerInRaw("id", [1, 2])->get();
 
-    public function testOrWhereIntegerInRawReturnsItsOwnResultsAfterWhereIntegerInRawWasCached()
-    {
-        $this->assertFirstQueryWasCached(
-            (new Book)->where("id", 1)->whereIntegerInRaw("id", [1, 2]),
-            "The whereIntegerInRaw-query"
-        );
-
-        $results = (new Book)->where("id", 1)->orWhereIntegerInRaw("id", [1, 2])->get();
-        $liveResults = (new UncachedBook)->where("id", 1)->orWhereIntegerInRaw("id", [1, 2])->get();
-
-        $this->assertCount(2, $results);
-        $this->assertEquals($liveResults->pluck("id"), $results->pluck("id"));
-    }
-}
+    expect($results)->toHaveCount(2);
+    expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
+});

@@ -11,8 +11,11 @@ use GeneaLabs\LaravelModelCaching\CachedHasOneThrough;
 use GeneaLabs\LaravelModelCaching\CachedMorphToMany;
 use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
@@ -20,8 +23,8 @@ use Illuminate\Support\Carbon;
 // phpcs:ignore SlevomatCodingStandard.Classes.ClassLength.ClassTooLong
 trait ModelCaching
 {
-    // phpcs:ignore SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint,SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
-    public function newEloquentBuilder($query)
+    // phpcs:ignore SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+    public function newEloquentBuilder($query): Builder
     {
         static $building = [];
         $objectId = spl_object_id($this);
@@ -49,8 +52,7 @@ trait ModelCaching
      * worth far less than silently replacing a builder someone else depends on,
      * so the swap only happens when the builder is Laravel's own.
      */
-    // phpcs:ignore SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
-    protected function newBaseQueryBuilder()
+    protected function newBaseQueryBuilder(): QueryBuilder
     {
         $builder = parent::newBaseQueryBuilder();
 
@@ -65,7 +67,7 @@ trait ModelCaching
         );
     }
 
-    public function __get($key)
+    public function __get($key): mixed
     {
         if ($key === "cachePrefix") {
             return $this->cachePrefix
@@ -85,7 +87,7 @@ trait ModelCaching
         return parent::__get($key);
     }
 
-    public function __set($key, $value)
+    public function __set($key, $value): void
     {
         if ($key === "cachePrefix") {
             $this->cachePrefix = $value;
@@ -98,7 +100,7 @@ trait ModelCaching
         parent::__set($key, $value);
     }
 
-    public static function all($columns = ['*'])
+    public static function all($columns = ['*']): EloquentCollection
     {
         $class = get_called_class();
         $instance = new $class;
@@ -123,7 +125,7 @@ trait ModelCaching
         );
     }
 
-    public static function bootCachable()
+    public static function bootCachable(): void
     {
         static::created(function ($instance) {
             $instance->checkCooldownAndFlushAfterPersisting($instance);
@@ -159,7 +161,7 @@ trait ModelCaching
         });
     }
 
-    public static function destroy($ids)
+    public static function destroy($ids): int
     {
         $result = parent::destroy($ids);
 
@@ -167,9 +169,7 @@ trait ModelCaching
             $class = get_called_class();
             $instance = new $class;
 
-            $instance->withCacheFallback(function () use ($instance) {
-                $instance->flushCache();
-            }, 'cache flush failed during destroy');
+            $instance->checkCooldownAndFlushAfterPersisting($instance);
         }
 
         return $result;
@@ -191,15 +191,8 @@ trait ModelCaching
      *   delegates unknown method calls to the inner builder so custom methods
      *   remain callable at runtime (AC3).
      * - No custom builder → plain CachedBuilder (existing behaviour).
-     *
-     * **Larastan / PHPStan (AC5):** When a custom builder is wrapped rather than
-     * returned directly, static analysis tools cannot infer the custom methods
-     * from the `CachedBuilder` return type.  Add a `@return CustomBuilder`
-     * override annotation on your model's `newQuery()` (or `query()`) call-site,
-     * or use the `@mixin` approach described in the package README to suppress
-     * false-positive "undefined method" errors at level 5+.
      */
-    public function newModelCachingEloquentBuilder($query)
+    public function newModelCachingEloquentBuilder($query): Builder
     {
         if (! $this->isCachable()) {
             $this->isCachable = false;
@@ -238,7 +231,7 @@ trait ModelCaching
         $secondKey,
         $localKey,
         $secondLocalKey,
-    ) {
+    ): HasManyThrough {
         if ($this->isThroughRelationCachable($query, $farParent)) {
             return new CachedHasManyThrough(
                 $query,
@@ -270,7 +263,7 @@ trait ModelCaching
         $secondKey,
         $localKey,
         $secondLocalKey,
-    ) {
+    ): HasOneThrough {
         if ($this->isThroughRelationCachable($query, $farParent)) {
             return new CachedHasOneThrough(
                 $query,
@@ -303,7 +296,7 @@ trait ModelCaching
         $parentKey,
         $relatedKey,
         $relationName = null,
-    ) {
+    ): BelongsToMany {
         $relatedIsCachable = method_exists($query->getModel(), "isCachable")
             && $query->getModel()->isCachable();
         $parentIsCachable = method_exists($parent, "isCachable")
@@ -345,7 +338,7 @@ trait ModelCaching
         $relatedKey,
         $relationName = null,
         $inverse = false,
-    ) {
+    ): MorphToMany {
         $relatedIsCachable = method_exists($query->getModel(), "isCachable")
             && $query->getModel()->isCachable();
         $parentIsCachable = method_exists($parent, "isCachable")

@@ -1,149 +1,90 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class DeleteCacheFlushTest extends IntegrationTestCase
-{
-    private function authorTags(): array
-    {
-        return [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
-        ];
-    }
+// --- delete() tests ---
+test('delete zero rows does not flush cache', function () {
+    $key = populateBookCache();
 
-    private function bookTags(): array
-    {
-        return [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
-        ];
-    }
+    $result = (new Book)->where("id", 0)->delete();
 
-    private function populateBookCache(): string
-    {
-        (new Book)->all();
+    expect($result)->toEqual(0);
+    expect($this->cache()->tags(bookTags())->get($key))->not->toBeNull();
+});
 
-        $key = sha1(
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook"
-        );
+test('delete one row flushes cache', function () {
+    $key = populateBookCache();
+    $book = (new Book)->first();
 
-        $this->assertNotNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
+    $result = (new Book)->where("id", $book->id)->delete();
 
-        return $key;
-    }
+    expect($result)->toEqual(1);
+    expect($this->cache()->tags(bookTags())->get($key))->toBeNull();
+});
 
-    private function populateAuthorCache(): string
-    {
-        (new Author)->all();
+test('delete multiple rows flushes cache', function () {
+    $key = populateBookCache();
 
-        $key = sha1(
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null"
-        );
+    $result = (new Book)->where("id", ">", 0)->delete();
 
-        $this->assertNotNull(
-            $this->cache()->tags($this->authorTags())->get($key)
-        );
+    expect($result)->toBeGreaterThan(1);
+    expect($this->cache()->tags(bookTags())->get($key))->toBeNull();
+});
 
-        return $key;
-    }
+// --- forceDelete() tests ---
+test('force delete zero rows does not flush cache', function () {
+    $key = populateAuthorCache();
 
-    // --- delete() tests ---
+    $result = (new Author)->where("id", 0)->forceDelete();
 
-    public function testDeleteZeroRowsDoesNotFlushCache()
-    {
-        $key = $this->populateBookCache();
+    expect($result)->toEqual(0);
+    expect($this->cache()->tags(authorTags())->get($key))->not->toBeNull();
+});
 
+test('force delete one row flushes cache', function () {
+    $key = populateAuthorCache();
+
+    $result = (new Author)->where("id", 1)->forceDelete();
+
+    expect($result)->toEqual(1);
+    expect($this->cache()->tags(authorTags())->get($key))->toBeNull();
+});
+
+test('force delete multiple rows flushes cache', function () {
+    $key = populateAuthorCache();
+
+    $result = (new Author)->where("id", ">", 0)->forceDelete();
+
+    expect($result)->toBeGreaterThan(1);
+    expect($this->cache()->tags(authorTags())->get($key))->toBeNull();
+});
+
+// --- Integration test ---
+test('repeated deletes on empty result set do not flush cache', function () {
+    $key = populateBookCache();
+
+    // Delete with no matching rows multiple times
+    for ($i = 0; $i < 3; $i++) {
         $result = (new Book)->where("id", 0)->delete();
-
-        $this->assertEquals(0, $result);
-        $this->assertNotNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
+        expect($result)->toEqual(0);
     }
 
-    public function testDeleteOneRowFlushesCache()
-    {
-        $key = $this->populateBookCache();
-        $book = (new Book)->first();
+    // Cache should still be intact
+    expect($this->cache()->tags(bookTags())->get($key))->not->toBeNull();
+});
 
-        $result = (new Book)->where("id", $book->id)->delete();
+function populateAuthorCache(): string
+{
+    $testingSqlitePath = test()->testingSqlitePath;
 
-        $this->assertEquals(1, $result);
-        $this->assertNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
-    }
+    (new Author)->all();
 
-    public function testDeleteMultipleRowsFlushesCache()
-    {
-        $key = $this->populateBookCache();
+    $key = sha1(
+        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null"
+    );
 
-        $result = (new Book)->where("id", ">", 0)->delete();
+    expect(test()->cache()->tags(authorTags())->get($key))->not->toBeNull();
 
-        $this->assertGreaterThan(1, $result);
-        $this->assertNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
-    }
-
-    // --- forceDelete() tests ---
-
-    public function testForceDeleteZeroRowsDoesNotFlushCache()
-    {
-        $key = $this->populateAuthorCache();
-
-        $result = (new Author)->where("id", 0)->forceDelete();
-
-        $this->assertEquals(0, $result);
-        $this->assertNotNull(
-            $this->cache()->tags($this->authorTags())->get($key)
-        );
-    }
-
-    public function testForceDeleteOneRowFlushesCache()
-    {
-        $key = $this->populateAuthorCache();
-
-        $result = (new Author)->where("id", 1)->forceDelete();
-
-        $this->assertEquals(1, $result);
-        $this->assertNull(
-            $this->cache()->tags($this->authorTags())->get($key)
-        );
-    }
-
-    public function testForceDeleteMultipleRowsFlushesCache()
-    {
-        $key = $this->populateAuthorCache();
-
-        $result = (new Author)->where("id", ">", 0)->forceDelete();
-
-        $this->assertGreaterThan(1, $result);
-        $this->assertNull(
-            $this->cache()->tags($this->authorTags())->get($key)
-        );
-    }
-
-    // --- Integration test ---
-
-    public function testRepeatedDeletesOnEmptyResultSetDoNotFlushCache()
-    {
-        $key = $this->populateBookCache();
-
-        // Delete with no matching rows multiple times
-        for ($i = 0; $i < 3; $i++) {
-            $result = (new Book)->where("id", 0)->delete();
-            $this->assertEquals(0, $result);
-        }
-
-        // Cache should still be intact
-        $this->assertNotNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
-    }
+    return $key;
 }

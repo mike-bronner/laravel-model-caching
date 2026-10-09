@@ -6,9 +6,28 @@ We welcome everyone to submit pull requests with:
 
 However, not every pull request will automatically be accepted. I will review each carefully to make sure it is in line with the direction I want the package to continue in. This might mean that some pull requests are not accepted, or might stay unmerged until a place for them can be determined.
 
+## Using an AI coding agent
+If you work with an AI coding agent, point it at [`AGENTS.md`](AGENTS.md) in
+the repository root. It says what this package is. It sets the standards an
+agent's change must meet. It also sets the issue, pull request and review
+process to follow. It names the conditions under which an agent stops and asks
+in the issue. `CLAUDE.md` is a pointer to the same file.
+
+A pull request written with an agent says so, and a named person attests that
+they read the diff and ran the suite. The pull request template has a section
+for both.
+
+This document stays the authority on what the project expects of a change.
+`AGENTS.md` applies it to agents and does not replace it.
+
 ## Testing
-- [ ] After making your changes, make sure the tests still pass: `composer test`. A reachable Redis is required, because it is the cache store the suite runs against.
-- [ ] When adding new functionality, also add new tests.
+- [ ] After making your changes, make sure the tests still pass: `composer test`. It runs the suite with Pest. A reachable Redis is required, because it is the cache store the suite runs against.
+- [ ] When adding new functionality, also add new tests. Write them in Pest, as `test()` calls with `expect()` expectations, next to their siblings. To run one test, filter on its description: `vendor/bin/pest --configuration phpunit.xml.dist --filter "<test description>"`.
+- [ ] To run the tests through Testbench, use
+  `vendor/bin/testbench package:test`. It passes Pest flags such as `--tia`
+  through. Do not use `vendor/bin/testbench test`. It reads
+  `phpunit.xml.dist` from Testbench's skeleton app, not from this repository,
+  so it fails.
 - [ ] When fixing errors, write and satisfy new unit tests that replicate the issue.
 - [ ] Check that your test actually guards the fix. Revert the change, confirm the test goes red, then restore it. A test written after a fix often passes without it.
 - [ ] Make sure there are no build errors on [GitHub Actions](https://github.com/mike-bronner/laravel-model-caching/actions).
@@ -16,14 +35,15 @@ However, not every pull request will automatically be accepted. I will review ea
 ### What CI enforces
 Three things:
 
-- The test suite, across PHP 8.2 to 8.5 and Laravel 12 to 13.
+- The test suite, across PHP 8.3 to 8.5 and Laravel 12 to 13. PHP 8.6 runs
+  too, but a failure there does not fail the build until 8.6 is released.
 - PHPStan at level 5, on every pull request.
 - PHP deprecations originating in `src/`. The check is scoped to `src/`
   deliberately: we own that code, and a deprecation in `vendor/` must never
   turn this repo red.
 
 ### Static analysis and code style
-PHPStan is enforced. Its 970 pre-existing level-5 findings are recorded in
+PHPStan is enforced. Its pre-existing level-5 findings are recorded in
 `phpstan-baseline.neon`, so a clean run means your change introduced nothing
 new. The baseline is a debt ledger rather than a permission: if you fix a
 finding in a file you touch, delete its entry.
@@ -33,9 +53,9 @@ either:
 
 | Tool | Command | State |
 | --- | --- | --- |
-| PHPStan (level 5) | `composer analyse` | clean, against a 970-entry baseline |
-| Pint | `vendor/bin/pint --test` | 210 files |
-| PHPCS | `vendor/bin/phpcs` | 593 errors in 24 files |
+| PHPStan (level 5) | `composer analyse` | clean, against a recorded baseline |
+| Pint | `vendor/bin/pint --test` | reports files that need reformatting |
+| PHPCS | `vendor/bin/phpcs` | reports errors in source and test files |
 
 So do not expect a clean run from Pint or PHPCS, and do not treat a red result
 from either as something your change caused. Run one if it helps you, and read
@@ -50,6 +70,7 @@ When submitting a pull request, it is important to make sure to complete the fol
 - [ ] Add a descriptive header that explains in a single sentence what problem the PR solves.
 - [ ] Add a detailed description explaining the change and why it's needed.
 - [ ] Explain why you think it should be implemented one way vs. another, highlight performance improvements, etc.
+- [ ] Complete the AI disclosure section of the pull request template.
 
 ## Coding conventions
 Start reading our code and you'll get the hang of it. We optimize for readability:

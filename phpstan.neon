@@ -1,6 +1,6 @@
 includes:
     - vendor/larastan/larastan/extension.neon
-    # 970 pre-existing level-5 findings, recorded so CI can enforce the level
+    # Pre-existing level-5 findings, recorded so CI can enforce the level
     # from here on. The baseline is a debt ledger, not a permission: fix the
     # entries you touch and delete their lines. Regenerate with
     # `vendor/bin/phpstan analyse --generate-baseline=phpstan-baseline.neon`.

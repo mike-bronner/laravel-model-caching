@@ -13,6 +13,10 @@ jobs:
   laravel-tests:
 
     runs-on: ubuntu-latest
+    # PHP 8.6 is a nightly build until it reaches GA, expected around
+    # November 2026. Its jobs run so breakage shows early, but a failure there
+    # does not fail the build. Drop this line once 8.6 is released.
+    continue-on-error: ${{ matrix.php == '8.6' }}
     env:
       PGSQL_HOST: 127.0.0.1
       PGSQL_DATABASE: testing
@@ -22,11 +26,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4', '8.5']
+        php: ['8.3', '8.4', '8.5', '8.6']
         laravel: ['12.*', '13.*']
+        # Laravel 12's session handler fails on PHP 8.6, and Laravel 13 fixes
+        # it. The README documents this combination as not supported.
         exclude:
-          - php: '8.2'
-            laravel: '13.*'
+          - php: '8.6'
+            laravel: '12.*'
         include:
           - laravel: '12.*'
             testbench: '10.*'
@@ -78,15 +84,19 @@ jobs:
     - name: Copy .env
       run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
+    # Some dependencies cap their PHP version below the 8.6 nightly, which stops
+    # the install before any test runs. The nightly job ignores those upper
+    # bounds so the suite still runs early. Lower bounds stay enforced, and
+    # every other PHP version resolves strictly.
     - name: Install Dependencies
-      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist ${{ matrix.php == '8.6' && '--ignore-platform-req=php+' || '' }}
 
-    - name: Execute Integration and Feature tests via PHPUnit
+    - name: Execute Integration and Feature tests via Pest
       env:
         LOG_DEPRECATIONS_WHILE_TESTING: ${{ matrix.php == '8.5' && matrix.laravel == '13.*' }}
         LOG_DEPRECATIONS_CHANNEL: stderr
       run: |
-        vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }} 2> deprecations.log || status=$?
+        vendor/bin/pest --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }} 2> deprecations.log || status=$?
         cat deprecations.log >&2
         exit ${status:-0}
 
@@ -257,7 +267,7 @@ jobs:
         PHP
 
     - name: Execute real DynamoDB smoke tests
-      run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Integration/RealDynamoDbModelCachingTest.php
+      run: vendor/bin/pest --configuration phpunit.xml.dist tests/Integration/RealDynamoDbModelCachingTest.php
 
   predis-tests:
 
@@ -322,8 +332,8 @@ jobs:
     - name: Install Dependencies
       run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-    - name: Execute Integration and Feature tests via PHPUnit (Predis client)
-      run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature --coverage-clover coverage.xml
+    - name: Execute Integration and Feature tests via Pest (Predis client)
+      run: vendor/bin/pest --configuration phpunit.xml.dist --testsuite Integration,Feature --coverage-clover coverage.xml
 
     - name: Upload Predis coverage to Codecov
       if: github.event.pull_request.head.repo.fork != true

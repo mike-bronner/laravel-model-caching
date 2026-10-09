@@ -1,35 +1,30 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class WhenTest extends IntegrationTestCase
-{
-    public function testWhenQuery()
-    {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-id_<_5");
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
-        ];
+test('when query', function () {
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-id_<_5");
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+    ];
 
-        $books = (new Book)
-            ->when(true, function ($query) {
-                $query->where("id", "<", 5);
-            })
-            ->get();
-        $cachedResults = $this
-            ->cache()
-            ->tags($tags)
-            ->get($key)['value'];
-        $liveResults = (new UncachedBook)
-            ->when(true, function ($query) {
-                $query->where("id", "<", 5);
-            })
-            ->get();
+    $books = (new Book)
+        ->when(true, function ($query) {
+            $query->where("id", "<", 5);
+        })
+        ->get();
+    $cachedResults = $this
+        ->cache()
+        ->tags($tags)
+        ->get($key)['value'];
+    $liveResults = (new UncachedBook)
+        ->when(true, function ($query) {
+            $query->where("id", "<", 5);
+        })
+        ->get();
 
-        $this->assertEquals($liveResults->pluck("id"), $books->pluck("id"));
-        $this->assertEquals($liveResults->pluck("id"), $cachedResults->pluck("id"));
-    }
-}
+    expect($books->pluck("id"))->toEqual($liveResults->pluck("id"));
+    expect($cachedResults->pluck("id"))->toEqual($liveResults->pluck("id"));
+});

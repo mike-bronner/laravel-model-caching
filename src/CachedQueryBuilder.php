@@ -75,7 +75,7 @@ class CachedQueryBuilder extends Builder
         ];
     }
 
-    public function whereIn($column, $values, $boolean = "and", $not = false)
+    public function whereIn($column, $values, $boolean = "and", $not = false): static
     {
         if ($this->isQueryable($values)) {
             $values = $this->recordRelatedWhereSubqueryTable($values);
@@ -92,7 +92,7 @@ class CachedQueryBuilder extends Builder
         $second = null,
         $type = "inner",
         $where = false,
-    ) {
+    ): static {
         return parent::joinSub(
             $this->recordJoinedSubqueryTable($query),
             $as,
@@ -104,27 +104,27 @@ class CachedQueryBuilder extends Builder
         );
     }
 
-    public function leftJoinSub($query, $as, $first, $operator = null, $second = null)
+    public function leftJoinSub($query, $as, $first, $operator = null, $second = null): static
     {
         return $this->joinSub($query, $as, $first, $operator, $second, "left");
     }
 
-    public function rightJoinSub($query, $as, $first, $operator = null, $second = null)
+    public function rightJoinSub($query, $as, $first, $operator = null, $second = null): static
     {
         return $this->joinSub($query, $as, $first, $operator, $second, "right");
     }
 
-    public function joinLateral($query, string $as, string $type = "inner")
+    public function joinLateral($query, string $as, string $type = "inner"): static
     {
         return parent::joinLateral($this->recordJoinedSubqueryTable($query), $as, $type);
     }
 
-    public function leftJoinLateral($query, string $as)
+    public function leftJoinLateral($query, string $as): static
     {
         return $this->joinLateral($query, $as, "left");
     }
 
-    protected function recordJoinedSubqueryTable($query)
+    protected function recordJoinedSubqueryTable($query): mixed
     {
         return $this->recordSubqueryTable($query, function (string $table): void {
             $this->joinedSubqueryTables[] = $table;
@@ -139,7 +139,7 @@ class CachedQueryBuilder extends Builder
      * model's prefix. Cross-connection and `$cachePrefix` related models are
      * covered on the relation-driven paths instead, where the model is named.
      */
-    protected function recordRelatedWhereSubqueryTable($query)
+    protected function recordRelatedWhereSubqueryTable($query): mixed
     {
         return $this->recordSubqueryTable($query, function (string $table): void {
             $this->recordRelatedSubqueryTable($table);
@@ -156,7 +156,7 @@ class CachedQueryBuilder extends Builder
      * caller's callback still runs exactly once, inside Laravel's own
      * createSub().
      */
-    protected function recordSubqueryTable($query, Closure $record)
+    protected function recordSubqueryTable($query, Closure $record): mixed
     {
         if ($query instanceof Closure) {
             return function ($subQuery) use ($query, $record): void {
