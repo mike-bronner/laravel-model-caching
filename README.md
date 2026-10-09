@@ -81,6 +81,8 @@ $posts = Post::where('active', true)->with('comments')->paginate();
 ### 📋 Requirements
 - PHP 8.3+
 - Laravel 12 or 13
+- PHP 8.6 needs Laravel 13. Laravel 12 does not support PHP 8.6, because its
+  session handler fails there. Laravel 13 fixes it.
 
 ## 📦 Installation
 ```

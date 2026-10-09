@@ -28,6 +28,11 @@ jobs:
       matrix:
         php: ['8.3', '8.4', '8.5', '8.6']
         laravel: ['12.*', '13.*']
+        # Laravel 12's session handler fails on PHP 8.6, and Laravel 13 fixes
+        # it. The README documents this combination as not supported.
+        exclude:
+          - php: '8.6'
+            laravel: '12.*'
         include:
           - laravel: '12.*'
             testbench: '10.*'
