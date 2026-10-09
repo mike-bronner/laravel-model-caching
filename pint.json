@@ -25,7 +25,8 @@
         },
         "no_unused_imports": true,
         "ordered_imports": {
-            "sort_algorithm": "alpha"
+            "sort_algorithm": "alpha",
+            "imports_order": ["class", "function", "const"]
         },
         "binary_operator_spaces": {
             "default": "single_space"
@@ -37,12 +38,15 @@
         "cast_spaces": true,
         "class_attributes_separation": false,
         "method_argument_space": {
-            "on_multiline": "ensure_fully_multiline"
+            "on_multiline": "ignore"
         },
-        "class_definition": {
-            "multi_line_extends_each_single_line": true
+        "braces_position": false,
+        "class_definition": false,
+        "new_with_parentheses": {
+            "named_class": false,
+            "anonymous_class": true
         },
-        "single_line_empty_body": true,
+        "single_line_empty_body": false,
         "method_chaining_indentation": true,
         "array_indentation": false,
         "indentation_type": false,
@@ -54,6 +58,9 @@
             "remove_inheritdoc": true
         },
         "phpdoc_to_comment": true,
+        "php_unit_method_casing": {
+            "case": "camel_case"
+        },
         "no_extra_blank_lines": {
             "tokens": [
                 "extra",

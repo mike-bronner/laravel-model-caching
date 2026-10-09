@@ -1,6 +1,3 @@
-# -----------------
-# Laravel Artifacts
-# -----------------
 /.phpunit.cache
 .phpunit.result.cache
 /.laravel-lsp
@@ -12,58 +9,34 @@
 /vendor
 /.vagrant
 
-# -----------------
-# Environment files
-# -----------------
 .env
 .env.backup
 .env.production
 .env.testing
 .env.staging
 
-# -----------------
-# Test and Debugging Artifacts
-# -----------------
 .phpunit.result.cache
 /tests/Browser/Screenshots
 npm-debug.log
 yarn-error.log
 /tests/database/parallel-*/
 
-# -----------------
-# Homestead and Auth Configs
-# -----------------
 Homestead.json
 Homestead.yaml
 auth.json
 
-# -----------------
-# IDE and Editor Config
-# -----------------
 /.idea
 .DS_Store
 
 npm-debug.log
 yarn-error.log
 
-# -----------------
-# Fleet Artifacts
-# -----------------
 /.fleet
 
-# -----------------
-# Backup Files
-# -----------------
 laravel_app_backup.tar.gz
 
-# -----------------
-# Log files
-# -----------------
 docker-compose-*
 
-# -----------------
-# Diagnostics files
-# -----------------
 diagnostics/diagnostics.config
 diagnostics/diag_*
 docker-diagnostics/docker_diagnostics.config
@@ -82,9 +55,6 @@ _ide_helper*.php
 /tests/database/*.sqlite-journal
 composer.lock
 
-# ignore the composed agent files, have laravel boost manage them and the
-# developer choose their setup. `.ai` itself is NOT ignored: it is where a
-# project keeps its own guidelines, skills and rules, and they belong in git.
 .agentic-tools-mcp
 .agents
 .claude
@@ -102,18 +72,17 @@ composer.lock
 .pi
 .vscode/mcp.json
 .zed
-AGENTS.md
-CLAUDE.md
 GEMINI.md
 boost.json
 opencode.json
 
-# Skeleton directories the Boost package runner of earlier releases created to
-# boot Boost in a package (no artisan). The upgrade does not remove them,
-# because a project may keep its own files there, so they stay ignored.
-/bootstrap/cache
-/storage/framework
-/storage/logs
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/framework/**
+!/storage/framework/**/
+!/storage/framework/**/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
 # mike-bronner/laravel-development-settings: project entries go below this line. Anything above it is lost on the next sync.
 !AGENTS.md
 !CLAUDE.md

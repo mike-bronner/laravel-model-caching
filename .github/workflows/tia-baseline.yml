@@ -1,0 +1,70 @@
+name: TIA Baseline
+
+on:
+  push:
+    branches: [main, master, develop, production]
+  workflow_dispatch:
+
+jobs:
+  baseline:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up the project before Composer
+        id: before-install
+        if: hashFiles('.github/actions/tia-baseline-before-install/action.yml', '.github/actions/tia-baseline-before-install/action.yaml') != ''
+        uses: ./.github/actions/tia-baseline-before-install
+        with:
+          secrets: ${{ toJSON(secrets) }}
+
+      - name: Choose the PHP version
+        id: php
+        env:
+          HOOK_PHP_VERSION: ${{ steps.before-install.outputs.php-version }}
+        run: |
+          version="$HOOK_PHP_VERSION"
+
+          for source in .config.platform.php .require.php; do
+            if [ -n "$version" ]; then
+              break
+            fi
+
+            constraint=$(jq -r "${source} // empty" composer.json)
+            version=$(printf '%s\n' "$constraint" | grep -oE '[0-9]+\.[0-9]+' | head -n 1 || true)
+          done
+
+          if [ -z "$version" ]; then
+            echo "::error title=Pest TIA baseline::composer.json names no PHP version in config.platform.php or require.php. Set the php-version output of .github/actions/tia-baseline-before-install."
+            exit 1
+          fi
+
+          echo "Recording on PHP ${version}."
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ steps.php.outputs.version }}
+          extensions: ${{ steps.before-install.outputs.php-extensions }}
+          ini-values: ${{ steps.before-install.outputs.php-ini-values }}
+          coverage: pcov
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Set up the project after Composer
+        if: hashFiles('.github/actions/tia-baseline-after-install/action.yml', '.github/actions/tia-baseline-after-install/action.yaml') != ''
+        uses: ./.github/actions/tia-baseline-after-install
+        with:
+          secrets: ${{ toJSON(secrets) }}
+
+      - name: Record and publish the baseline
+        uses: mike-bronner/laravel-development-settings/.github/actions/tia-baseline@main
+        with:
+          arguments: ${{ steps.before-install.outputs.pest-arguments }}
