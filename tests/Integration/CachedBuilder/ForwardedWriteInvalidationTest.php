@@ -1,146 +1,131 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Database\Query\Builder;
-use PHPUnit\Framework\Attributes\RequiresMethod;
 
-class ForwardedWriteInvalidationTest extends IntegrationTestCase
+test('upsert invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        $row = ["id" => 1] + newBookRow("upserted");
+
+        Book::upsert([$row], ["id"], ["title"]);
+    });
+});
+
+test('insert or ignore invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        Book::insertOrIgnore([newBookRow("inserted or ignored")]);
+    });
+});
+
+test('fill and insert or ignore invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        Book::fillAndInsertOrIgnore([newBookRow("filled and inserted")]);
+    });
+});
+
+test('insert or ignore returning invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        Book::insertOrIgnoreReturning([newBookRow("inserted returning")], ["id"]);
+    });
+})->skip(
+    ! method_exists(Builder::class, "insertOrIgnoreReturning"),
+    "Method " . Builder::class . "::insertOrIgnoreReturning() does not exist",
+);
+
+test('insert get id invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        Book::insertGetId(newBookRow("inserted with id"));
+    });
+});
+
+test('insert using invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        Book::insertUsing(
+            ["author_id", "publisher_id", "published_at", "title", "price"],
+            (new UncachedBook)
+                ->selectRaw("author_id, publisher_id, published_at, 'copied', price")
+                ->where("id", 1),
+        );
+    });
+});
+
+test('insert or ignore using invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        Book::insertOrIgnoreUsing(
+            ["author_id", "publisher_id", "published_at", "title", "price"],
+            (new UncachedBook)
+                ->selectRaw("author_id, publisher_id, published_at, 'copied or ignored', price")
+                ->where("id", 1),
+        );
+    });
+});
+
+test('update or insert invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        Book::updateOrInsert(["id" => 1], ["title" => "updated or inserted"]);
+    });
+});
+
+// Creating a model runs insertGetId() underneath. With model events off,
+// as under saveQuietly(), that write is the only thing left to invalidate.
+test('quiet create invalidates cache', function () {
+    assertCachedTitlesMatchDatabase(function () {
+        (new Book)->fill(newBookRow("created quietly"))->saveQuietly();
+    });
+});
+
+test('touch invalidates cache', function () {
+    $before = (new Book)->findOrFail(1)->updated_at;
+
+    $this->travel(1)->hours();
+    (new Book)->where("id", 1)->touch();
+
+    $after = (new Book)->findOrFail(1)->updated_at;
+    $live = (new UncachedBook)->findOrFail(1)->updated_at;
+
+    expect($live)->not->toEqual($before);
+    expect($after)->toEqual($live);
+});
+
+test('increment each invalidates cache', function () {
+    $before = (new Book)->findOrFail(1)->price;
+
+    (new Book)->where("id", 1)->incrementEach(["price" => 2]);
+
+    expect((new Book)->findOrFail(1)->price)->toEqual($before + 2);
+});
+
+test('decrement each invalidates cache', function () {
+    $before = (new Book)->findOrFail(1)->price;
+
+    (new Book)->where("id", 1)->decrementEach(["price" => 2]);
+
+    expect((new Book)->findOrFail(1)->price)->toEqual($before - 2);
+});
+
+function newBookRow(string $title): array
 {
-    private function newBookRow(string $title) : array
-    {
-        $book = (new UncachedBook)->findOrFail(1);
+    $book = (new UncachedBook)->findOrFail(1);
 
-        return [
-            "author_id" => $book->author_id,
-            "publisher_id" => $book->publisher_id,
-            "published_at" => $book->published_at,
-            "title" => $title,
-            "price" => 1,
-        ];
-    }
+    return [
+        "author_id" => $book->author_id,
+        "publisher_id" => $book->publisher_id,
+        "published_at" => $book->published_at,
+        "title" => $title,
+        "price" => 1,
+    ];
+}
 
-    private function assertCachedTitlesMatchDatabase(callable $write) : void
-    {
-        $before = (new Book)->orderBy("id")->pluck("title");
+function assertCachedTitlesMatchDatabase(callable $write): void
+{
+    $before = (new Book)->orderBy("id")->pluck("title");
 
-        $write();
+    $write();
 
-        $after = (new Book)->orderBy("id")->pluck("title");
-        $live = (new UncachedBook)->orderBy("id")->pluck("title");
+    $after = (new Book)->orderBy("id")->pluck("title");
+    $live = (new UncachedBook)->orderBy("id")->pluck("title");
 
-        $this->assertNotEquals($before, $live, "The write must change what the database returns");
-        $this->assertEquals($live, $after);
-    }
-
-    public function testUpsertInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            $row = ["id" => 1] + $this->newBookRow("upserted");
-
-            Book::upsert([$row], ["id"], ["title"]);
-        });
-    }
-
-    public function testInsertOrIgnoreInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            Book::insertOrIgnore([$this->newBookRow("inserted or ignored")]);
-        });
-    }
-
-    public function testFillAndInsertOrIgnoreInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            Book::fillAndInsertOrIgnore([$this->newBookRow("filled and inserted")]);
-        });
-    }
-
-    #[RequiresMethod(Builder::class, "insertOrIgnoreReturning")]
-    public function testInsertOrIgnoreReturningInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            Book::insertOrIgnoreReturning([$this->newBookRow("inserted returning")], ["id"]);
-        });
-    }
-
-    public function testInsertGetIdInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            Book::insertGetId($this->newBookRow("inserted with id"));
-        });
-    }
-
-    public function testInsertUsingInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            Book::insertUsing(
-                ["author_id", "publisher_id", "published_at", "title", "price"],
-                (new UncachedBook)
-                    ->selectRaw("author_id, publisher_id, published_at, 'copied', price")
-                    ->where("id", 1),
-            );
-        });
-    }
-
-    public function testInsertOrIgnoreUsingInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            Book::insertOrIgnoreUsing(
-                ["author_id", "publisher_id", "published_at", "title", "price"],
-                (new UncachedBook)
-                    ->selectRaw("author_id, publisher_id, published_at, 'copied or ignored', price")
-                    ->where("id", 1),
-            );
-        });
-    }
-
-    public function testUpdateOrInsertInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            Book::updateOrInsert(["id" => 1], ["title" => "updated or inserted"]);
-        });
-    }
-
-    // Creating a model runs insertGetId() underneath. With model events off,
-    // as under saveQuietly(), that write is the only thing left to invalidate.
-    public function testQuietCreateInvalidatesCache()
-    {
-        $this->assertCachedTitlesMatchDatabase(function () {
-            (new Book)->fill($this->newBookRow("created quietly"))->saveQuietly();
-        });
-    }
-
-    public function testTouchInvalidatesCache()
-    {
-        $before = (new Book)->findOrFail(1)->updated_at;
-
-        $this->travel(1)->hours();
-        (new Book)->where("id", 1)->touch();
-
-        $after = (new Book)->findOrFail(1)->updated_at;
-        $live = (new UncachedBook)->findOrFail(1)->updated_at;
-
-        $this->assertNotEquals($before, $live);
-        $this->assertEquals($live, $after);
-    }
-
-    public function testIncrementEachInvalidatesCache()
-    {
-        $before = (new Book)->findOrFail(1)->price;
-
-        (new Book)->where("id", 1)->incrementEach(["price" => 2]);
-
-        $this->assertEquals($before + 2, (new Book)->findOrFail(1)->price);
-    }
-
-    public function testDecrementEachInvalidatesCache()
-    {
-        $before = (new Book)->findOrFail(1)->price;
-
-        (new Book)->where("id", 1)->decrementEach(["price" => 2]);
-
-        $this->assertEquals($before - 2, (new Book)->findOrFail(1)->price);
-    }
+    expect($live)->not->toEqual($before, "The write must change what the database returns");
+    expect($after)->toEqual($live);
 }

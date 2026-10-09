@@ -21,8 +21,13 @@ This document stays the authority on what the project expects of a change.
 `AGENTS.md` applies it to agents and does not replace it.
 
 ## Testing
-- [ ] After making your changes, make sure the tests still pass: `composer test`. A reachable Redis is required, because it is the cache store the suite runs against.
-- [ ] When adding new functionality, also add new tests.
+- [ ] After making your changes, make sure the tests still pass: `composer test`. It runs the suite with Pest. A reachable Redis is required, because it is the cache store the suite runs against.
+- [ ] When adding new functionality, also add new tests. Write them in Pest, as `test()` calls with `expect()` expectations, next to their siblings. To run one test, filter on its description: `vendor/bin/pest --configuration phpunit.xml.dist --filter "<test description>"`.
+- [ ] To run the tests through Testbench, use
+  `vendor/bin/testbench package:test`. It passes Pest flags such as `--tia`
+  through. Do not use `vendor/bin/testbench test`. It reads
+  `phpunit.xml.dist` from Testbench's skeleton app, not from this repository,
+  so it fails.
 - [ ] When fixing errors, write and satisfy new unit tests that replicate the issue.
 - [ ] Check that your test actually guards the fix. Revert the change, confirm the test goes red, then restore it. A test written after a fix often passes without it.
 - [ ] Make sure there are no build errors on [GitHub Actions](https://github.com/mike-bronner/laravel-model-caching/actions).

@@ -39,9 +39,14 @@ The `make:` generators do not work here. `make:class` writes into
 siblings, and copy their structure. That keeps it in the package's namespace
 and layout.
 
-Run tests with `composer test`, or with `vendor/bin/phpunit` exactly as shown
+Run tests with `composer test`, or with `vendor/bin/pest` exactly as shown
 under "Run the checks". Both pass this repository's `phpunit.xml.dist`, so the
 suite runs as CI runs it.
+
+Through Testbench, run tests with `vendor/bin/testbench package:test`. It
+passes Pest flags such as `--tia` through. Do not use
+`vendor/bin/testbench test`. It reads `phpunit.xml.dist` from Testbench's
+skeleton app, not from this repository, so it fails.
 
 The generated block is written for Laravel applications. Where it disagrees
 with this file, this file wins, because this file is written for this package.
@@ -126,11 +131,38 @@ composer analyse
 ```
 
 `composer test` needs a reachable Redis on the default port, because Redis is
-the cache store the suite runs against. To run one test while you iterate:
+the cache store the suite runs against. To run one test while you iterate,
+filter on its description:
 
 ```
-vendor/bin/phpunit --configuration phpunit.xml.dist --filter <testName>
+vendor/bin/pest --configuration phpunit.xml.dist --filter "<test description>"
 ```
+
+On PHP 8.5 with Pest 5, a plain `vendor/bin/pest` uses Test Impact Analysis.
+It runs only the tests your change affects and replays the recorded results
+of the rest. It downloads the graph that `tia-baseline.yml` records on
+`master` on PHP 8.5. `composer test` passes `--testsuite`, which Pest treats
+as a partial run, so it always runs the whole suite. Use it before you open a
+pull request. Pest refuses `--random-order-seed`, `--covers` and `--uses` on
+a run where TIA is on, even a partial one, so add `--no-tia` to that run.
+Pest keeps the graph outside the repository, and `/.pest/` is ignored for the
+case where it falls back to the project directory.
+
+### Write tests in Pest
+
+The suite runs on Pest. Write each test as a `test()` call with `expect()`
+expectations, in a file next to its siblings. Do not add a PHPUnit test class.
+`tests/Pest.php` binds every test file to `IntegrationTestCase`, so `$this`
+inside a test is the test case.
+
+Put a helper that several files share in `tests/Pest.php` as a plain function.
+Keep a helper that one file uses in that file. Every test file shares one
+global namespace, so give each function a name no other test file uses.
+
+Pest 5 needs PHP 8.4, and its Laravel plugin needs Laravel 13. So CI resolves
+Pest 4 on PHP 8.3 and on Laravel 12, and Pest 5 everywhere else. Use only Pest
+features that both majors have, or guard the call the way `tests/Pest.php`
+guards Test Impact Analysis.
 
 ### Treat the PHPStan baseline as a debt ledger
 
@@ -329,19 +361,21 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
 - Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
 
-=== phpunit/core rules ===
+=== pest/core rules ===
 
-# PHPUnit
+# Pest
 
-- This project uses PHPUnit. Create tests with `php artisan make:test --phpunit {name}`.
+- This project uses Pest. Create tests with `php artisan make:test --pest {name}`.
 - Do not include the test suite directory in `{name}`. Use `SomeFeatureTest`, not `Feature/SomeFeatureTest`.
 - Read the `testing-best-practices` skill for guidance on coverage, naming, structure, dependency isolation, and review.
+- Do not delete tests or test files without approval. They are part of the application.
 
 ## Running Tests
 
 - Run the narrowest set of tests that covers the change. Pass a file path or `--filter=testName` to `php artisan test --compact`.
 - Rerun a test after each change to it.
-- Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
+- Run `vendor/bin/pest` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
+- After the feature tests pass, ask the user to run the complete suite with `php artisan test --compact`.
 
 === mike-bronner/clean-code/arrays-array-accessors rules ===
 

@@ -33,9 +33,10 @@
         "mike-bronner/clean-code": "^0.2",
         "mike-bronner/laravel-development-settings": "^0.6",
         "orchestra/testbench": "^10.0|^11.0",
-        "phpunit/phpunit": "^11.5|^12.5",
         "predis/predis": "^2.0|^3.0",
-        "symfony/thanks": "^1.2"
+        "symfony/thanks": "^1.2",
+        "pestphp/pest": "^4.0|^5.0",
+        "pestphp/pest-plugin-laravel": "^4.0|^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -65,7 +66,7 @@
     "prefer-stable": true,
     "scripts": {
         "analyse": "phpstan analyse --memory-limit=2G",
-        "test": "phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature"
+        "test": "pest --configuration phpunit.xml.dist --testsuite Integration,Feature"
     },
     "scripts-descriptions": {
         "analyse": "Run PHPStan at level 5. Enforced in CI on every pull request. The pre-existing findings are recorded in phpstan-baseline.neon, so a clean run means you introduced nothing new.",
@@ -75,7 +76,8 @@
         "allow-plugins": {
             "symfony/thanks": true,
             "dealerdirect/phpcodesniffer-composer-installer": true,
-            "mike-bronner/laravel-development-settings": true
+            "mike-bronner/laravel-development-settings": true,
+            "pestphp/pest-plugin": true
         }
     }
 }

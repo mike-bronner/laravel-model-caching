@@ -1,49 +1,42 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class WriteInvalidationGateTest extends IntegrationTestCase
+test('write does not flush while caching is disabled', function () {
+    $before = cachedTitles();
+    $query = (new Book)->newQuery()->where("id", 1);
+
+    app("model-cache")->runDisabled(function () use ($query) {
+        $query->update(["title" => "written while disabled"]);
+    });
+
+    expect(liveTitles())->not->toEqual($before);
+    expect(cachedTitles())->toEqual($before);
+});
+
+test('write through disabled cache query still flushes', function () {
+    cachedTitles();
+
+    (new Book)->disableCache()->where("id", 1)->update(["title" => "written uncached"]);
+
+    expect(cachedTitles())->toEqual(liveTitles());
+});
+
+test('write through locked query still flushes', function () {
+    cachedTitles();
+
+    (new Book)->lockForUpdate()->where("id", 1)->update(["title" => "written under lock"]);
+
+    expect(cachedTitles())->toEqual(liveTitles());
+});
+
+function cachedTitles()
 {
-    private function cachedTitles()
-    {
-        return (new Book)->orderBy("id")->pluck("title");
-    }
+    return (new Book)->orderBy("id")->pluck("title");
+}
 
-    private function liveTitles()
-    {
-        return (new UncachedBook)->orderBy("id")->pluck("title");
-    }
-
-    public function testWriteDoesNotFlushWhileCachingIsDisabled()
-    {
-        $before = $this->cachedTitles();
-        $query = (new Book)->newQuery()->where("id", 1);
-
-        app("model-cache")->runDisabled(function () use ($query) {
-            $query->update(["title" => "written while disabled"]);
-        });
-
-        $this->assertNotEquals($before, $this->liveTitles());
-        $this->assertEquals($before, $this->cachedTitles());
-    }
-
-    public function testWriteThroughDisabledCacheQueryStillFlushes()
-    {
-        $this->cachedTitles();
-
-        (new Book)->disableCache()->where("id", 1)->update(["title" => "written uncached"]);
-
-        $this->assertEquals($this->liveTitles(), $this->cachedTitles());
-    }
-
-    public function testWriteThroughLockedQueryStillFlushes()
-    {
-        $this->cachedTitles();
-
-        (new Book)->lockForUpdate()->where("id", 1)->update(["title" => "written under lock"]);
-
-        $this->assertEquals($this->liveTitles(), $this->cachedTitles());
-    }
+function liveTitles()
+{
+    return (new UncachedBook)->orderBy("id")->pluck("title");
 }

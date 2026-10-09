@@ -86,12 +86,12 @@ jobs:
     - name: Install Dependencies
       run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist ${{ matrix.php == '8.6' && '--ignore-platform-req=php+' || '' }}
 
-    - name: Execute Integration and Feature tests via PHPUnit
+    - name: Execute Integration and Feature tests via Pest
       env:
         LOG_DEPRECATIONS_WHILE_TESTING: ${{ matrix.php == '8.5' && matrix.laravel == '13.*' }}
         LOG_DEPRECATIONS_CHANNEL: stderr
       run: |
-        vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }} 2> deprecations.log || status=$?
+        vendor/bin/pest --configuration phpunit.xml.dist --testsuite Integration,Feature ${{ matrix.php == '8.5' && matrix.laravel == '13.*' && '--coverage-clover coverage.xml' || '' }} 2> deprecations.log || status=$?
         cat deprecations.log >&2
         exit ${status:-0}
 
@@ -262,7 +262,7 @@ jobs:
         PHP
 
     - name: Execute real DynamoDB smoke tests
-      run: vendor/bin/phpunit --configuration phpunit.xml.dist tests/Integration/RealDynamoDbModelCachingTest.php
+      run: vendor/bin/pest --configuration phpunit.xml.dist tests/Integration/RealDynamoDbModelCachingTest.php
 
   predis-tests:
 
@@ -327,8 +327,8 @@ jobs:
     - name: Install Dependencies
       run: composer update --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-    - name: Execute Integration and Feature tests via PHPUnit (Predis client)
-      run: vendor/bin/phpunit --configuration phpunit.xml.dist --testsuite Integration,Feature --coverage-clover coverage.xml
+    - name: Execute Integration and Feature tests via Pest (Predis client)
+      run: vendor/bin/pest --configuration phpunit.xml.dist --testsuite Integration,Feature --coverage-clover coverage.xml
 
     - name: Upload Predis coverage to Codecov
       if: github.event.pull_request.head.repo.fork != true

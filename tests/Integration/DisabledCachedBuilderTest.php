@@ -1,321 +1,306 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
 /**
 * @SuppressWarnings(PHPMD.TooManyPublicMethods)
 * @SuppressWarnings(PHPMD.TooManyMethods)
  */
-class DisabledCachedBuilderTest extends IntegrationTestCase
-{
-    public function testAvgModelResultsIsNotCached()
-    {
-        $authorId = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->avg('id');
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-avg_id");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
 
-        $cachedResult = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResult = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->avg('id');
+test('avg model results is not cached', function () {
+    $authorId = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->avg('id');
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-avg_id");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
 
-        $this->assertEquals($authorId, $liveResult);
-        $this->assertNull($cachedResult);
-    }
+    $cachedResult = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResult = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->avg('id');
 
-    public function testChunkModelResultsIsNotCached()
-    {
-        $cachedChunks = collect([
-            'authors' => collect(),
-            'keys' => collect(),
-        ]);
-        $chunkSize = 3;
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
-        $uncachedChunks = collect();
+    expect($liveResult)->toEqual($authorId);
+    expect($cachedResult)->toBeNull();
+});
 
-        $authors = (new Author)->with('books', 'profile')
-            ->disableCache()
-            ->chunk($chunkSize, function ($chunk) use (&$cachedChunks, $chunkSize) {
-                $offset = '';
+test('chunk model results is not cached', function () {
+    $cachedChunks = collect([
+        'authors' => collect(),
+        'keys' => collect(),
+    ]);
+    $chunkSize = 3;
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
+    $uncachedChunks = collect();
 
-                if ($cachedChunks['authors']->count()) {
-                    $offsetIncrement = $cachedChunks['authors']->count() * $chunkSize;
-                    $offset = "-offset_{$offsetIncrement}";
-                }
+    $authors = (new Author)->with('books', 'profile')
+        ->disableCache()
+        ->chunk($chunkSize, function ($chunk) use (&$cachedChunks, $chunkSize) {
+            $offset = '';
 
-                $cachedChunks['authors']->push($chunk);
-                $cachedChunks['keys']->push(sha1(
-                    "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile_orderBy_authors.id_asc{$offset}-limit_3"
-                ));
-            });
+            if ($cachedChunks['authors']->count()) {
+                $offsetIncrement = $cachedChunks['authors']->count() * $chunkSize;
+                $offset = "-offset_{$offsetIncrement}";
+            }
 
-        $liveResults = (new UncachedAuthor)->with('books', 'profile')
-            ->chunk($chunkSize, function ($chunk) use (&$uncachedChunks) {
-                $uncachedChunks->push($chunk);
-            });
+            $cachedChunks['authors']->push($chunk);
+            $cachedChunks['keys']->push(sha1(
+                "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile_orderBy_authors.id_asc{$offset}-limit_3"
+            ));
+        });
 
-        for ($index = 0; $index < $cachedChunks['authors']->count(); $index++) {
-            $key = $cachedChunks['keys'][$index];
-            $cachedResults = $this->cache()
-                ->tags($tags)
-                ->get($key);
+    $liveResults = (new UncachedAuthor)->with('books', 'profile')
+        ->chunk($chunkSize, function ($chunk) use (&$uncachedChunks) {
+            $uncachedChunks->push($chunk);
+        });
 
-            $this->assertNull($cachedResults);
-            $this->assertEquals($authors, $liveResults);
-        }
-    }
-
-    public function testCountModelResultsIsNotCached()
-    {
-        $authors = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->count();
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-count");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
-
+    for ($index = 0; $index < $cachedChunks['authors']->count(); $index++) {
+        $key = $cachedChunks['keys'][$index];
         $cachedResults = $this->cache()
             ->tags($tags)
             ->get($key);
-        $liveResults = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->count();
 
-        $this->assertEquals($authors, $liveResults);
-        $this->assertNull($cachedResults);
+        expect($cachedResults)->toBeNull();
+        expect($liveResults)->toEqual($authors);
     }
+});
 
-    public function testCursorModelResultsIsNotCached()
-    {
-        $authors = (new Author)
+test('count model results is not cached', function () {
+    $authors = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->count();
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-count");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
+
+    $cachedResults = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResults = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->count();
+
+    expect($liveResults)->toEqual($authors);
+    expect($cachedResults)->toBeNull();
+});
+
+test('cursor model results is not cached', function () {
+    $authors = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->cursor();
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-cursor");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
+
+    $cachedResults = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResults = collect(
+        (new UncachedAuthor)
             ->with('books', 'profile')
-            ->disableCache()
-            ->cursor();
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-cursor");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
+            ->cursor()
+    );
 
-        $cachedResults = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResults = collect(
-            (new UncachedAuthor)
-                ->with('books', 'profile')
-                ->cursor()
-        );
+    expect($liveResults->diffKeys($authors))->toBeEmpty();
+    expect($cachedResults)->toBeNull();
+});
 
-        $this->assertEmpty($liveResults->diffKeys($authors));
-        $this->assertNull($cachedResults);
-    }
+test('find model results is not cached', function () {
+    $author = (new Author)
+        ->with('books')
+        ->disableCache()
+        ->find(1);
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_1");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+    ];
 
-    public function testFindModelResultsIsNotCached()
-    {
-        $author = (new Author)
-            ->with('books')
-            ->disableCache()
-            ->find(1);
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_1");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-        ];
+    $cachedResult = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResult = (new UncachedAuthor)
+        ->find(1);
 
-        $cachedResult = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResult = (new UncachedAuthor)
-            ->find(1);
+    expect($author->name)->toEqual($liveResult->name);
+    expect($cachedResult)->toBeNull();
+});
 
-        $this->assertEquals($liveResult->name, $author->name);
-        $this->assertNull($cachedResult);
-    }
+test('get model results is not cached', function () {
+    $authors = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->get();
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
 
-    public function testGetModelResultsIsNotCached()
-    {
-        $authors = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->get();
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
+    $cachedResults = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResults = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->get();
 
-        $cachedResults = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResults = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->get();
+    expect($liveResults->diffKeys($authors))->toBeEmpty();
+    expect($cachedResults)->toBeNull();
+});
 
-        $this->assertEmpty($liveResults->diffKeys($authors));
-        $this->assertNull($cachedResults);
-    }
+test('max model results is not cached', function () {
+    $authorId = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->max('id');
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-max_id");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
 
-    public function testMaxModelResultsIsNotCached()
-    {
-        $authorId = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->max('id');
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-max_id");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
+    $cachedResult = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResult = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->max('id');
 
-        $cachedResult = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResult = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->max('id');
+    expect($liveResult)->toEqual($authorId);
+    expect($cachedResult)->toBeNull();
+});
 
-        $this->assertEquals($authorId, $liveResult);
-        $this->assertNull($cachedResult);
-    }
+test('min model results is not cached', function () {
+    $authorId = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->min('id');
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-min_id");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
 
-    public function testMinModelResultsIsNotCached()
-    {
-        $authorId = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->min('id');
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-min_id");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
+    $cachedResult = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResult = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->min('id');
 
-        $cachedResult = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResult = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->min('id');
+    expect($liveResult)->toEqual($authorId);
+    expect($cachedResult)->toBeNull();
+});
 
-        $this->assertEquals($authorId, $liveResult);
-        $this->assertNull($cachedResult);
-    }
+test('pluck model results is not cached', function () {
+    $authors = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->pluck('name', 'id');
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_name-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-pluck_name_id");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
 
-    public function testPluckModelResultsIsNotCached()
-    {
-        $authors = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->pluck('name', 'id');
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_name-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-pluck_name_id");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
+    $cachedResults = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResults = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->pluck('name', 'id');
 
-        $cachedResults = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResults = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->pluck('name', 'id');
+    expect($liveResults->diffKeys($authors))->toBeEmpty();
+    expect($cachedResults)->toBeNull();
+});
 
-        $this->assertEmpty($liveResults->diffKeys($authors));
-        $this->assertNull($cachedResults);
-    }
+test('sum model results is not cached', function () {
+    $authorId = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->sum('id');
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-sum_id");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
 
-    public function testSumModelResultsIsNotCached()
-    {
-        $authorId = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->sum('id');
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-sum_id");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
+    $cachedResult = $this->cache()
+        ->tags($tags)
+        ->get($key);
+    $liveResult = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->sum('id');
 
-        $cachedResult = $this->cache()
-            ->tags($tags)
-            ->get($key);
-        $liveResult = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->sum('id');
+    expect($liveResult)->toEqual($authorId);
+    expect($cachedResult)->toBeNull();
+});
 
-        $this->assertEquals($authorId, $liveResult);
-        $this->assertNull($cachedResult);
-    }
+test('value model results is not cached', function () {
+    $author = (new Author)
+        ->with('books', 'profile')
+        ->disableCache()
+        ->value('name');
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_name-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-first");
+    $tags = [
+        'genealabslaravelmodelcachingtestsfixturesauthor',
+        'genealabslaravelmodelcachingtestsfixturesbook',
+        'genealabslaravelmodelcachingtestsfixturesprofile',
+    ];
 
-    public function testValueModelResultsIsNotCached()
-    {
-        $author = (new Author)
-            ->with('books', 'profile')
-            ->disableCache()
-            ->value('name');
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_name-testing:{$this->testingSqlitePath}testing.sqlite:books-testing:{$this->testingSqlitePath}testing.sqlite:profile-first");
-        $tags = [
-            'genealabslaravelmodelcachingtestsfixturesauthor',
-            'genealabslaravelmodelcachingtestsfixturesbook',
-            'genealabslaravelmodelcachingtestsfixturesprofile',
-        ];
+    $cachedResult = $this->cache()
+        ->tags($tags)
+        ->get($key);
 
-        $cachedResult = $this->cache()
-            ->tags($tags)
-            ->get($key);
+    $liveResult = (new UncachedAuthor)
+        ->with('books', 'profile')
+        ->value('name');
 
-        $liveResult = (new UncachedAuthor)
-            ->with('books', 'profile')
-            ->value('name');
+    expect($liveResult)->toEqual($author);
+    expect($cachedResult)->toBeNull();
+});
 
-        $this->assertEquals($author, $liveResult);
-        $this->assertNull($cachedResult);
-    }
+test('pagination is cached', function () {
+    $authors = (new Author)
+        ->disableCache()
+        ->paginate(3);
 
-    public function testPaginationIsCached()
-    {
-        $authors = (new Author)
-            ->disableCache()
-            ->paginate(3);
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-paginate_by_3_page_1");
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+    ];
 
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-paginate_by_3_page_1");
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
-        ];
+    $cachedResults = $this->cache()
+        ->tags($tags)
+        ->get($key)['value']
+        ?? null;
+    $liveResults = (new UncachedAuthor)
+        ->paginate(3);
 
-        $cachedResults = $this->cache()
-            ->tags($tags)
-            ->get($key)['value']
-            ?? null;
-        $liveResults = (new UncachedAuthor)
-            ->paginate(3);
-
-        $this->assertNull($cachedResults);
-        $this->assertEquals($liveResults->toArray(), $authors->toArray());
-    }
-}
+    expect($cachedResults)->toBeNull();
+    expect($authors->toArray())->toEqual($liveResults->toArray());
+});

@@ -13,7 +13,9 @@ trait CreatesApplication
     private static $baseLineDatabaseMigrated = false;
 
     protected $cache;
-    protected $testingSqlitePath;
+    // Public because the Pest helper functions read it through test(), which
+    // reaches the test case from outside its class scope.
+    public $testingSqlitePath;
 
     // PHPUnit runs tearDown() even for a test that skipped in setUp(), so a
     // tearDown that talks to Redis throws where the test itself correctly

@@ -1,88 +1,65 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\Console\Commands;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCooldown;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
+use GeneaLabs\LaravelModelCaching\Tests\ConfiguresUnprefixedStore;
 
-class FlushScopeTest extends IntegrationTestCase
+uses(ConfiguresUnprefixedStore::class);
+
+test('clear keeps application entries under the same store prefix', function () {
+    $store = app("cache")->store("model");
+    $store->forever("application:settings", "kept");
+    $store->tags(["application-tag"])->forever("application:tagged", "kept");
+
+    assertStaleCacheIsCleared();
+
+    expect($store->get("application:settings"))->toBe("kept");
+    expect($store->tags(["application-tag"])->get("application:tagged"))->toBe("kept");
+});
+
+test('clear removes every package key', function () {
+    (new Author)->with("books")->get();
+    (new AuthorWithCooldown)->withCacheCooldownSeconds(30)->get();
+
+    expect(packageKeys())->not->toBeEmpty();
+
+    $this->artisan("modelCache:clear")->assertExitCode(0);
+
+    expect(packageKeys())->toBe([]);
+});
+
+test('clear on unprefixed store keeps application keys', function () {
+    config(["laravel-model-caching.store" => "model-unprefixed"]);
+    $connection = app("redis")->connection("model-cache-unprefixed");
+    $applicationKey = "application:unprefixed:" . uniqid();
+    $connection->set($applicationKey, "kept");
+
+    try {
+        assertStaleCacheIsCleared();
+
+        expect($connection->get($applicationKey))->toBe("kept");
+    } finally {
+        $connection->del($applicationKey);
+        $this->artisan("modelCache:clear");
+    }
+});
+
+function assertStaleCacheIsCleared(): void
 {
-    private const UNPREFIXED_DATABASE = 3;
+    $authorId = (new Author)->get()->first()->id;
+    (new UncachedAuthor)->where("id", $authorId)->update(["name" => "CLEARED_AUTHOR"]);
 
-    protected function getEnvironmentSetUp($app)
-    {
-        parent::getEnvironmentSetUp($app);
+    expect((new Author)->get()->firstWhere("id", $authorId)->name)->not->toBe("CLEARED_AUTHOR");
 
-        $app["config"]->set("database.redis.model-cache-unprefixed", [
-            "host" => env("REDIS_HOST", "127.0.0.1"),
-            "password" => env("REDIS_PASSWORD", null),
-            "port" => env("REDIS_PORT", 6379),
-            "database" => self::UNPREFIXED_DATABASE,
-        ]);
-        $app["config"]->set("cache.stores.model-unprefixed", [
-            "driver" => "redis",
-            "connection" => "model-cache-unprefixed",
-            "prefix" => "",
-        ]);
-    }
+    test()->artisan("modelCache:clear")->assertExitCode(0);
 
-    public function testClearKeepsApplicationEntriesUnderTheSameStorePrefix()
-    {
-        $store = app("cache")->store("model");
-        $store->forever("application:settings", "kept");
-        $store->tags(["application-tag"])->forever("application:tagged", "kept");
+    expect((new Author)->get()->firstWhere("id", $authorId)->name)->toBe("CLEARED_AUTHOR");
+}
 
-        $this->assertStaleCacheIsCleared();
+function packageKeys(): array
+{
+    $token = (int) env("TEST_TOKEN", 1);
 
-        $this->assertSame("kept", $store->get("application:settings"));
-        $this->assertSame("kept", $store->tags(["application-tag"])->get("application:tagged"));
-    }
-
-    public function testClearRemovesEveryPackageKey()
-    {
-        (new Author)->with("books")->get();
-        (new AuthorWithCooldown)->withCacheCooldownSeconds(30)->get();
-
-        $this->assertNotEmpty($this->packageKeys());
-
-        $this->artisan("modelCache:clear")->assertExitCode(0);
-
-        $this->assertSame([], $this->packageKeys());
-    }
-
-    public function testClearOnUnprefixedStoreKeepsApplicationKeys()
-    {
-        config(["laravel-model-caching.store" => "model-unprefixed"]);
-        $connection = app("redis")->connection("model-cache-unprefixed");
-        $applicationKey = "application:unprefixed:" . uniqid();
-        $connection->set($applicationKey, "kept");
-
-        try {
-            $this->assertStaleCacheIsCleared();
-
-            $this->assertSame("kept", $connection->get($applicationKey));
-        } finally {
-            $connection->del($applicationKey);
-            $this->artisan("modelCache:clear");
-        }
-    }
-
-    private function assertStaleCacheIsCleared() : void
-    {
-        $authorId = (new Author)->get()->first()->id;
-        (new UncachedAuthor)->where("id", $authorId)->update(["name" => "CLEARED_AUTHOR"]);
-
-        $this->assertNotSame("CLEARED_AUTHOR", (new Author)->get()->firstWhere("id", $authorId)->name);
-
-        $this->artisan("modelCache:clear")->assertExitCode(0);
-
-        $this->assertSame("CLEARED_AUTHOR", (new Author)->get()->firstWhere("id", $authorId)->name);
-    }
-
-    private function packageKeys() : array
-    {
-        $token = (int) env("TEST_TOKEN", 1);
-
-        return $this->scanRedisKeys(app("redis")->connection("model-cache"), "lmc-test-{$token}:*");
-    }
+    return test()->scanRedisKeys(app("redis")->connection("model-cache"), "lmc-test-{$token}:*");
 }

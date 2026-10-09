@@ -88,3 +88,6 @@ opencode.json
 !CLAUDE.md
 phpunit.xml
 /deprecations.log
+# Pest Test Impact Analysis graph and cache. Pest keeps them under ~/.pest by
+# default, and falls back to this directory when it finds no home directory.
+/.pest/

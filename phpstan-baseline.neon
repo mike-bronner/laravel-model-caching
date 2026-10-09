@@ -2215,12 +2215,6 @@ parameters:
 			path: tests/Fixtures/Image.php
 
 		-
-			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Author\:\:\$email\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Observers/AuthorObserver.php
-
-		-
 			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Post\)\:\:\$model\.$#'
 			identifier: property.notFound
 			count: 2

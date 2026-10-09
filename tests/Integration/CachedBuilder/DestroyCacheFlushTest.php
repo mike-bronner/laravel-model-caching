@@ -1,68 +1,32 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class DestroyCacheFlushTest extends IntegrationTestCase
-{
-    private function bookTags(): array
-    {
-        return [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
-        ];
-    }
+test('destroy with non existent ids does not flush cache', function () {
+    $key = populateBookCache();
 
-    private function populateBookCache(): string
-    {
-        (new Book)->all();
+    $result = Book::destroy([999998, 999999]);
 
-        $key = sha1(
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook"
-        );
+    expect($result)->toEqual(0);
+    expect($this->cache()->tags(bookTags())->get($key))->not->toBeNull();
+});
 
-        $this->assertNotNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
+test('destroy with existing id flushes cache', function () {
+    $key = populateBookCache();
+    $book = (new Book)->first();
 
-        return $key;
-    }
+    $result = Book::destroy($book->id);
 
-    public function testDestroyWithNonExistentIdsDoesNotFlushCache()
-    {
-        $key = $this->populateBookCache();
+    expect($result)->toEqual(1);
+    expect($this->cache()->tags(bookTags())->get($key))->toBeNull();
+});
 
-        $result = Book::destroy([999998, 999999]);
+test('destroy with multiple existing ids flushes cache', function () {
+    $key = populateBookCache();
+    $bookIds = (new Book)->take(3)->pluck('id')->toArray();
 
-        $this->assertEquals(0, $result);
-        $this->assertNotNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
-    }
+    $result = Book::destroy($bookIds);
 
-    public function testDestroyWithExistingIdFlushesCache()
-    {
-        $key = $this->populateBookCache();
-        $book = (new Book)->first();
-
-        $result = Book::destroy($book->id);
-
-        $this->assertEquals(1, $result);
-        $this->assertNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
-    }
-
-    public function testDestroyWithMultipleExistingIdsFlushesCache()
-    {
-        $key = $this->populateBookCache();
-        $bookIds = (new Book)->take(3)->pluck('id')->toArray();
-
-        $result = Book::destroy($bookIds);
-
-        $this->assertEquals(3, $result);
-        $this->assertNull(
-            $this->cache()->tags($this->bookTags())->get($key)
-        );
-    }
-}
+    expect($result)->toEqual(3);
+    expect($this->cache()->tags(bookTags())->get($key))->toBeNull();
+});

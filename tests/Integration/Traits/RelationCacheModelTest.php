@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-namespace GeneaLabs\LaravelModelCaching\Tests\Integration\Traits;
-
 use GeneaLabs\LaravelModelCaching\CachedBelongsToMany;
 use GeneaLabs\LaravelModelCaching\CachedHasManyThrough;
 use GeneaLabs\LaravelModelCaching\CachedHasOneThrough;
@@ -12,118 +10,98 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedStore;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Store;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Supplier;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Database\Eloquent\Collection;
-use ReflectionMethod;
 
-class RelationCacheModelTest extends IntegrationTestCase
-{
-    private function cachedRelations(): array
-    {
-        return [
-            CachedBelongsToMany::class => (new Book)->first()->stores(),
-            CachedMorphToMany::class => (new Post)->first()->tags(),
-            CachedHasManyThrough::class => (new Author)->first()->printers(),
-            CachedHasOneThrough::class => (new Supplier)->first()->history(),
-        ];
+test('the four subjects are the cached relation classes', function () {
+    foreach (cachedRelations() as $expectedClass => $relation) {
+        expect($relation)->toBeInstanceOf($expectedClass);
     }
+});
 
-    private function getCachePrefix(object $subject): string
-    {
-        return (new ReflectionMethod($subject, "getCachePrefix"))->invoke($subject);
-    }
-
-    public function testTheFourSubjectsAreTheCachedRelationClasses(): void
-    {
-        foreach ($this->cachedRelations() as $expectedClass => $relation) {
-            $this->assertInstanceOf($expectedClass, $relation);
-        }
-    }
-
-    public function testGetCachePrefixReturnsAPrefixOnEveryCachedRelation(): void
-    {
-        foreach ($this->cachedRelations() as $class => $relation) {
-            $this->assertSame(
-                "genealabs:laravel-model-caching:",
-                $this->getCachePrefix($relation),
-                "{$class} should return a cache prefix rather than raising."
-            );
-        }
-    }
-
-    public function testGetCachePrefixResolvesTheRelatedModelNotTheParent(): void
-    {
-        $relation = (new Book)->first()->prefixedStores();
-
-        $this->assertInstanceOf(CachedBelongsToMany::class, $relation);
-        $this->assertSame(
-            "genealabs:laravel-model-caching:store-prefix:",
-            $this->getCachePrefix($relation)
-        );
-    }
-
-    public function testCachedBuilderCachePrefixesAreUnchanged(): void
-    {
-        $this->assertSame(
+test('get cache prefix returns a prefix on every cached relation', function () {
+    foreach (cachedRelations() as $class => $relation) {
+        expect(getCachePrefix($relation))->toBe(
             "genealabs:laravel-model-caching:",
-            $this->getCachePrefix((new Author)->newQuery())
-        );
-        $this->assertSame(
-            "genealabs:laravel-model-caching:model-prefix:",
-            $this->getCachePrefix((new PrefixedAuthor)->newQuery())
+            "{$class} should return a cache prefix rather than raising.",
         );
     }
+});
 
-    public function testFlushCacheDoesNotRaiseOnAnyCachedRelation(): void
-    {
-        foreach ($this->cachedRelations() as $class => $relation) {
-            $relation->flushCache();
-        }
+test('get cache prefix resolves the related model not the parent', function () {
+    $relation = (new Book)->first()->prefixedStores();
 
-        $this->assertTrue(true, "flushCache() raised on none of the four.");
+    expect($relation)->toBeInstanceOf(CachedBelongsToMany::class);
+    expect(getCachePrefix($relation))->toBe("genealabs:laravel-model-caching:store-prefix:");
+});
+
+test('cached builder cache prefixes are unchanged', function () {
+    expect(getCachePrefix((new Author)->newQuery()))->toBe("genealabs:laravel-model-caching:");
+    expect(getCachePrefix((new PrefixedAuthor)->newQuery()))->toBe(
+        "genealabs:laravel-model-caching:model-prefix:",
+    );
+});
+
+test('flush cache does not raise on any cached relation', function () {
+    foreach (cachedRelations() as $class => $relation) {
+        $relation->flushCache();
     }
 
-    public function testFlushCacheOnARelationInvalidatesTheRelatedModelsCache(): void
-    {
-        (new Store)->get();
-        $this->assertNotNull($this->cachedStoresPayload());
+    expect(true)->toBeTrue("flushCache() raised on none of the four.");
+});
 
-        (new Book)->first()->stores()->flushCache();
+test('flush cache on a relation invalidates the related models cache', function () {
+    (new Store)->get();
+    expect(cachedStoresPayload())->not->toBeNull();
 
-        $this->assertNull($this->cachedStoresPayload());
-    }
+    (new Book)->first()->stores()->flushCache();
 
-    private function cachedStoresPayload()
-    {
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:stores:genealabslaravelmodelcachingtestsfixturesstore");
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:stores",
-        ];
+    expect(cachedStoresPayload())->toBeNull();
+});
 
-        return $this->cache()->tags($tags)->get($key);
-    }
+test('all does not raise on a relation using builder caching', function () {
+    $fromBelongsToMany = (new Book)->first()->stores()->all();
+    $fromMorphToMany = (new Post)->first()->tags()->all();
 
-    public function testAllDoesNotRaiseOnARelationUsingBuilderCaching(): void
-    {
-        $fromBelongsToMany = (new Book)->first()->stores()->all();
-        $fromMorphToMany = (new Post)->first()->tags()->all();
+    expect($fromBelongsToMany)->toBeInstanceOf(Collection::class);
+    expect($fromMorphToMany)->toBeInstanceOf(Collection::class);
+    expect($fromBelongsToMany)->not->toBeEmpty();
+    expect($fromMorphToMany)->not->toBeEmpty();
+});
 
-        $this->assertInstanceOf(Collection::class, $fromBelongsToMany);
-        $this->assertInstanceOf(Collection::class, $fromMorphToMany);
-        $this->assertNotEmpty($fromBelongsToMany);
-        $this->assertNotEmpty($fromMorphToMany);
-    }
+test('truncate does not raise on a relation using builder caching', function () {
+    expect((new Store)->get())->not->toBeEmpty();
 
-    public function testTruncateDoesNotRaiseOnARelationUsingBuilderCaching(): void
-    {
-        $this->assertNotEmpty((new Store)->get());
+    (new Book)->first()->stores()->truncate();
 
-        (new Book)->first()->stores()->truncate();
+    expect((new Store)->get()->isEmpty())->toBeTrue();
+});
 
-        $this->assertTrue((new Store)->get()->isEmpty());
-    }
+function cachedRelations(): array
+{
+    return [
+        CachedBelongsToMany::class => (new Book)->first()->stores(),
+        CachedMorphToMany::class => (new Post)->first()->tags(),
+        CachedHasManyThrough::class => (new Author)->first()->printers(),
+        CachedHasOneThrough::class => (new Supplier)->first()->history(),
+    ];
+}
+
+function getCachePrefix(object $subject): string
+{
+    return (new ReflectionMethod($subject, "getCachePrefix"))->invoke($subject);
+}
+
+function cachedStoresPayload()
+{
+    $testingSqlitePath = test()->testingSqlitePath;
+
+    $key = sha1("genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:stores:genealabslaravelmodelcachingtestsfixturesstore");
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
+        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:stores",
+    ];
+
+    return test()->cache()->tags($tags)->get($key);
 }
