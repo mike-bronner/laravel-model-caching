@@ -51,7 +51,7 @@ class CachedBuilder extends Builder
         return $result;
     }
 
-    public function incrementEach(array $columns, array $extra = []): int
+    public function incrementEach(array $columns, array $extra = []): int|Builder
     {
         $result = $this->executeOnInnerOrParent('incrementEach', [$columns, $extra]);
         $this->flushCacheAfterBuilderWrite('incrementEach');
@@ -59,7 +59,7 @@ class CachedBuilder extends Builder
         return $result;
     }
 
-    public function decrementEach(array $columns, array $extra = []): int
+    public function decrementEach(array $columns, array $extra = []): int|Builder
     {
         $result = $this->executeOnInnerOrParent('decrementEach', [$columns, $extra]);
         $this->flushCacheAfterBuilderWrite('decrementEach');
