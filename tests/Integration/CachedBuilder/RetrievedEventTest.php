@@ -1,94 +1,105 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
-class RetrievedEventTest extends IntegrationTestCase
-{
-    public function testRetrievedEventFiresOnCacheMiss()
-    {
-        $firedCount = 0;
+test('retrieved event fires on cache miss', function () {
+    $firedCount = 0;
 
-        Author::retrieved(function () use (&$firedCount) {
-            $firedCount++;
-        });
+    Author::retrieved(function () use (&$firedCount) {
+        $firedCount++;
+    });
 
-        $this->cache()->flush();
+    $this->cache()->flush();
 
-        $authors = (new Author)->get();
+    $authors = (new Author)->get();
 
-        $this->assertGreaterThan(0, $authors->count());
-        $this->assertGreaterThan(0, $firedCount, 'Retrieved event should fire on cache miss');
+    expect($authors->count())->toBeGreaterThan(0);
+    expect($firedCount)->toBeGreaterThan(0, 'Retrieved event should fire on cache miss');
+});
+
+test('retrieved event fires on cache hit', function () {
+    (new Author)->get();
+
+    $firedCount = 0;
+
+    Author::retrieved(function () use (&$firedCount) {
+        $firedCount++;
+    });
+
+    $authors = (new Author)->get();
+
+    expect($authors->count())->toBeGreaterThan(0);
+    expect($firedCount)->toBeGreaterThan(0, 'Retrieved event should fire on cache hit');
+});
+
+test('retrieved event fires on cache hit for find', function () {
+    $author = (new Author)->first();
+
+    $firedCount = 0;
+
+    Author::retrieved(function () use (&$firedCount) {
+        $firedCount++;
+    });
+
+    $result = (new Author)->find($author->id);
+
+    expect($result)->not->toBeNull();
+    expect($firedCount)->toBeGreaterThanOrEqual(
+        1,
+        'Retrieved event should fire on cache hit for find()',
+    );
+});
+
+test('retrieved event fires on cache hit for first', function () {
+    (new Author)->first();
+
+    $firedCount = 0;
+
+    Author::retrieved(function () use (&$firedCount) {
+        $firedCount++;
+    });
+
+    $result = (new Author)->first();
+
+    expect($result)->not->toBeNull();
+    expect($firedCount)->toBeGreaterThanOrEqual(
+        1,
+        'Retrieved event should fire on cache hit for first()',
+    );
+});
+
+test('retrieved event fires on cache hit for paginate', function () {
+    (new Author)->paginate(5);
+
+    $firedCount = 0;
+
+    Author::retrieved(function () use (&$firedCount) {
+        $firedCount++;
+    });
+
+    $result = (new Author)->paginate(5);
+
+    expect($result->count())->toBeGreaterThan(0);
+    expect($firedCount)->toBeGreaterThan(
+        0,
+        'Retrieved event should fire on cache hit for paginate()',
+    );
+});
+
+test('a cache hit is served when models have no event dispatcher', function () {
+    $authors = (new Author)->get();
+    $dispatcher = Model::getEventDispatcher();
+    Model::unsetEventDispatcher();
+
+    try {
+        DB::table('authors')->delete();
+        $cachedAuthors = (new Author)->get();
+    } finally {
+        Model::setEventDispatcher($dispatcher);
     }
 
-    public function testRetrievedEventFiresOnCacheHit()
-    {
-        // First call — cache miss, populates cache
-        (new Author)->get();
-
-        $firedCount = 0;
-
-        Author::retrieved(function () use (&$firedCount) {
-            $firedCount++;
-        });
-
-        // Second call — cache hit
-        $authors = (new Author)->get();
-
-        $this->assertGreaterThan(0, $authors->count());
-        $this->assertGreaterThan(0, $firedCount, 'Retrieved event should fire on cache hit');
-    }
-
-    public function testRetrievedEventFiresOnCacheHitForFind()
-    {
-        $author = (new Author)->first();
-
-        $firedCount = 0;
-
-        Author::retrieved(function () use (&$firedCount) {
-            $firedCount++;
-        });
-
-        // Cache hit
-        $result = (new Author)->find($author->id);
-
-        $this->assertNotNull($result);
-        $this->assertGreaterThanOrEqual(1, $firedCount, 'Retrieved event should fire on cache hit for find()');
-    }
-
-    public function testRetrievedEventFiresOnCacheHitForFirst()
-    {
-        // Cache miss
-        (new Author)->first();
-
-        $firedCount = 0;
-
-        Author::retrieved(function () use (&$firedCount) {
-            $firedCount++;
-        });
-
-        // Cache hit
-        $result = (new Author)->first();
-
-        $this->assertNotNull($result);
-        $this->assertGreaterThanOrEqual(1, $firedCount, 'Retrieved event should fire on cache hit for first()');
-    }
-
-    public function testRetrievedEventFiresOnCacheHitForPaginate()
-    {
-        // Cache miss
-        (new Author)->paginate(5);
-
-        $firedCount = 0;
-
-        Author::retrieved(function () use (&$firedCount) {
-            $firedCount++;
-        });
-
-        // Cache hit
-        $result = (new Author)->paginate(5);
-
-        $this->assertGreaterThan(0, $result->count());
-        $this->assertGreaterThan(0, $firedCount, 'Retrieved event should fire on cache hit for paginate()');
-    }
-}
+    expect($cachedAuthors->pluck('id'))->toEqual($authors->pluck('id'))
+        ->and($authors)->not->toBeEmpty();
+});

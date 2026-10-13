@@ -1,38 +1,32 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class FindOrFailTest extends IntegrationTestCase
-{
-    public function testFindOrFailCachesModels()
-    {
-        $author = (new Author)
-            ->findOrFail(1);
+test('find or fail caches models', function () {
+    $author = (new Author)
+        ->findOrFail(1);
 
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null-find_1");
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
-        ];
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null-find_1");
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+    ];
 
-        $cachedResults = $this->cache()
-            ->tags($tags)
-            ->get($key)['value'];
-        $liveResults = (new UncachedAuthor)
-            ->findOrFail(1);
+    $cachedResults = $this->cache()
+        ->tags($tags)
+        ->get($key)['value'];
+    $liveResults = (new UncachedAuthor)
+        ->findOrFail(1);
 
-        $this->assertEquals($cachedResults->toArray(), $author->toArray());
-        $this->assertEquals($liveResults->toArray(), $author->toArray());
-    }
+    expect($author->toArray())->toEqual($cachedResults->toArray());
+    expect($author->toArray())->toEqual($liveResults->toArray());
+});
 
-    public function testFindOrFailWithArrayReturnsResults()
-    {
-        $author = (new Author)->findOrFail([1, 2]);
-        $uncachedAuthor = (new UncachedAuthor)->findOrFail([1, 2]);
+test('find or fail with array returns results', function () {
+    $author = (new Author)->findOrFail([1, 2]);
+    $uncachedAuthor = (new UncachedAuthor)->findOrFail([1, 2]);
 
-        $this->assertEquals($uncachedAuthor->count(), $author->count());
-        $this->assertEquals($uncachedAuthor->pluck("id"), $author->pluck("id"));
-    }
-}
+    expect($author->count())->toEqual($uncachedAuthor->count());
+    expect($author->pluck("id"))->toEqual($uncachedAuthor->pluck("id"));
+});

@@ -1,36 +1,30 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class WhereNullTest extends IntegrationTestCase
-{
-    public function testWhereNullClause()
-    {
-        $books = (new Book)
-            ->whereNull("description")
-            ->get();
-        $uncachedBooks = (new UncachedBook)
-            ->whereNull("description")
-            ->get();
+test('where null clause', function () {
+    $books = (new Book)
+        ->whereNull("description")
+        ->get();
+    $uncachedBooks = (new UncachedBook)
+        ->whereNull("description")
+        ->get();
 
-        $this->assertEquals($books->pluck("id"), $uncachedBooks->pluck("id"));
-    }
+    expect($uncachedBooks->pluck("id"))->toEqual($books->pluck("id"));
+});
 
-    public function testNestedWhereNullClauses()
-    {
-        $books = (new Book)
-            ->where(function ($query) {
-                $query->whereNull("description");
-            })
-            ->get();
-        $uncachedBooks = (new UncachedBook)
-            ->where(function ($query) {
-                $query->whereNull("description");
-            })
-            ->get();
+test('nested where null clauses', function () {
+    $books = (new Book)
+        ->where(function ($query) {
+            $query->whereNull("description");
+        })
+        ->get();
+    $uncachedBooks = (new UncachedBook)
+        ->where(function ($query) {
+            $query->whereNull("description");
+        })
+        ->get();
 
-        $this->assertEquals($books->pluck("id"), $uncachedBooks->pluck("id"));
-    }
-}
+    expect($uncachedBooks->pluck("id"))->toEqual($books->pluck("id"));
+});

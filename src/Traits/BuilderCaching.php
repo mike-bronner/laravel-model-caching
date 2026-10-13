@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use Illuminate\Database\Eloquent\Collection;
@@ -8,30 +10,32 @@ trait BuilderCaching
 {
     public function all($columns = ['*']) : Collection
     {
+        $model = $this->cacheModel();
+
         if (! $this->isCachable()) {
-            $this->model->disableModelCaching();
+            $model->disableModelCaching();
         }
 
-        return $this->model->get($columns);
+        return $model->get($columns);
     }
 
-    public function truncate()
+    public function truncate() : static
     {
-        if ($this->isCachable()) {
-            $this->model->flushCache();
-        }
+        $this->flushCacheAfterBuilderWrite('truncate');
 
-        return parent::truncate();
+        parent::truncate();
+
+        return $this;
     }
 
-    public function withoutGlobalScope($scope)
+    public function withoutGlobalScope($scope) : static
     {
         array_push($this->withoutGlobalScopes, $scope);
 
         return parent::withoutGlobalScope($scope);
     }
 
-    public function withoutGlobalScopes(?array $scopes = null)
+    public function withoutGlobalScopes(?array $scopes = null) : static
     {
         if ($scopes !== null) {
             $this->withoutGlobalScopes = $scopes;

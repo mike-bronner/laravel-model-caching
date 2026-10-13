@@ -1,4 +1,8 @@
-<?php namespace GeneaLabs\LaravelModelCaching;
+<?php
+
+declare(strict_types=1);
+
+namespace GeneaLabs\LaravelModelCaching;
 
 use GeneaLabs\LaravelModelCaching\Traits\CachesOneOrManyThrough;
 use GeneaLabs\LaravelModelCaching\Traits\Caching;
@@ -20,16 +24,12 @@ class CachedHasManyThrough extends HasManyThrough
 
         $tags = (new CacheTags($eagerLoad, $model, $query))->make();
 
-        // Include the intermediate (through) model's tag so that
-        // flushing the through model also invalidates this cache.
         $throughTags = (new CacheTags([], $this->throughParent, $query))->make();
 
-        foreach ($throughTags as $throughTag) {
-            if (! in_array($throughTag, $tags)) {
-                $tags[] = $throughTag;
-            }
-        }
-
-        return $tags;
+        return collect($tags)
+            ->merge($throughTags)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

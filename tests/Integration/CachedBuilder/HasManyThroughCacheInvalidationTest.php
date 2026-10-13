@@ -2,53 +2,45 @@
 
 declare(strict_types=1);
 
-namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
-
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Printer;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Support\Facades\DB;
 
-/**
- * @see https://github.com/mikebronner/laravel-model-caching/issues/538
- */
-class HasManyThroughCacheInvalidationTest extends IntegrationTestCase
-{
-    public function testHasManyThroughCacheInvalidatedWhenIntermediateModelCreated(): void
-    {
-        $author = (new Author)->first();
-        $initialCount = $author->printers()->count();
+test('has many through cache invalidated when intermediate model created', function () {
+    $author = (new Author)->first();
+    $initialCount = $author->printers()->count();
 
-        $book = Book::factory()->create(['author_id' => $author->id]);
-        Printer::factory()->create(['book_id' => $book->id]);
+    $book = Book::factory()->create(['author_id' => $author->id]);
+    Printer::factory()->create(['book_id' => $book->id]);
 
-        $cachedCount = $author->printers()->count();
-        $rawCount = DB::table('printers')
-            ->join('books', 'books.id', '=', 'printers.book_id')
-            ->where('books.author_id', $author->id)
-            ->count();
+    $cachedCount = $author->printers()->count();
+    $rawCount = DB::table('printers')
+        ->join('books', 'books.id', '=', 'printers.book_id')
+        ->where('books.author_id', $author->id)
+        ->count();
 
-        $this->assertEquals($rawCount, $cachedCount);
-        $this->assertEquals($initialCount + 1, $cachedCount);
-    }
+    expect($cachedCount)->toEqual($rawCount);
+    expect($cachedCount)->toEqual($initialCount + 1);
+});
 
-    public function testHasManyThroughCacheInvalidatedWhenIntermediateModelDeleted(): void
-    {
-        $author = (new Author)->first();
-        $initialCount = $author->printers()->count();
-        $this->assertGreaterThan(0, $initialCount);
+test('has many through cache invalidated when intermediate model deleted', function () {
+    $author = (new Author)->first();
+    $initialCount = $author->printers()->count();
+    expect($initialCount)->toBeGreaterThan(0);
 
-        $book = Book::where('author_id', $author->id)->first();
-        $book->delete();
+    $book = Book::where('author_id', $author->id)->first();
+    $book->delete();
 
-        $rawCount = DB::table('printers')
-            ->join('books', 'books.id', '=', 'printers.book_id')
-            ->where('books.author_id', $author->id)
-            ->count();
+    $rawCount = DB::table('printers')
+        ->join('books', 'books.id', '=', 'printers.book_id')
+        ->where('books.author_id', $author->id)
+        ->count();
 
-        $cachedCount = $author->printers()->count();
+    $cachedCount = $author->printers()->count();
 
-        $this->assertEquals($rawCount, $cachedCount, 'HasManyThrough cache should be invalidated when intermediate model is deleted.');
-    }
-}
+    expect($cachedCount)->toEqual(
+        $rawCount,
+        'HasManyThrough cache should be invalidated when intermediate model is deleted.',
+    );
+});

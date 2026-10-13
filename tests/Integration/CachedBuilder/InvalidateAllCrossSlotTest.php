@@ -1,69 +1,47 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CrossSlotDeleteRedisStore;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CrossSlotFlushRepository;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Cache\Repository;
 
-// Cluster coverage for the entire-cache clear path (issue #598 follow-through).
-// invalidateAll() must (a) survive a CROSSSLOT rejection on a batched DEL by
-// falling back to per-key deletes, and (b) the slot-safe tag recovery must keep
-// working when the connection carries a client-level prefix.
-class InvalidateAllCrossSlotTest extends IntegrationTestCase
-{
-    private const TAG = 'cross-slot-tag';
+const INVALIDATE_ALL_TAG = 'cross-slot-tag';
 
-    public function testInvalidateAllRecoversFromCrossSlotDeleteFailure()
-    {
-        $realStore = app('cache')->store('model')->getStore();
+test('invalidate all recovers from cross slot delete failure', function () {
+    $realStore = app('cache')->store('model')->getStore();
 
-        (new Author)->all();
-        (new Book)->all();
+    (new Author)->all();
+    (new Book)->all();
 
-        $this->assertNotEmpty($this->modelCacheKeys());
+    expect(modelCacheKeys())->not->toBeEmpty();
 
-        // A store whose batched DEL raises CROSSSLOT, forcing invalidateAll() onto
-        // its per-key fallback. The cache must still be physically emptied.
-        $store = new CrossSlotDeleteRedisStore(app('redis'), $realStore->getPrefix(), 'model-cache');
-        $modelCacheRepository = new ModelCacheRepository(new Repository($store), false);
+    $store = new CrossSlotDeleteRedisStore(app('redis'), $realStore->getPrefix(), 'model-cache');
+    $modelCacheRepository = new ModelCacheRepository(new Repository($store), false);
 
-        $modelCacheRepository->invalidateAll();
+    $modelCacheRepository->invalidateAll();
 
-        $this->assertSame([], $this->modelCacheKeys());
-    }
+    expect(modelCacheKeys())->toBe([]);
+});
 
-    public function testInvalidateTagsRecoversFromCrossSlotFailureWithClientPrefix()
-    {
-        // The slot-safe tag recovery must also clear keys when the connection
-        // carries a client-level prefix layered over the store prefix (issue #598).
-        $repository = app('cache')->store('model-prefixed');
-        $store = $repository->getStore();
-        app('redis')->connection('model-cache-prefixed')->flushdb();
+test('invalidate tags recovers from cross slot failure with client prefix', function () {
+    $repository = app('cache')->store('model-prefixed');
+    $store = $repository->getStore();
+    app('redis')->connection('model-cache-prefixed')->flushdb();
 
-        $repository->tags([self::TAG])->forever('entry-a', 'value-a');
-        $repository->tags([self::TAG])->forever('entry-b', 'value-b');
+    $repository->tags([INVALIDATE_ALL_TAG])->forever('entry-a', 'value-a');
+    $repository->tags([INVALIDATE_ALL_TAG])->forever('entry-b', 'value-b');
 
-        $this->assertSame('value-a', $repository->tags([self::TAG])->get('entry-a'));
+    expect($repository->tags([INVALIDATE_ALL_TAG])->get('entry-a'))->toBe('value-a');
 
-        $throwingRepository = new CrossSlotFlushRepository($store);
-        $modelCacheRepository = new ModelCacheRepository($throwingRepository, false);
+    $throwingRepository = new CrossSlotFlushRepository($store);
+    $modelCacheRepository = new ModelCacheRepository($throwingRepository, false);
 
-        $modelCacheRepository->invalidateTags([self::TAG]);
+    $modelCacheRepository->invalidateTags([INVALIDATE_ALL_TAG]);
 
-        $this->assertNull($repository->tags([self::TAG])->get('entry-a'));
-        $this->assertNull($repository->tags([self::TAG])->get('entry-b'));
+    expect($repository->tags([INVALIDATE_ALL_TAG])->get('entry-a'))->toBeNull();
+    expect($repository->tags([INVALIDATE_ALL_TAG])->get('entry-b'))->toBeNull();
 
-        app('redis')->connection('model-cache-prefixed')->flushdb();
-    }
-
-    private function modelCacheKeys() : array
-    {
-        $token = (int) env('TEST_TOKEN', 1);
-        $connection = app('redis')->connection('model-cache');
-
-        return $this->scanRedisKeys($connection, "lmc-test-{$token}:*");
-    }
-}
+    app('redis')->connection('model-cache-prefixed')->flushdb();
+});
