@@ -10,6 +10,7 @@ use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
+use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -315,8 +316,14 @@ trait Caching
             $query = $this->query->getQuery();
         }
 
-        return (new CacheKey($eagerLoad, $model, $query, $this->macroKey, $this->withoutGlobalScopes, $this->withoutAllGlobalScopes))
-            ->make($columns, $idColumn, $keyDifferentiator);
+        try {
+            return (new CacheKey($eagerLoad, $model, $query, $this->macroKey, $this->withoutGlobalScopes, $this->withoutAllGlobalScopes))
+                ->make($columns, $idColumn, $keyDifferentiator);
+        } catch (UnkeyableValueException) {
+            $this->disableModelCaching();
+
+            return "";
+        }
     }
 
     protected function makeCacheTags(): array

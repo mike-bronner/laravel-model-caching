@@ -6,6 +6,7 @@ namespace GeneaLabs\LaravelModelCaching;
 
 use BackedEnum;
 use DateTimeInterface;
+use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -13,6 +14,8 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
+use ReflectionReference;
+use SplObjectStorage;
 use Stringable;
 use Throwable;
 use UnitEnum;
@@ -59,6 +62,7 @@ class CacheKey
     protected $query;
     protected $withoutGlobalScopes = [];
     protected $withoutAllGlobalScopes = false;
+    private ?string $unkeyableMarker = null;
 
     public function __construct(
         array $eagerLoad,
@@ -101,6 +105,8 @@ class CacheKey
         $key .= $this->getUnkeyedQueryPropertiesSlug();
         $key .= $keyDifferentiator;
         $key .= $this->macroKey;
+
+        throw_if($this->hasUnkeyableSegment($key), UnkeyableValueException::class);
 
         return $key;
     }
@@ -832,23 +838,99 @@ class CacheKey
     // Collections holding different ids would share a key and one would be
     // served the other's rows. serialize() reads private state, so it separates
     // them, and it is stable across requests, which a key has to be.
-    //
-    // It throws on a Closure and on anything holding a PDO connection. There is
-    // no honest way to tell such a value from another of its class, so the
-    // fallback is unique per instance and never repeats: the key misses instead
-    // of returning rows that belong to a different query.
     private function hashOpaqueObject(object $value): string
     {
         try {
             $identity = serialize($value);
         } catch (Throwable) {
-            // this will increase cache writes but beats failing outright. Every
-            // value that matches before this will keep working so this is a worst
-            // case fallback and there is currently no "do not cache" signal
-            $identity = spl_object_hash($value);
+            return $this->unkeyableMarker();
         }
 
-        return $value::class . "-" . sha1($identity);
+        return match ($this->holdsResource($value, new SplObjectStorage, collect())) {
+            true => $this->unkeyableMarker(),
+            false => $value::class . "-" . sha1($identity),
+        };
+    }
+
+    private function unkeyableMarker(): string
+    {
+        return $this->unkeyableMarker ??= "unkeyable" . Uuid::uuid4()
+            ->getHex();
+    }
+
+    private function hasUnkeyableSegment(string $key): bool
+    {
+        return $this->unkeyableMarker !== null
+            && str_contains($key, $this->unkeyableMarker);
+    }
+
+    private function holdsResource(
+        mixed $value,
+        SplObjectStorage $seen,
+        Collection $references,
+    ): bool {
+        return match (true) {
+            is_array($value) => $this->arrayHoldsResource($value, $seen, $references),
+            is_object($value) => $this->objectHoldsResource($value, $seen, $references),
+            default => $value !== null
+                && ! is_scalar($value),
+        };
+    }
+
+    private function arrayHoldsResource(
+        array $value,
+        SplObjectStorage $seen,
+        Collection $references,
+    ): bool {
+        return collect($value)
+            ->contains(fn (mixed $item, int|string $key) => $this
+                ->isFirstVisitOf(ReflectionReference::fromArrayElement($value, $key), $references)
+                && $this->holdsResource($item, $seen, $references));
+    }
+
+    private function isFirstVisitOf(?ReflectionReference $reference, Collection $references): bool
+    {
+        $refId = $reference?->getId();
+        $isFirstVisit = $refId === null
+            || ! $references->has($refId);
+        $references->when($refId !== null, fn () => $references->put($refId, $reference));
+
+        return $isFirstVisit;
+    }
+
+    private function objectHoldsResource(
+        object $value,
+        SplObjectStorage $seen,
+        Collection $references,
+    ): bool {
+        $isFirstVisit = ! $seen->offsetExists($value);
+        $seen->offsetSet($value);
+
+        return $isFirstVisit
+            && $this->holdsResource($this->serializedState($value), $seen, $references);
+    }
+
+    private function serializedState(object $value): array
+    {
+        return match (true) {
+            method_exists($value, "__serialize") => $value->__serialize(),
+            method_exists($value, "__sleep") => $this->sleepingState($value),
+            default => get_mangled_object_vars($value),
+        };
+    }
+
+    private function sleepingState(object $value): array
+    {
+        $sleeping = collect($value->__sleep())
+            ->map(fn (string $name) => Str::afterLast($name, "\0"));
+        $state = collect(get_mangled_object_vars($value));
+        $sleepingNames = $state
+            ->keys()
+            ->filter(fn (string $name) => $sleeping->contains(Str::afterLast($name, "\0")));
+
+        return $state
+            ->only($sleepingNames)
+            ->all();
     }
 
     private function processEnums(array $values, bool $escape = false): array

@@ -6,6 +6,7 @@ namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
+use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
@@ -205,14 +206,20 @@ trait CachesOneOrManyThrough
         $model = $this->getModel();
         $query = $this->getQuery()->getQuery();
 
-        return (new CacheKey(
-            $eagerLoad,
-            $model,
-            $query,
-            $this->macroKey,
-            $this->withoutGlobalScopes,
-            $this->withoutAllGlobalScopes,
-        ))->make($columns, $idColumn, $keyDifferentiator);
+        try {
+            return (new CacheKey(
+                $eagerLoad,
+                $model,
+                $query,
+                $this->macroKey,
+                $this->withoutGlobalScopes,
+                $this->withoutAllGlobalScopes,
+            ))->make($columns, $idColumn, $keyDifferentiator);
+        } catch (UnkeyableValueException) {
+            $this->disableModelCaching();
+
+            return "";
+        }
     }
 
     protected function makeCacheTags(): array

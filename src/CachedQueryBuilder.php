@@ -43,6 +43,11 @@ class CachedQueryBuilder extends Builder
         return parent::whereIn($column, $values, $boolean, $not);
     }
 
+    public function fromSub($query, $as): static
+    {
+        return parent::fromSub($this->recordRelatedWhereSubqueryTable($query), $as);
+    }
+
     public function joinSub(
         $query,
         $as,

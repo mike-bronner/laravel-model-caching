@@ -255,7 +255,10 @@ trait Buildable
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
 
-        return $this->storedValue($method, $arguments, $cacheKey);
+        return match ($this->isCachable === true) {
+            true => $this->storedValue($method, $arguments, $cacheKey),
+            false => $this->executeOnInnerOrParent($method, $arguments),
+        };
     }
 
     protected function storedValue(string $method, array $arguments, string $cacheKey): mixed
