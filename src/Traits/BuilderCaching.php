@@ -37,18 +37,12 @@ trait BuilderCaching
 
     public function withoutGlobalScopes(?array $scopes = null) : static
     {
-        if ($scopes !== null) {
-            $this->withoutGlobalScopes = $scopes;
+        if ($scopes === null) {
+            $this->withoutAllGlobalScopes = true;
         }
 
-        if (
-            $scopes == null
-            || (
-                $scopes !== null
-                && count($scopes) === 0
-            )
-        ) {
-            $this->withoutAllGlobalScopes = true;
+        if (count($scopes ?? []) > 0) {
+            $this->withoutGlobalScopes = $scopes;
         }
 
         return parent::withoutGlobalScopes($scopes);

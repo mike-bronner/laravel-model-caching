@@ -182,3 +182,29 @@ test('morph map tags every mapped class that exists', function () {
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:comments",
     ]);
 });
+
+test('morph to eager load keys the bound value of the target global scope', function () {
+    $post = (new Post)->first();
+    $comment = Comment::create([
+        'commentable_id' => $post->id,
+        'commentable_type' => Post::class,
+        'description' => 'Comment on post',
+        'subject' => 'Post comment',
+    ]);
+    $globalScopes = Post::getAllGlobalScopes();
+    $excludedPostId = 0;
+    Post::addGlobalScope('excludesOnePost', function ($builder) use (&$excludedPostId) {
+        $builder->where('posts.id', '!=', $excludedPostId);
+    });
+
+    try {
+        $visiblePost = (new Comment)->whereKey($comment->id)->get()->load('commentable')->first()->commentable;
+        $excludedPostId = $post->id;
+        $excludedPost = (new Comment)->whereKey($comment->id)->get()->load('commentable')->first()->commentable;
+    } finally {
+        Post::setAllGlobalScopes($globalScopes);
+    }
+
+    expect($visiblePost?->id)->toBe($post->id)
+        ->and($excludedPost)->toBeNull();
+});

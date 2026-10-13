@@ -177,6 +177,7 @@ trait CachesOneOrManyThrough
 
         if ($cachedResult !== null) {
             $this->fireRetrievedEvents($cachedResult["value"] ?? null);
+            $this->reloadScopedEagerLoads($this->getQuery(), $cachedResult["value"] ?? null);
 
             return $cachedResult;
         }

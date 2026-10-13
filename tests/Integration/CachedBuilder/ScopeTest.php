@@ -7,7 +7,9 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorBeginsWithScoped;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithInlineGlobalScope;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthorWithInlineGlobalScope;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Scopes\NameBeginsWith;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -301,4 +303,97 @@ test('a global scope removed by an earlier global scope is not applied', functio
         ->toEqual((new UncachedAuthor)->pluck('id')->all())
         ->and($authors->pluck('name'))->toContain('Zelda')
         ->and($cachedAuthors->pluck('id')->all())->toEqual($authors->pluck('id')->all());
+});
+
+function expectEachScopedQueryToMatchItsLiveRows(array $queries) : void
+{
+    collect($queries)->each(function (array $pair, string $description) {
+        [$cachedQuery, $liveQuery] = $pair;
+
+        expect($cachedQuery()->get()->pluck('id')->sort()->values()->all())
+            ->toEqual($liveQuery()->get()->pluck('id')->sort()->values()->all(), $description);
+    });
+}
+
+test('a closure where keeps the soft delete scope in its key', function (bool $withTrashedFirst) {
+    Author::factory()->count(3)->create();
+    (new Author)->first()->delete();
+    $matchesEveryAuthor = fn ($query) => $query->where('id', '>', 0);
+    $queries = [
+        'without trashed' => [
+            fn () => (new Author)->where($matchesEveryAuthor),
+            fn () => (new UncachedAuthor)->where($matchesEveryAuthor),
+        ],
+        'with trashed' => [
+            fn () => (new Author)->where($matchesEveryAuthor)->withTrashed(),
+            fn () => (new UncachedAuthor)->where($matchesEveryAuthor)->withTrashed(),
+        ],
+        'without soft delete scope' => [
+            fn () => (new Author)->withoutGlobalScope(SoftDeletingScope::class)->where($matchesEveryAuthor),
+            fn () => (new UncachedAuthor)->withoutGlobalScope(SoftDeletingScope::class)->where($matchesEveryAuthor),
+        ],
+    ];
+
+    expectEachScopedQueryToMatchItsLiveRows($withTrashedFirst ? array_reverse($queries) : $queries);
+})->with([
+    'with trashed first' => [true],
+    'without trashed first' => [false],
+]);
+
+test('a closure where keeps an inline global scope in its key', function (bool $withoutScopeFirst) {
+    Author::factory()->create(['name' => 'Alpha']);
+    Author::factory()->create(['name' => 'Bravo']);
+    $matchesEveryAuthor = fn ($query) => $query->where('id', '>', 0);
+    $queries = [
+        'with inline scope' => [
+            fn () => (new AuthorWithInlineGlobalScope)->where($matchesEveryAuthor),
+            fn () => (new UncachedAuthorWithInlineGlobalScope)->where($matchesEveryAuthor),
+        ],
+        'without inline scope' => [
+            fn () => (new AuthorWithInlineGlobalScope)->withoutGlobalScope('inlineScope')->where($matchesEveryAuthor),
+            fn () => (new UncachedAuthorWithInlineGlobalScope)->withoutGlobalScope('inlineScope')->where($matchesEveryAuthor),
+        ],
+    ];
+
+    expectEachScopedQueryToMatchItsLiveRows($withoutScopeFirst ? array_reverse($queries) : $queries);
+})->with([
+    'without inline scope first' => [true],
+    'with inline scope first' => [false],
+]);
+
+test('without global scopes except every scope keeps those scopes in the key', function () {
+    Author::factory()->create(['name' => 'Alpha']);
+    Author::factory()->create(['name' => 'Bravo']);
+    $this->actingAs(User::factory()->create(['name' => 'Andrew Junior']));
+    $authorsA = (new AuthorBeginsWithScoped)
+        ->withoutGlobalScopesExcept([NameBeginsWith::class])
+        ->get();
+    $this->actingAs(User::factory()->create(['name' => 'Barry Barry Barry']));
+    $authorsB = (new AuthorBeginsWithScoped)
+        ->withoutGlobalScopesExcept([NameBeginsWith::class])
+        ->get();
+
+    expect($authorsA->map(fn ($author) => Str::substr($author->name, 0, 1))->unique()->values()->all())
+        ->toEqual(['A'])
+        ->and($authorsB->map(fn ($author) => Str::substr($author->name, 0, 1))->unique()->values()->all())
+        ->toEqual(['B']);
+});
+
+test('a closure where keeps the global scopes removed before it out of the key', function () {
+    $matchesEveryAuthor = fn ($query) => $query->where('id', '>', 0);
+    $this->actingAs(User::factory()->create(['name' => 'Andrew Junior']));
+    $keyForA = cacheKey((new AuthorBeginsWithScoped)
+        ->withoutGlobalScope(NameBeginsWith::class)
+        ->where($matchesEveryAuthor));
+    $this->actingAs(User::factory()->create(['name' => 'Barry Barry Barry']));
+    $keyForB = cacheKey((new AuthorBeginsWithScoped)
+        ->withoutGlobalScope(NameBeginsWith::class)
+        ->where($matchesEveryAuthor));
+
+    expect($keyForA)->toBe($keyForB);
+});
+
+test('an empty scope list keeps every global scope in the key', function () {
+    expect(cacheKey((new AuthorWithInlineGlobalScope)->withoutGlobalScopes([])))
+        ->toBe(cacheKey((new AuthorWithInlineGlobalScope)->newQuery()));
 });

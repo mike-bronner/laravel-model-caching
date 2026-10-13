@@ -4,9 +4,17 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
+use Closure;
+use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 trait CachedValueRetrievable
 {
@@ -101,6 +109,125 @@ trait CachedValueRetrievable
         $this->putModelCacheValue($cacheKey, $result, $cacheTags, true);
 
         return $result;
+    }
+
+    protected function reloadScopedEagerLoads(EloquentBuilder $builder, mixed $value): void
+    {
+        $models = $this->modelsInCachedValue($value);
+
+        if ($models->isEmpty()) {
+            return;
+        }
+
+        $this->reloadScopedRelations($builder, $models);
+    }
+
+    protected function modelsInCachedValue(mixed $value): EloquentCollection
+    {
+        $items = match (true) {
+            $value instanceof Model => [$value],
+            $value instanceof Paginator,
+            $value instanceof CursorPaginator => $value->items(),
+            $value instanceof Collection => $value->all(),
+            default => [],
+        };
+
+        return new EloquentCollection(collect($items)
+            ->filter(fn ($item) => $item instanceof Model)
+            ->values()
+            ->all());
+    }
+
+    protected function reloadScopedRelations(EloquentBuilder $builder, EloquentCollection $models): void
+    {
+        $eagerLoads = $builder->getEagerLoads();
+
+        collect($eagerLoads)
+            ->keys()
+            ->reject(fn (string $name) => str_contains($name, "."))
+            ->each(function (string $name) use ($builder, $eagerLoads, $models): void {
+                $relation = $builder->getRelation($name);
+
+                if ($this->relationHasGlobalScopes($relation, $models)) {
+                    $this->reloadRelation($relation, $name, data_get($eagerLoads, $name), $models);
+
+                    return;
+                }
+
+                $nestedEagerLoads = $this->eagerLoadsNestedUnder($eagerLoads, $name);
+                $this->reloadScopedRelationsOfRelated($models, $name, $nestedEagerLoads);
+            });
+    }
+
+    protected function relationHasGlobalScopes(Relation $relation, EloquentCollection $models): bool
+    {
+        if ($relation instanceof MorphTo) {
+            return $models->pluck($relation->getMorphType())
+                ->filter()
+                ->unique()
+                ->map(fn (string $type) => $relation->createModelByType($type))
+                ->contains(fn (Model $related) => $related->getGlobalScopes() !== []);
+        }
+
+        return $relation->getRelated()
+            ->getGlobalScopes() !== [];
+    }
+
+    protected function reloadScopedRelationsOfRelated(
+        EloquentCollection $models,
+        string $name,
+        array $nestedEagerLoads,
+    ): void {
+        if ($nestedEagerLoads === []) {
+            return;
+        }
+
+        $models->filter(fn (Model $model) => $model->relationLoaded($name))
+            ->flatMap(fn (Model $model) => Collection::wrap($model->getRelation($name))->all())
+            ->filter(fn ($related) => $related instanceof Model)
+            ->groupBy(fn (Model $related) => get_class($related))
+            ->each(function (Collection $related) use ($nestedEagerLoads): void {
+                $builder = $related->first()
+                    ->newQueryWithoutRelationships()
+                    ->setEagerLoads($nestedEagerLoads);
+
+                $this->reloadScopedRelations($builder, new EloquentCollection($related->all()));
+            });
+    }
+
+    protected function reloadRelation(
+        Relation $relation,
+        string $name,
+        Closure $constraint,
+        EloquentCollection $models,
+    ): void {
+        $relation->addEagerConstraints($models->all());
+        $constraint($relation);
+
+        if (
+            $relation instanceof BelongsToMany
+            && method_exists($relation, "disableModelCaching")
+        ) {
+            $relation->disableModelCaching();
+        }
+
+        $relation->match(
+            $relation->initRelation($models->all(), $name),
+            $relation->getEager(),
+            $name,
+        );
+    }
+
+    protected function eagerLoadsNestedUnder(array $eagerLoads, string $name): array
+    {
+        $nestedNames = collect($eagerLoads)
+            ->keys()
+            ->filter(fn (string $key) => str_starts_with($key, "{$name}."));
+
+        return collect($eagerLoads)
+            ->only($nestedNames)
+            ->mapWithKeys(fn (Closure $constraint, string $key) => [Str::after($key, "{$name}.") => $constraint])
+            ->all();
     }
 
     protected function fireRetrievedEvents($value): void

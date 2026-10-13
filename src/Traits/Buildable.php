@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
@@ -344,9 +346,18 @@ trait Buildable
 
         if (! $closureRan) {
             $this->fireRetrievedEvents($result["value"] ?? null);
+            $this->reloadScopedEagerLoads($this->eagerLoadingBuilder(), $result["value"] ?? null);
         }
 
         return $result;
+    }
+
+    protected function eagerLoadingBuilder(): EloquentBuilder
+    {
+        return match (true) {
+            $this instanceof Relation => $this->getQuery(),
+            default => $this,
+        };
     }
 
     protected function fireRetrievedEvents($value): void
