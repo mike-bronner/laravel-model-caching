@@ -2,6 +2,7 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
+use Illuminate\Support\Facades\DB;
 
 test('eagerloaded has many', function () {
     $authorId = (new Author)
@@ -61,4 +62,18 @@ test('lazyloaded has many', function () {
     expect($books)->not->toBeEmpty();
     expect($cachedResults)->not->toBeEmpty();
     expect($liveResults)->not->toBeEmpty();
+});
+
+test('a chaperoned relation query is served fresh', function () {
+    $author = (new Author)->first();
+    $books = $author->books()->chaperone()->get();
+
+    DB::table('books')->where('author_id', $author->id)->update(['title' => 'Changed behind the cache']);
+
+    $freshBooks = $author->books()->chaperone()->get();
+
+    expect($books)->not->toBeEmpty()
+        ->and($books->first()->relationLoaded('author'))->toBeTrue()
+        ->and($freshBooks->pluck('title')->unique()->all())->toBe(['Changed behind the cache'])
+        ->and($freshBooks->first()->author->is($author))->toBeTrue();
 });

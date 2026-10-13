@@ -19,11 +19,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Scope;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
+use ReflectionProperty;
 
 trait Caching
 {
@@ -40,17 +42,11 @@ trait Caching
 
     public function __call($method, $parameters): mixed
     {
-        // Inner builder takes precedence over parent::__call when present.
-        // This means if both the inner builder and a scope define the same
-        // method name, the inner builder wins. This is intentional: custom
-        // builder methods should not be silently overridden by scopes.
         if (
             property_exists($this, 'innerBuilder')
             && $this->innerBuilder
             && method_exists($this->innerBuilder, $method)
         ) {
-            // Track the method call in macroKey for cache key differentiation,
-            // matching the same treatment applied to local/global macros below.
             $this->macroKey .= "-{$method}";
 
             if ($parameters) {
@@ -174,8 +170,6 @@ trait Caching
             return;
         }
 
-        // The isset() reads the live $this->scopes, not the snapshot being
-        // walked, because applying one scope can remove a later one.
         collect($this->scopes)
             ->each(function ($scope, $identifier): void {
                 if (
@@ -372,9 +366,6 @@ trait Caching
         string $cachePrefix,
         string $modelClassName,
     ): array {
-        // Cooldown metadata intentionally bypasses ModelCacheRepository so it
-        // remains unversioned on DynamoDB and keeps the original package
-        // semantics for direct cooldown reads and writes.
         return [
             $instance
                 ->cache()
@@ -501,10 +492,6 @@ trait Caching
         if (method_exists($relationshipInstance, "flushCache")) {
             $relationshipInstance->flushCache();
         } else {
-            // Related model is not cacheable — build the cache tag for the
-            // related model and flush it so stale relationship results are
-            // cleared. This covers BelongsToMany with custom pivot models
-            // where only the parent model uses the Cachable trait.
             $tags = (new CacheTags(
                 [],
                 $relationshipInstance,
@@ -573,7 +560,7 @@ trait Caching
                 ->keys()
                 ->reduce(function ($carry, $related) {
                     if (
-                        ! method_exists($this->model, $related)
+                        ! $this->modelHasRelation($this->model, $related)
                         || $carry === false
                     ) {
                         return $carry;
@@ -607,7 +594,34 @@ trait Caching
 
         return $this->isCachable
             && $allRelationshipsAreCachable
-            && ! $hasLock;
+            && ! $hasLock
+            && ! $this->hasAfterQueryCallbacks();
+    }
+
+    protected function modelHasRelation(Model $model, string $relation): bool
+    {
+        return method_exists($model, $relation)
+            || $model->isRelation($relation);
+    }
+
+    protected function hasAfterQueryCallbacks(): bool
+    {
+        $query = property_exists($this, "query")
+            ? $this->query
+            : null;
+
+        return collect([$this, $query, $query instanceof Builder ? $query->getQuery() : null])
+            ->contains(fn ($builder): bool => $this->afterQueryCallbacksOf($builder) !== []);
+    }
+
+    protected function afterQueryCallbacksOf(mixed $builder): array
+    {
+        $declaringClass = collect([Builder::class, QueryBuilder::class])
+            ->first(fn (string $class): bool => $builder instanceof $class);
+
+        return $declaringClass
+            ? (new ReflectionProperty($declaringClass, "afterQueryCallbacks"))->getValue($builder)
+            : [];
     }
 
     public function shouldFallbackToDatabase(): bool
@@ -668,8 +682,6 @@ trait Caching
             $modelClassName = get_class($instance);
             $cacheKey = "{$cachePrefix}:{$modelClassName}-cooldown:saved-at";
 
-            // Cooldown timestamps are stored on the raw cache repository so
-            // they do not participate in DynamoDB namespace versioning.
             $instance->cache()
                 ->rememberForever($cacheKey, function () {
                     return (new Carbon)->now();

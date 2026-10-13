@@ -7,14 +7,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Comment;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
-/**
- * Tests for issue #539: Eager-loaded morphTo resolves wrong type from cache.
- */
-
-/**
- * AC1: Eager-loading a morphTo returns the correct polymorphic concrete
- * type on both cache miss and cache hit.
- */
 test('morph to returns correct concrete type on cache hit', function () {
     $post = (new Post)->first();
     $book = (new Book)->first();
@@ -34,7 +26,6 @@ test('morph to returns correct concrete type on cache hit', function () {
 
     $this->cache()->flush();
 
-    // First load — cache miss
     $comments = (new Comment)
         ->with('commentable')
         ->whereIn('id', [$postComment->id, $bookComment->id])
@@ -47,7 +38,6 @@ test('morph to returns correct concrete type on cache hit', function () {
     expect($postCommentResult->commentable)->toBeInstanceOf(Post::class);
     expect($bookCommentResult->commentable)->toBeInstanceOf(Book::class);
 
-    // Second load — cache hit
     $cachedComments = (new Comment)
         ->with('commentable')
         ->whereIn('id', [$postComment->id, $bookComment->id])
@@ -67,9 +57,6 @@ test('morph to returns correct concrete type on cache hit', function () {
     );
 });
 
-/**
- * AC2: Morph target methods are callable after a cache hit (regression test).
- */
 test('morph target methods callable after cache hit', function () {
     $post = (new Post)->first();
 
@@ -82,7 +69,6 @@ test('morph target methods callable after cache hit', function () {
 
     $this->cache()->flush();
 
-    // First load — cache miss
     $result = (new Comment)
         ->with('commentable.tags')
         ->where('id', $comment->id)
@@ -91,7 +77,6 @@ test('morph target methods callable after cache hit', function () {
     expect($result->commentable)->toBeInstanceOf(Post::class);
     expect($result->commentable->relationLoaded('tags'))->toBeTrue();
 
-    // Second load — cache hit
     $cached = (new Comment)
         ->with('commentable.tags')
         ->where('id', $comment->id)
@@ -105,7 +90,6 @@ test('morph target methods callable after cache hit', function () {
         'Nested relation "tags" should be loaded on cache hit',
     );
 
-    // Key regression: calling a method on the morph target must not throw
     $tags = $cached->commentable->tags;
     expect($tags)->not->toBeNull();
 });
@@ -177,9 +161,6 @@ test('updating book invalidates comment with commentable cache', function () {
     );
 });
 
-// With a morph map registered, an eager-loaded morphTo is tagged with every
-// mapped class that exists, in map order, and a mapped name that is not a
-// class is skipped. The map is global, so it is cleared again afterwards.
 test('morph map tags every mapped class that exists', function () {
     Relation::morphMap([
         "post" => Post::class,

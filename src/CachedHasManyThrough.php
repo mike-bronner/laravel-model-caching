@@ -24,8 +24,6 @@ class CachedHasManyThrough extends HasManyThrough
 
         $tags = (new CacheTags($eagerLoad, $model, $query))->make();
 
-        // Include the intermediate (through) model's tag so that
-        // flushing the through model also invalidates this cache.
         $throughTags = (new CacheTags([], $this->throughParent, $query))->make();
 
         return collect($tags)

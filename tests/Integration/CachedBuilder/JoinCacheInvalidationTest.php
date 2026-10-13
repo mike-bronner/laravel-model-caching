@@ -19,7 +19,6 @@ test('join query cache tags contain joined table tag', function () {
         ->select('authors.*', 'books.title')
         ->join('books', 'books.author_id', '=', 'authors.id');
 
-    // CacheTags expects the Eloquent builder (CachedBuilder), which has getQuery()
     $tags = (new CacheTags(
         $query->getEagerLoads(),
         $query->getModel(),
@@ -88,7 +87,6 @@ test('left join query cache invalidates when joined model updated', function () 
 });
 
 test('relation query cache tags contain pivot table tag', function () {
-    // Via makeCacheTags(), the only caller the caching path actually uses
     $relation = (new Book)
         ->first()
         ->stores();
@@ -126,11 +124,8 @@ test('belongs to many cache invalidates when pivot table is written by model', f
     $user = (new User)
         ->find($userId);
 
-    // Prime the read: its tags name Role and roles, the delete writes role_user
     expect($user->roles()->count())->toBeGreaterThan(0);
 
-    // Bulk delete through a cachable model whose table IS the pivot, so no
-    // pivot events fire and only the executed query's tags are invalidated
     (new CachableRoleUser)
         ->newQuery()
         ->where('user_id', $userId)
@@ -183,7 +178,6 @@ test('join sub query cache tags contain the subquery table tag', function () {
         ->select('authors.*')
         ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id');
 
-    // joinSub() should tag the table its subquery reads from
     expect(joinSubTags($query))->toContain(
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
     );
@@ -194,7 +188,76 @@ test('left join sub query cache tags contain the subquery table tag', function (
         ->select('authors.*')
         ->leftJoinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id');
 
-    // leftJoinSub() should tag the table its subquery reads from
+    expect(joinSubTags($query))->toContain(
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+    );
+});
+
+test('right join sub query cache tags contain the subquery table tag', function () {
+    $query = (new Author)
+        ->select('authors.*')
+        ->rightJoinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id');
+
+    expect(joinSubTags($query))->toContain(
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+        )
+        ->and(collect($query->getQuery()->joins)->pluck('type')->all())->toBe(['right']);
+});
+
+test('right join sub query cache is invalidated when the subquery table is written', function () {
+    $authorWithoutBooks = Author::factory()->create();
+    $before = (new Author)
+        ->select('authors.*')
+        ->rightJoinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')
+        ->get();
+
+    Book::factory()->create(['author_id' => $authorWithoutBooks->id]);
+
+    $afterCachedRead = (new Author)
+        ->select('authors.*')
+        ->rightJoinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')
+        ->get();
+    $liveTruth = (new UncachedAuthor)
+        ->select('authors.*')
+        ->rightJoinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')
+        ->get();
+
+    expect($liveTruth)->toHaveCount($before->count() + 1)
+        ->and($afterCachedRead->pluck('id'))->toEqual($liveTruth->pluck('id'));
+});
+
+test('lateral join cache tags contain the subquery table tag', function () {
+    $query = (new Author)
+        ->select('authors.*')
+        ->joinLateral(latestBookSubQuery(), 'latest_book');
+
+    expect(joinSubTags($query))->toContain(
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+        )
+        ->and(collect($query->getQuery()->joins)->pluck('type')->all())->toBe(['inner']);
+});
+
+test('left lateral join cache tags contain the subquery table tag', function () {
+    $query = (new Author)
+        ->select('authors.*')
+        ->leftJoinLateral(latestBookSubQuery(), 'latest_book');
+
+    expect(joinSubTags($query))->toContain(
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+        )
+        ->and(collect($query->getQuery()->joins)->pluck('type')->all())->toBe(['left']);
+});
+
+test('join sub query cache tags contain the subquery table tag for a relation subquery', function () {
+    $subQuery = (new Author)
+        ->first()
+        ->books()
+        ->select('author_id')
+        ->groupBy('author_id');
+    $query = (new Author)
+        ->select('authors.*')
+        ->joinSub($subQuery, 'authored', 'authored.author_id', '=', 'authors.id');
+
     expect(joinSubTags($query))->toContain(
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
     );
@@ -215,15 +278,12 @@ test('join sub query cache tags contain the subquery table tag for a closure sub
             'authors.id'
         );
 
-    // A Closure subquery should be recorded the same way a builder is
     expect(joinSubTags($query))->toContain(
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
     );
 });
 
 test('join sub query cache is invalidated when the subquery table is written', function () {
-    // An author with no books is invisible to the inner-joined subquery,
-    // so giving them one changes the row count the query returns.
     $authorWithoutBooks = Author::factory()->create();
 
     $before = (new Author)
@@ -249,26 +309,17 @@ test('join sub query cache is invalidated when the subquery table is written', f
     );
 });
 
-// The case that justifies the base query builder existing at all. Eloquent
-// defers some of its own subquery joins into a beforeQuery() callback, and
-// that callback is handed the query builder, never the Eloquent builder
-// wrapping it — so a hook on CachedBuilder never sees the join. Before this,
-// the query below tagged only "author" and "authors"; a write to books left
-// the cached rows in place.
 test('deferred join sub query cache tags contain the subquery table tag', function () {
     $query = withDeferredJoinSub(new Author);
     $tags = (new ReflectionMethod($query, 'makeCacheTags'))
         ->invoke($query);
 
-    // A subquery join added by a beforeQuery callback should tag the table it reads
     expect($tags)->toContain(
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
     );
 });
 
 test('deferred join sub query cache is invalidated when the subquery table is written', function () {
-    // An author with no books is invisible to the inner-joined subquery, so
-    // giving them one changes the row count the query returns.
     $authorWithoutBooks = Author::factory()->create();
 
     $before = withDeferredJoinSub(new Author)->get();
@@ -285,9 +336,6 @@ test('deferred join sub query cache is invalidated when the subquery table is wr
     );
 });
 
-// A tag is worth nothing if the builder it came from replaced one the
-// consumer supplied. The package only swaps in its own base query builder
-// when the model is using Laravel's.
 test('a custom base query builder is not replaced', function () {
     $builder = (new ReflectionMethod(new AuthorWithCustomBaseBuilder, 'newBaseQueryBuilder'))
         ->invoke(new AuthorWithCustomBaseBuilder);
@@ -303,28 +351,16 @@ test('the default base query builder is the recording one', function () {
     expect($builder)->toBeInstanceOf(CachedQueryBuilder::class);
 });
 
-// Not an ofMany() test on purpose. An ofMany() relation already tags the
-// related model's own table through that model, so its tags are identical
-// with and without any recording — a test for it would pass before the fix
-// as readily as after. The deferred joinSub above is the case that changes.
 test('of many relation builds cache tags without raising a type error', function () {
     $author = (new Author)->first();
     $relation = $author->newestBook();
 
-    // Executing the relation first runs the deferred beforeQuery callback
-    // that builds the ofMany() join, so the JoinClause holds a compiled
-    // Expression by the time the tags are made — the shape that used to
-    // raise a TypeError inside stripos().
     $relation->first();
 
     $builder = $relation->getQuery();
     $tags = (new ReflectionMethod($builder, 'makeCacheTags'))
         ->invoke($builder);
 
-    // The ofMany() subquery reads from the related model's own table, so
-    // that table is already tagged through the model; unlike a hand-written
-    // joinSub() against an unrelated table, nothing has to be recovered
-    // from the compiled expression here.
     expect($tags)->toContain(
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
     );
@@ -335,6 +371,15 @@ function authoredSubQuery()
     return DB::table('books')
         ->select('author_id')
         ->groupBy('author_id');
+}
+
+function latestBookSubQuery()
+{
+    return DB::table('books')
+        ->select('title')
+        ->whereColumn('books.author_id', 'authors.id')
+        ->orderByDesc('id')
+        ->limit(1);
 }
 
 function joinSubTags($query): array

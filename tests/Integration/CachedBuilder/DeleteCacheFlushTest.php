@@ -3,7 +3,6 @@
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 
-// --- delete() tests ---
 test('delete zero rows does not flush cache', function () {
     $key = populateBookCache();
 
@@ -32,7 +31,6 @@ test('delete multiple rows flushes cache', function () {
     expect($this->cache()->tags(bookTags())->get($key))->toBeNull();
 });
 
-// --- forceDelete() tests ---
 test('force delete zero rows does not flush cache', function () {
     $key = populateAuthorCache();
 
@@ -60,17 +58,14 @@ test('force delete multiple rows flushes cache', function () {
     expect($this->cache()->tags(authorTags())->get($key))->toBeNull();
 });
 
-// --- Integration test ---
 test('repeated deletes on empty result set do not flush cache', function () {
     $key = populateBookCache();
 
-    // Delete with no matching rows multiple times
     for ($i = 0; $i < 3; $i++) {
         $result = (new Book)->where("id", 0)->delete();
         expect($result)->toEqual(0);
     }
 
-    // Cache should still be intact
     expect($this->cache()->tags(bookTags())->get($key))->not->toBeNull();
 });
 

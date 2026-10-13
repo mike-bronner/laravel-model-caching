@@ -5,14 +5,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use Illuminate\Support\Facades\DB;
 
-// make() read the where clauses, the having clauses, the columns, the orders,
-// the limit and the offset, and nothing else. groupBy, joins, unions and
-// distinct never reached the key, so two queries differing only in one of them
-// shared a key and the second read the first one's rows.
-//
-// Book carries no global scope, so nothing but the part under test moves these
-// keys.
-
 test('group by columns reach the key', function () {
     $byAuthor = cacheKey((new Book)->groupBy("author_id"));
     $byPublisher = cacheKey((new Book)->groupBy("publisher_id"));
@@ -47,8 +39,6 @@ test('joined table and type reach the key', function () {
     expect($left)->not->toEqual($inner);
 });
 
-// Two joins of one table on different columns share their type, their
-// table and their cache tags. Only the hashed ON conditions separate them.
 test('joins on the same table with different conditions key distinctly', function () {
     $byAuthor = cacheKey((new Book)->join("authors", "authors.id", "=", "books.author_id"));
     $byPublisher = cacheKey((new Book)->join("authors", "authors.id", "=", "books.publisher_id"));
@@ -103,9 +93,6 @@ test('union all keys distinctly from union', function () {
     expect($unionAll)->toContain("-union_all_");
 });
 
-// The backstop. Nothing names lock, indexHint, groupLimit, unionLimit,
-// unionOffset or unionOrders, and each of them changes which rows come
-// back. They reach the key through the unkeyed-property hash instead.
 test('unkeyed query properties reach the key through the backstop hash', function () {
     $unlocked = cacheKey((new Book)->where("id", 1));
     $locked = cacheKey((new Book)->where("id", 1)->lockForUpdate());
@@ -130,9 +117,6 @@ test('union ordering reaches the key through the backstop hash', function () {
     expect($descending)->not->toEqual($ascending);
 });
 
-// Both property lists are closed sets. A member silently added to either
-// one stops that property reaching the key, which is the exact failure
-// this backstop exists to prevent, and no other test would notice.
 test('the keyed and infrastructure property lists are pinned', function () {
     $constants = (new ReflectionClass(CacheKey::class))->getConstants();
 
@@ -161,9 +145,6 @@ test('the keyed and infrastructure property lists are pinned', function () {
         ]);
 });
 
-// Every property named in either list has to exist on the builder. A
-// rename in Laravel would otherwise leave a live property unaccounted for
-// while the list still looks complete.
 test('every listed property exists on the query builder', function () {
     $constants = (new ReflectionClass(CacheKey::class))->getConstants();
     $builderProperties = array_keys(get_object_vars(DB::table("books")));
@@ -172,15 +153,10 @@ test('every listed property exists on the query builder', function () {
         $constants["KEYED_QUERY_PROPERTIES"],
         $constants["UNKEYED_INFRASTRUCTURE_PROPERTIES"],
     ) as $property) {
-        // A failure names the property CacheKey lists but the query builder no longer has.
         expect($builderProperties)->toContain($property);
     }
 });
 
-// The tests above name one column, one join or one union each, so the "_"
-// that joins several of them is never written. These pin that separator,
-// because a key that spells it differently is a different key, and every
-// consumer's cache for such a query would go cold on upgrade.
 test('several group by columns are joined by underscores', function () {
     $key = cacheKey((new Book)->groupBy("author_id", "publisher_id"));
 
@@ -214,4 +190,82 @@ test('several unions are joined by underscores', function () {
         ->unionAll(DB::table("books")->where("id", 3)));
 
     expect($key)->toMatch("/-union_[0-9a-f]{40}_all_[0-9a-f]{40}(-|$)/");
+});
+
+test('a raw union ordering returns its own rows after another raw ordering was cached', function () {
+    $ordered = fn ($model, string $expression) => $model
+        ->where("id", "<", 4)
+        ->union(DB::table("books")->where("id", ">", 6)->where("id", "<", 10))
+        ->orderBy(DB::raw($expression));
+
+    $byId = $ordered(new Book, "id")->get();
+    $byTitle = $ordered(new Book, "title")->get();
+
+    expect(cacheKey($ordered(new Book, "title")))->not->toEqual(cacheKey($ordered(new Book, "id")))
+        ->and($byId->pluck("id"))->toEqual($ordered(new UncachedBook, "id")->get()->pluck("id"))
+        ->and($byTitle->pluck("id"))->toEqual($ordered(new UncachedBook, "title")->get()->pluck("id"));
+});
+
+test('an index hint reaches the key through the backstop hash', function () {
+    $books = (new Book)->where("author_id", 1)->get();
+    $hinted = (new Book)->useIndex("books_author_id_index")->where("author_id", 1);
+
+    expect(cacheKey($hinted))->toContain("-q")
+        ->and(cacheKey($hinted))->not->toEqual(cacheKey((new Book)->where("author_id", 1)))
+        ->and($hinted->get()->pluck("id"))->toEqual($books->pluck("id"));
+});
+
+test('raw column comparisons reach the key', function () {
+    $sameAuthor = fn () => (new Book)->whereColumn(DB::raw("author_id"), "=", DB::raw("author_id"));
+    $differentPublisher = fn () => (new Book)->whereColumn(DB::raw("author_id"), "=", DB::raw("publisher_id"));
+
+    $allBooks = $sameAuthor()->get();
+    $matchingBooks = $differentPublisher()->get();
+
+    expect(cacheKey($differentPublisher()))->not->toEqual(cacheKey($sameAuthor()))
+        ->and($allBooks->pluck("id"))->toEqual((new UncachedBook)->pluck("id"))
+        ->and($matchingBooks->pluck("id"))
+        ->toEqual((new UncachedBook)->whereColumn("author_id", "publisher_id")->pluck("id"));
+});
+
+test('a null having value reaches the key', function () {
+    $havingNull = fn () => (new Book)->select("author_id")->groupBy("author_id")->having("author_id", "=", null);
+    $havingOne = fn () => (new Book)->select("author_id")->groupBy("author_id")->having("author_id", "=", 1);
+
+    $nullRows = $havingNull()->get();
+    $oneRows = $havingOne()->get();
+
+    expect(cacheKey($havingNull()))->not->toEqual(cacheKey($havingOne()))
+        ->and($nullRows)->toBeEmpty()
+        ->and($oneRows->pluck("author_id")->all())->toEqual([1]);
+});
+
+test('an array where value reaches the key', function () {
+    $first = (new Book)->where("id", "=", [1])->get();
+    $second = (new Book)->where("id", "=", [2])->get();
+
+    expect(cacheKey((new Book)->where("id", "=", [2])))
+        ->not->toEqual(cacheKey((new Book)->where("id", "=", [1])))
+        ->and($first->pluck("id")->all())->toEqual([1])
+        ->and($second->pluck("id")->all())->toEqual([2]);
+});
+
+test('an eloquent after query callback does not share the plain query cache entry', function () {
+    (new Book)->where("id", 1)
+        ->afterQuery(fn ($books) => $books->each(fn ($book) => $book->title = "after query"))
+        ->get();
+
+    expect((new Book)->where("id", 1)->get()->pluck("title")->all())->not->toBe(["after query"]);
+});
+
+test('a base query after query callback does not share the plain query cache entry', function () {
+    $builder = (new Book)->where("id", 1);
+    $builder->getQuery()->afterQuery(fn ($rows) => $rows->map(function ($row) {
+        $row->title = "after query";
+
+        return $row;
+    }));
+    $builder->get();
+
+    expect((new Book)->where("id", 1)->get()->pluck("title")->all())->not->toBe(["after query"]);
 });

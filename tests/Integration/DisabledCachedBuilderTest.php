@@ -2,11 +2,7 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
-
-/**
-* @SuppressWarnings(PHPMD.TooManyPublicMethods)
-* @SuppressWarnings(PHPMD.TooManyMethods)
- */
+use Illuminate\Support\Facades\DB;
 
 test('avg model results is not cached', function () {
     $authorId = (new Author)
@@ -303,4 +299,16 @@ test('pagination is cached', function () {
 
     expect($cachedResults)->toBeNull();
     expect($authors->toArray())->toEqual($liveResults->toArray());
+});
+
+test('exists model results is not cached', function () {
+    $query = fn () => (new Author)->where('name', 'Exists Probe');
+    Author::factory()->create(['name' => 'Exists Probe']);
+
+    expect($query()->exists())->toBeTrue();
+
+    DB::table('authors')->where('name', 'Exists Probe')->delete();
+
+    expect($query()->exists())->toBeTrue()
+        ->and($query()->disableCache()->exists())->toBeFalse();
 });

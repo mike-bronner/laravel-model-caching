@@ -8,14 +8,7 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCachedCustomBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithTraitCollision;
 
-/**
- * AC 1: When caching is disabled (config off), models with a custom builder
- *       defined via static $builder receive that custom builder — not a plain
- *       EloquentBuilder and not a CachedBuilder.
- */
 test('non cachable model uses custom builder', function () {
-    // Disable caching globally so newEloquentBuilder() takes the non-cachable path.
-    // Use try/finally so config is always restored even when an assertion fails.
     config(['laravel-model-caching.enabled' => false]);
 
     try {
@@ -30,11 +23,6 @@ test('non cachable model uses custom builder', function () {
     }
 });
 
-/**
- * AC 2: When caching is enabled and the model's custom builder extends
- *       CachedBuilder, the custom CachedBuilder subclass is returned so
- *       both custom query methods AND caching are available.
- */
 test('cachable model with cached builder subclass uses custom builder', function () {
     $builder = (new AuthorWithCachedCustomBuilder)->newQuery();
 
@@ -43,17 +31,12 @@ test('cachable model with cached builder subclass uses custom builder', function
         'Cachable model whose custom builder extends CachedBuilder should return that builder',
     );
 
-    // Custom method must be callable on the returned builder
     expect(method_exists($builder, 'famous'))->toBeTrue(
         'Custom query method famous() must be available on the returned builder',
     );
 });
 
-/**
- * AC 2 continued: the custom CachedBuilder subclass must still cache queries.
- */
 test('custom cached builder subclass still caches results', function () {
-    // Warm the cache
     $results = (new AuthorWithCachedCustomBuilder)->get();
 
     $cacheKey = sha1(
@@ -76,11 +59,6 @@ test('custom cached builder subclass still caches results', function () {
     );
 });
 
-/**
- * AC 3: When caching is enabled but the model's custom builder does NOT extend
- *       CachedBuilder, the package wraps it inside a CachedBuilder so caching
- *       is never silently dropped.
- */
 test('cachable model with non cached builder wraps to cached builder', function () {
     $builder = (new AuthorWithCustomBuilder)->newQuery();
 
@@ -89,7 +67,6 @@ test('cachable model with non cached builder wraps to cached builder', function 
         'When custom builder does not extend CachedBuilder, newQuery() must return CachedBuilder',
     );
 
-    // The inner builder should be the custom builder
     expect($builder->getInnerBuilder())->toBeInstanceOf(
         AuthorQueryBuilder::class,
         'The inner builder must be the custom AuthorQueryBuilder',
@@ -150,13 +127,7 @@ test('custom method then get is cached end to end', function () {
     );
 });
 
-/**
- * AC 6: No fatal error when Cachable is combined with another trait that also
- *       defines newEloquentBuilder.  The model resolves the collision via the
- *       `insteadof` keyword and delegates to newModelCachingEloquentBuilder().
- */
 test('trait collision resolves without fatal error', function () {
-    // Constructing the builder must not throw a PHP fatal error.
     $builder = (new AuthorWithTraitCollision)->newQuery();
 
     expect($builder)->toBeInstanceOf(

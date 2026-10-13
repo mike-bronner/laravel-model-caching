@@ -101,8 +101,6 @@ test('nested where has cache is busted when deeply related table is written', fu
     $profile = Profile::factory()->create(["author_id" => $author->id, "first_name" => "Alpha"]);
     Book::factory()->create(["author_id" => $author->id]);
 
-    // The `profiles` tag is the whole point: it is two relations away from
-    // the queried model, and only the recursive walk reaches it.
     assertCachedUnderTags(
         (new Book)->whereHas("author", function ($query) {
             $query->whereHas("profile", function ($query) {

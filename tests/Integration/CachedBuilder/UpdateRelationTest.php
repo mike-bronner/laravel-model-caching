@@ -8,7 +8,6 @@ test('in random order caches results', function () {
         ->whereHas("stores")
         ->first();
 
-    // Count actual stores for this book before the update (may be >1 due to random seeding).
     $storeCount = $book->stores()->count();
 
     $book->stores()
@@ -22,6 +21,5 @@ test('in random order caches results', function () {
         ->where("name", "test store name change")
         ->count();
 
-    // All stores belonging to the book should have been updated.
     expect($updatedCount)->toEqual($storeCount);
 });

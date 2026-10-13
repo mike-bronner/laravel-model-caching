@@ -242,10 +242,6 @@ test('instanceof dynamo db store detection works with a custom driver name', fun
     expect(FakeNativeDynamoDbStore::flushCount())->toBe(0);
 });
 
-// On DynamoDB a query key carries the global version and then one version
-// per tag. The tags are filtered, deduplicated and sorted first, so the
-// order a caller lists them in never changes the key. The versions are
-// seeded so that the whole key can be spelled out.
 test('versioned key joins the global and sorted tag versions', function () {
     $repository = ModelCacheRepository::make();
     $store = app('cache')->store('dynamodb-model');

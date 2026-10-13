@@ -5,16 +5,6 @@ namespace GeneaLabs\LaravelModelCaching\Tests;
 use PDO;
 use Throwable;
 
-// A test file that runs against PostgreSQL, which SQLite cannot stand in for,
-// uses this trait. It points the default connection at PostgreSQL before the
-// application boots, because RefreshDatabase migrates the default connection
-// during setUp().
-//
-// Pest has no hook that runs before the parent setUp(), so the reachability
-// guard runs here, at the start of building the application. That is still
-// before RefreshDatabase first opens the connection, so a missing server skips
-// the test instead of failing it. A missing pdo_pgsql driver throws in the
-// probe too, which is the same answer: this test cannot run.
 trait RunsOnPostgres
 {
     protected function getEnvironmentSetUp($app)
@@ -30,8 +20,6 @@ trait RunsOnPostgres
         $app['config']->set('database.connections.pgsql.password', env("PGSQL_PASSWORD", "secret"));
     }
 
-    // Probed with a bare PDO rather than through the container, because the
-    // container is not built yet at this point.
     private function skipWithoutPostgres() : void
     {
         $host = env("PGSQL_HOST", "pgsql");

@@ -3,16 +3,6 @@
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 
-// getHavingClause() passed every member of the clause array to str_replace(),
-// which only accepts a string or an array of them. having() stores an int or
-// a float in "value", havingBetween() stores an array in "values", and both
-// store a bool in "not". So having() raised a TypeError on a cold query, and
-// havingBetween() folded both bounds into the literal "Array", giving every
-// range one key.
-//
-// Book carries no global scope, so nothing but the clause under test moves
-// these keys.
-
 test('having with numeric value does not throw', function () {
     $books = (new Book)
         ->groupBy("author_id")
@@ -71,9 +61,6 @@ test('having between returns its own rows after another range was cached', funct
     expect($books->pluck("id"))->toEqual($liveResults->pluck("id"));
 });
 
-// havingRaw() keeps its bindings out of the clause array, so two calls
-// differing only in a bound value produce the same clause string. The
-// "having" binding channel is what tells them apart.
 test('having raw keys its bindings', function () {
     $lowBound = cacheKey((new Book)->groupBy("author_id")->havingRaw("author_id > ?", [1]));
     $highBound = cacheKey((new Book)->groupBy("author_id")->havingRaw("author_id > ?", [3]));
@@ -92,8 +79,6 @@ test('having raw returns its own rows after another binding was cached', functio
     expect($books->pluck("id"))->toEqual($liveResults->pluck("id"));
 });
 
-// A raw having with no bindings is the one shape that already worked, so
-// its key has to stay exactly as it was or every cached one goes cold.
 test('unbound having raw key is unchanged', function () {
     $key = cacheKey((new Book)->groupBy("author_id")->havingRaw("count(*) > 1"));
 

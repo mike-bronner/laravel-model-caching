@@ -3,16 +3,6 @@
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 
-// An "or" clause widens a result set; its "and" twin narrows it. They used to
-// share a cache key in every clause family except Basic, so the cheaper query
-// answered for the stricter one.
-//
-// Book carries no global scope on purpose. Author uses SoftDeletes, and
-// Eloquent's addNewWheresWithinGroup() wraps the pre-existing clauses in a
-// nested group the moment an "or" appears, which moves the key on its own — a
-// test written against Author cannot tell that apart from the boolean landing
-// in the key.
-
 test('or where produces different cache key than where', function () {
     $and = (new Book)->where("id", 1)->where("id", 2);
     $or = (new Book)->where("id", 1)->orWhere("id", 2);

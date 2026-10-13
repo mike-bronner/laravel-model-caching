@@ -200,13 +200,6 @@ class ModelCacheRepository
         $connection = $store->connection();
         $client = $connection->client();
 
-        // Redis layers two independent prefixes: the connection-level client
-        // prefix (phpredis OPT_PREFIX / Predis KeyPrefixProcessor, from
-        // database.redis.options.prefix) and the cache-store prefix
-        // ($store->getPrefix()). A raw SCAN returns absolute keys that already
-        // include the client prefix, while DEL re-applies it — so we neutralize
-        // the client prefix for the duration and work in absolute keys, which
-        // is deterministic across both clients and their SCAN-prefix quirks.
         [$clientPrefix, $restoreClientPrefix] = $this->neutralizeClientPrefix($client);
 
         try {
@@ -271,14 +264,6 @@ class ModelCacheRepository
         } while (count($members) === 1000);
     }
 
-    /**
-     * Disable the connection's client-level key prefix and return the prefix
-     * string alongside a callback that restores it. Supports phpredis
-     * (\Redis / \RedisCluster) and Predis; returns an empty prefix and a no-op
-     * restorer for any other client.
-     *
-     * @return array{0: string, 1: callable}
-     */
     protected function neutralizeClientPrefix(object $client): array
     {
         if ($client instanceof ClientInterface) {
@@ -299,7 +284,6 @@ class ModelCacheRepository
             ];
         }
 
-        // \Redis and \RedisCluster expose the prefix under the same option id.
         $option = \Redis::OPT_PREFIX;
         $original = (string) $client->getOption($option);
         $client->setOption($option, '');
@@ -321,8 +305,6 @@ class ModelCacheRepository
                 throw $exception;
             }
 
-            // A batched DEL spanning hash slots is rejected on a cluster; fall
-            // back to per-key deletion, mirroring flushTaggedCacheBySlot().
             collect($keys)
                 ->each(function (string $key) use ($connection): void {
                     $connection->del($key);
@@ -355,9 +337,6 @@ class ModelCacheRepository
 
     protected function versionedKey(string $key, array $tags): string
     {
-        // DynamoDB control keys are bounded: one global namespace key plus one
-        // key per normalized tag hash. Query entries are the only records that
-        // accumulate until TTL removes them.
         $versions = collect([$this->globalVersionKey()])
             ->merge(collect($this->normalizeTags($tags))
                 ->map(fn (string $tag): string => $this->tagVersionKey($tag)))
@@ -387,17 +366,11 @@ class ModelCacheRepository
 
     protected function tagVersionKey(string $tag): string
     {
-        // Hashing keeps control keys short and stable even for long or
-        // punctuation-heavy tag strings. Namespace collisions are therefore
-        // limited to theoretical SHA-1 collisions.
         return static::DYNAMODB_NAMESPACE_PREFIX . 'tag-version:' . sha1($tag);
     }
 
     protected function normalizeTags(array $tags): array
     {
-        // uniqueStrict() rather than unique(): array_unique()'s default
-        // compares as strings, and unique() compares loosely, which would fold
-        // numeric-looking tags such as "1" and "01" into one.
         return collect($tags)
             ->filter()
             ->uniqueStrict()

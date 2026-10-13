@@ -5,22 +5,10 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBaseBuilderAndB
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithPrefixedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthor;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Publisher;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\DB;
 
-// A cached query has to be tagged with every table it reads, or a write to one
-// of those tables leaves it serving stale rows. #623 covered the tables Laravel
-// still holds as builders on `wheres`. These cover the ones it compiles to an
-// Expression and drops — count-constrained has(), withCount()/withExists(), and
-// whereIn() — plus the traversal branches #623 added without pinning.
-//
-// Each test asserts on the tag set directly rather than on a busted result,
-// because an empty result after a write is also what a query that stopped
-// caching altogether returns. The tag list is the mechanism; the result is not.
-
-// Item 1. canUseExistsForExistenceCheck() sends only ">= 1" and "< 1" to
-// addWhereExistsQuery(); every other operator and count goes to
-// addWhereCountQuery(), which leaves a Basic where holding an Expression
-// and no builder to walk.
 test('count constrained has tags the related table', function () {
     assertCachedUnderTags(
         (new Author)->has("books", ">", 1),
@@ -32,12 +20,6 @@ test('count constrained has tags the related table', function () {
     );
 });
 
-// Item 4. has() also accepts an already-resolved Relation, which Laravel
-// takes straight past the is_string() guard on its relation-resolution
-// block. That shape never reaches getRelationWithoutConstraints(), so the
-// choke point records nothing for it and has() must record it itself. The
-// count constraint is what makes this discriminating: ">= 1" would leave a
-// builder on `wheres` for the tag walk to find on its own.
 test('has with a relation instance tags the related table', function () {
     $relation = Relation::noConstraints(fn () => (new Author)->books());
 
@@ -77,9 +59,6 @@ test('count constrained has cache is busted when related table is written', func
     expect($query())->toBeEmpty();
 });
 
-// Item 3. withCount()/withExists() put their subquery in `columns`, as a
-// selectSub() Expression and a selectRaw() string respectively. Neither is
-// walked, and neither keeps the builder.
 test('with count tags the aggregated table', function () {
     assertCachedUnderTags(
         (new Book)->withCount("author"),
@@ -94,9 +73,6 @@ test('with exists tags the aggregated table', function () {
     );
 });
 
-// `withCount("author as writer_count")` aliases the result column. The
-// relation is the first space-separated segment; the alias is not a
-// relation and must not be resolved as one.
 test('aliased with count tags the aggregated table', function () {
     assertCachedUnderTags(
         (new Book)->withCount("author as writer_count"),
@@ -121,8 +97,6 @@ test('with count cache is busted when aggregated table is written', function () 
     expect($query())->toBe(0);
 });
 
-// The whereIn() carve-out #623 named. isQueryable() values are compiled to
-// an Expression by createSub(), the same way the count-constrained has() is.
 test('where in subquery tags the subquery table', function () {
     assertCachedUnderTags(
         (new Book)->whereIn("author_id", fn ($query) => $query
@@ -141,8 +115,6 @@ test('where not in subquery tags the subquery table', function () {
     );
 });
 
-// Item 4. The `Sub` where-type, which where() builds when the value is a
-// closure. #623 added the type to the list without a test for it.
 test('sub where clause tags its subquery table', function () {
     assertCachedUnderTags(
         (new Book)->where("id", ">", fn ($query) => $query
@@ -152,8 +124,6 @@ test('sub where clause tags its subquery table', function () {
     );
 });
 
-// Item 4. A join clause carries its own `wheres`, walked separately from
-// the outer query's.
 test('join clause subquery tags its table', function () {
     assertCachedUnderTags(
         (new Book)->join("authors", function ($join) {
@@ -171,9 +141,6 @@ test('join clause subquery tags its table', function () {
     );
 });
 
-// A join may name its table with an alias. The tag has to be the table, not
-// the aliased spelling: a write to `authors` flushes "…:authors", and
-// "…:authors as a" is a tag nothing ever flushes.
 test('aliased join tags the unaliased table', function () {
     assertCachedUnderTags(
         (new Book)->join("authors as a", "books.author_id", "=", "a.id"),
@@ -181,8 +148,6 @@ test('aliased join tags the unaliased table', function () {
     );
 });
 
-// The same alias handling on the subquery path, where the aliased name
-// arrives as the subquery builder's own `from`.
 test('aliased subquery from tags the unaliased table', function () {
     assertCachedUnderTags(
         (new Book)->whereExists(fn ($query) => $query
@@ -193,11 +158,6 @@ test('aliased subquery from tags the unaliased table', function () {
     );
 });
 
-// A model keeping its own base query builder has no recorder to record to.
-// The walk has to find that out and do nothing: calling the recorder anyway
-// raises "call to undefined method" on the consumer's builder, and turns a
-// supported configuration into a fatal error. The tags that survive are the
-// ones CacheTags finds by walking `wheres` itself.
 test('dotted has on a model keeping its own base builder still tags what it can walk', function () {
     assertCachedUnderTags(
         (new AuthorWithCustomBaseBuilderAndBooks)->has("books.author"),
@@ -210,8 +170,6 @@ test('dotted has on a model keeping its own base builder still tags what it can 
     );
 });
 
-// Item 4. A union's own builder, which the outer query's `wheres` never
-// reach.
 test('union subquery tags its table', function () {
     assertCachedUnderTags(
         (new Book)
@@ -221,11 +179,6 @@ test('union subquery tags its table', function () {
     );
 });
 
-// Item 4, the branch that was cut instead of tested. Of the six having
-// types Laravel builds, only the nested one carries a builder, and that
-// builder is forNestedWhere(), whose `from` is the outer query's own table.
-// A nested having can name no other table, so there is nothing for a
-// havings walk to contribute.
 test('nested having tags no table beyond the queried one', function () {
     assertCachedUnderTags(
         (new Book)
@@ -235,10 +188,6 @@ test('nested having tags no table beyond the queried one', function () {
     );
 });
 
-// Item 2. PrefixedAuthor reads the same `authors` table as Author and
-// differs only in declaring $cachePrefix, so it flushes
-// "…:model-prefix:authors". Tagging the related table with the querying
-// model's prefix would write "…:authors", which that write never touches.
 test('related table tag carries the related models cache prefix', function () {
     assertCachedUnderTags(
         (new BookWithPrefixedAuthor)->whereHas("author"),
@@ -261,10 +210,6 @@ test('aggregated table tag carries the related models cache prefix', function ()
     );
 });
 
-// Item 2 again, on the eager-load tag rather than the subquery one. That
-// tag names the related *class*, and PrefixedAuthor flushes it as
-// "…:model-prefix:…prefixedauthor", so the querying model's prefix misses
-// it the same way.
 test('eager loaded relation tag carries the related models cache prefix', function () {
     assertCachedUnderTags(
         (new BookWithPrefixedAuthor)->with("author"),
@@ -291,9 +236,38 @@ test('cross prefix where has cache is busted when related table is written', fun
     expect($query())->toBeEmpty();
 });
 
+test('dotted where has through a dynamic relation is busted when the last related table is written', function () {
+    Publisher::resolveRelationUsing(
+        'dynamicPrefixedBooks',
+        fn ($publisher) => $publisher->hasMany(BookWithPrefixedAuthor::class, 'publisher_id'),
+    );
+    $author = PrefixedAuthor::create(["name" => "John", "email" => "john@example.com"]);
+    $publisher = Publisher::factory()->create();
+    Book::factory()->create(["author_id" => $author->id, "publisher_id" => $publisher->id]);
+    $query = fn () => (new Publisher)
+        ->whereHas("dynamicPrefixedBooks.author", fn ($query) => $query->where("name", "John"))
+        ->get();
+
+    expect($query()->pluck("id")->all())->toBe([$publisher->id]);
+
+    $author->name = "Jane";
+    $author->save();
+
+    expect($query())->toBeEmpty();
+});
+
 function tagPrefix(): string
 {
     $testingSqlitePath = test()->testingSqlitePath;
 
     return "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:";
 }
+
+test('an exists subquery used twice tags its table', function () {
+    $authoredBooks = DB::table("books")->whereColumn("books.author_id", "authors.id");
+
+    assertCachedUnderTags(
+        (new Author)->whereExists($authoredBooks)->orWhereExists($authoredBooks),
+        [...authorTags(), tagPrefix() . "books"],
+    );
+});

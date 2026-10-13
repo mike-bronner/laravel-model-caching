@@ -7,10 +7,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Printer;
 use Illuminate\Support\Facades\DB;
 
-/**
- * @see https://github.com/mikebronner/laravel-model-caching/issues/538
- */
-
 test('has many through cache invalidated when intermediate model created', function () {
     $author = (new Author)->first();
     $initialCount = $author->printers()->count();

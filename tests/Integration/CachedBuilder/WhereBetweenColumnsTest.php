@@ -3,11 +3,6 @@
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 
-// whereBetweenColumns() carries no "operator", so the cache key builder used to
-// read a key that is not there and raise "Undefined array key". Under Laravel's
-// default error handler that converts to an ErrorException, so the query threw
-// instead of returning rows.
-
 test('where between columns produces a cache key without raising a warning', function () {
     $query = (new Book)->whereBetweenColumns("published_at", ["created_at", "updated_at"]);
 

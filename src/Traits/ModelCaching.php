@@ -42,16 +42,6 @@ trait ModelCaching
         }
     }
 
-    /**
-     * Swap in the base query builder that records the table a subquery join
-     * reads from, so CacheTags can tag it after joinSub() has compiled the
-     * subquery to an Expression.
-     *
-     * A model — or anything this trait is mixed into — that already supplies
-     * its own base query builder keeps it. Recording one more table to tag is
-     * worth far less than silently replacing a builder someone else depends on,
-     * so the swap only happens when the builder is Laravel's own.
-     */
     protected function newBaseQueryBuilder(): QueryBuilder
     {
         $builder = parent::newBaseQueryBuilder();
@@ -139,11 +129,6 @@ trait ModelCaching
             $instance->checkCooldownAndFlushAfterPersisting($instance);
         });
 
-        // TODO: figure out how to add this listener
-        // static::restored(function ($instance) {
-        //     $instance->checkCooldownAndFlushAfterPersisting($instance);
-        // });
-
         static::pivotSynced(function ($instance, $relationship) {
             $instance->checkCooldownAndFlushAfterPersisting($instance, $relationship);
         });
@@ -175,23 +160,6 @@ trait ModelCaching
         return $result;
     }
 
-    /**
-     * Core implementation for building a caching-aware Eloquent builder.
-     *
-     * Extracted from {@see newEloquentBuilder()} so that it can be called
-     * directly from model classes that need to resolve a trait collision by
-     * overriding `newEloquentBuilder` themselves (AC6).
-     *
-     * Behaviour:
-     * - Caching disabled → delegate to parent (custom builder returned as-is, AC1).
-     * - Caching enabled + custom builder already extends CachedBuilder → return it
-     *   directly so both custom query methods and caching are preserved (AC2).
-     * - Caching enabled + custom builder does NOT extend CachedBuilder → wrap it
-     *   inside a CachedBuilder via composition; the wrapper's `__call` proxy
-     *   delegates unknown method calls to the inner builder so custom methods
-     *   remain callable at runtime (AC3).
-     * - No custom builder → plain CachedBuilder (existing behaviour).
-     */
     public function newModelCachingEloquentBuilder($query): Builder
     {
         if (! $this->isCachable()) {

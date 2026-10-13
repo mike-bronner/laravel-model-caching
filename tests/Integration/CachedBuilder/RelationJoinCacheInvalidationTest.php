@@ -11,12 +11,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-/**
- * Regression tests for issue #610: relation queries that join a pivot or
- * intermediate table were never tagged with that table, so a write to it
- * could not invalidate the cached relation read.
- */
-
 test('belongs to many relation tags contain pivot table', function () {
     $tags = makeCacheTags((new Book)->first()->stores());
 
@@ -31,11 +25,6 @@ test('morph to many relation tags contain pivot table', function () {
     assertTagsContainTable($tags, 'tags');
 });
 
-/**
- * CachedHasOneThrough and CachedHasManyThrough override makeCacheTags() and
- * already unwrap the Eloquent builder, so the trait fix does not change them.
- * This guards that behavior against regression.
- */
 test('has one through relation still tags intermediate table', function () {
     $tags = makeCacheTags((new Supplier)->first()->history());
 

@@ -21,7 +21,6 @@ test('sync completes without memory exhaustion', function () {
     expect($result)->toHaveKey('detached');
     expect($result)->toHaveKey('updated');
 
-    // Memory should not grow by more than 10MB for a 50-record sync
     $memoryGrowth = $memoryAfter - $memoryBefore;
     expect($memoryGrowth)->toBeLessThan(
         10 * 1024 * 1024,
@@ -35,15 +34,11 @@ test('sync invalidates cache correctly', function () {
         ->first();
     $newStores = Store::factory()->count(3)->create();
 
-    // Load stores into cache
     $cachedStores = Book::find($book->id)->stores;
     expect($cachedStores)->not->toBeNull();
 
-    // Sync with new stores
     $book->stores()->sync($newStores->pluck('id'));
 
-    // After sync, cached result should be invalidated
-    // Fresh query should return the new stores
     $freshStores = Book::find($book->id)->stores;
     $freshStoreIds = $freshStores->pluck('id')->sort()->values()->toArray();
     $expectedIds = $newStores->pluck('id')->sort()->values()->toArray();

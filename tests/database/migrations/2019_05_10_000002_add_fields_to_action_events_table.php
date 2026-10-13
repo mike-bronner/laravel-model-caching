@@ -6,11 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 class AddFieldsToActionEventsTable extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
     public function up()
     {
         Schema::table('action_events', function (Blueprint $table) {
@@ -19,11 +14,6 @@ class AddFieldsToActionEventsTable extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
     public function down()
     {
         Schema::table('action_events', function (Blueprint $table) {

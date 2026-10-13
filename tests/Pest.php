@@ -9,10 +9,6 @@ use Illuminate\Cache\Repository;
 
 pest()->extend(IntegrationTestCase::class)->in('Feature', 'Integration');
 
-// Test Impact Analysis exists from Pest 5 on. CI cells that resolve Pest 4
-// load this file too, so the call is guarded rather than made unconditionally.
-// locally() turns TIA on for a plain local run. A run that passes --testsuite,
-// as composer test and CI do, is a partial run to TIA and stays a full run.
 if (method_exists(pest(), 'tia')) {
     pest()->tia()->locally()->baselined();
 }

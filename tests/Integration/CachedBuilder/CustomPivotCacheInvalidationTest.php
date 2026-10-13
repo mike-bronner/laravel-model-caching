@@ -11,20 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 
-/**
- * Regression tests for issue #481: Cache invalidation when using custom
- * intermediate table models (via ->using(CustomPivot::class)).
- *
- * Acceptance criteria:
- *   [AC1] Cache is invalidated when pivotAttached, pivotDetached, and pivotSynced
- *         events fire via a custom pivot model.
- *   [AC2] A regression test covering custom intermediate table models (->using()) is added.
- *   [AC3] Existing pivot invalidation behaviour is not regressed.
- */
-
-// -------------------------------------------------------------------------
-// Sanity check: relationship with custom pivot returns CachedBelongsToMany
-// -------------------------------------------------------------------------
 test('custom pivot relationship returns cached belongs to many', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
     $relation = (new User)->find($userId)->rolesWithCustomPivot();
@@ -35,20 +21,15 @@ test('custom pivot relationship returns cached belongs to many', function () {
     );
 });
 
-// -------------------------------------------------------------------------
-// AC1 + AC2: Cache is invalidated on attach via custom pivot model
-// -------------------------------------------------------------------------
 test('cache is invalidated when attaching via custom pivot', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
 
     $relation = (new User)->find($userId)->rolesWithCustomPivot();
     [$tags, $hashedKey] = getCacheTagsAndKey($relation);
 
-    // Warm the cache.
     $result = (new User)->find($userId)->rolesWithCustomPivot;
     expect($result)->not->toBeEmpty();
 
-    // Attach via the custom-pivot relationship — cache must be busted.
     $newRole = Role::factory()->create();
     (new User)->find($userId)->rolesWithCustomPivot()->attach($newRole->id);
 
@@ -59,16 +40,12 @@ test('cache is invalidated when attaching via custom pivot', function () {
     );
 });
 
-// -------------------------------------------------------------------------
-// AC1 + AC2: Cache is invalidated on detach via custom pivot model
-// -------------------------------------------------------------------------
 test('cache is invalidated when detaching via custom pivot', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
 
     $relation = (new User)->find($userId)->rolesWithCustomPivot();
     [$tags, $hashedKey] = getCacheTagsAndKey($relation);
 
-    // Warm the cache.
     $result = (new User)->find($userId)->rolesWithCustomPivot;
     expect($result)->not->toBeEmpty();
 
@@ -82,16 +59,12 @@ test('cache is invalidated when detaching via custom pivot', function () {
     );
 });
 
-// -------------------------------------------------------------------------
-// AC1 + AC2: Cache is invalidated on sync via custom pivot model
-// -------------------------------------------------------------------------
 test('cache is invalidated when syncing via custom pivot', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
 
     $relation = (new User)->find($userId)->rolesWithCustomPivot();
     [$tags, $hashedKey] = getCacheTagsAndKey($relation);
 
-    // Warm the cache.
     $result = (new User)->find($userId)->rolesWithCustomPivot;
     expect($result)->not->toBeEmpty();
 
@@ -104,23 +77,18 @@ test('cache is invalidated when syncing via custom pivot', function () {
         'Expected cache to be invalidated after sync via custom pivot, but a cached value was found.',
     );
 
-    // Verify roles match what was synced.
     expect(array_diff(
         (new User)->find($userId)->rolesWithCustomPivot->pluck('id')->toArray(),
         $newRoles->pluck('id')->toArray()
     ))->toBeEmpty();
 });
 
-// -------------------------------------------------------------------------
-// AC3: Existing (non-custom-pivot) invalidation still works
-// -------------------------------------------------------------------------
 test('existing pivot invalidation not regressed', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
 
     $relation = (new User)->find($userId)->roles();
     [$tags, $hashedKey] = getCacheTagsAndKey($relation);
 
-    // Warm the cache.
     $result = (new User)->find($userId)->roles;
     expect($result)->not->toBeEmpty();
 
@@ -134,9 +102,6 @@ test('existing pivot invalidation not regressed', function () {
     );
 });
 
-// -------------------------------------------------------------------------
-// Issue #551: Related model is NOT cacheable, only parent is
-// -------------------------------------------------------------------------
 test('custom pivot with uncached related returns correct relation', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
     $relation = (new User)->find($userId)->uncachedRolesWithCustomPivot();
@@ -150,15 +115,12 @@ test('custom pivot with uncached related returns correct relation', function () 
 test('cache invalidated on attach when related model not cacheable', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
 
-    // Warm the cache via the uncached-related relationship.
     $result = (new User)->find($userId)->uncachedRolesWithCustomPivot;
     expect($result)->not->toBeEmpty();
 
-    // Attach a new role.
     $newRole = UncachedRole::create(['name' => 'test-uncached-role']);
     (new User)->find($userId)->uncachedRolesWithCustomPivot()->attach($newRole->id);
 
-    // After attach, fetching fresh data should include the new role.
     $freshResult = (new User)->find($userId)->uncachedRolesWithCustomPivot;
     expect($freshResult->contains('id', $newRole->id))->toBeTrue(
         'After attach via uncached related model with custom pivot, fresh query should reflect the change.',
@@ -199,9 +161,6 @@ test('cache invalidated on sync when related model not cacheable', function () {
     ))->toBeEmpty('After sync via uncached related model with custom pivot, fresh query should reflect synced roles.');
 });
 
-// -------------------------------------------------------------------------
-// Event-firing assertions for custom pivot operations
-// -------------------------------------------------------------------------
 test('pivot attached event fires with custom pivot', function () {
     Event::fake();
 
@@ -236,16 +195,12 @@ test('pivot synced event fires with custom pivot', function () {
     Event::assertDispatched("eloquent.pivotSynced: " . User::class);
 });
 
-// -------------------------------------------------------------------------
-// updateExistingPivot cache invalidation
-// -------------------------------------------------------------------------
 test('cache is invalidated when updating existing pivot via custom pivot', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
 
     $relation = (new User)->find($userId)->rolesWithCustomPivot();
     [$tags, $hashedKey] = getCacheTagsAndKey($relation);
 
-    // Warm the cache.
     $result = (new User)->find($userId)->rolesWithCustomPivot;
     expect($result)->not->toBeEmpty();
 
@@ -262,9 +217,6 @@ test('cache is invalidated when updating existing pivot via custom pivot', funct
     );
 });
 
-// -------------------------------------------------------------------------
-// Neither model cacheable: fallback to standard BelongsToMany
-// -------------------------------------------------------------------------
 test('non cacheable models return standard belongs to many', function () {
     $userId = (int) DB::table('role_user')->value('user_id');
     $user = UncachedUser::find($userId);
@@ -277,7 +229,6 @@ test('non cacheable models return standard belongs to many', function () {
         'UncachedUser->roles() should return a standard BelongsToMany, not CachedBelongsToMany.',
     );
 
-    // Verify attach/detach still work correctly.
     $newRole = UncachedRole::create(['name' => 'fallback-test-role']);
     $user->roles()->attach($newRole->id);
 

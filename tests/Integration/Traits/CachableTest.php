@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Collection;
 test('specifying alternate cache driver', function () {
     $configCacheStores = config('cache.stores');
     $configCacheStores['customCache'] = ['driver' => 'array'];
-    // TODO: make sure the alternate cache is actually loaded
     config(['cache.stores' => $configCacheStores]);
     config(['laravel-model-caching.store' => 'customCache']);
     $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null");

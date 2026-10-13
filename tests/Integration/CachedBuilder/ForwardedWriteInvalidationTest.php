@@ -67,8 +67,6 @@ test('update or insert invalidates cache', function () {
     });
 });
 
-// Creating a model runs insertGetId() underneath. With model events off,
-// as under saveQuietly(), that write is the only thing left to invalidate.
 test('quiet create invalidates cache', function () {
     assertCachedTitlesMatchDatabase(function () {
         (new Book)->fill(newBookRow("created quietly"))->saveQuietly();

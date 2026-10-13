@@ -74,7 +74,7 @@ test('boolean where has relation with false condition and additional parent raw 
         ->whereHas('author', function ($query) {
             return $query->where('is_famous', false);
         })
-        ->whereRaw("title = ?", ['Mixed Clause']) // Test ensures this binding is included in the key
+        ->whereRaw("title = ?", ['Mixed Clause'])
         ->get();
     $cachedResults = $this->cache()
         ->tags($tags)

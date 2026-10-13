@@ -279,3 +279,26 @@ test('scope not applied twice', function () {
         "There should only be 1 binding, scope is being applied more than once.",
     );
 });
+
+test('a global scope removed by an earlier global scope is not applied', function () {
+    Author::factory()->create(['name' => 'Zelda']);
+    $globalScopes = Author::getAllGlobalScopes();
+    Author::addGlobalScope('removesNameScope', function ($builder) {
+        $builder->withoutGlobalScope('nameStartsWithA');
+    });
+    Author::addGlobalScope('nameStartsWithA', function ($builder) {
+        $builder->where('name', 'LIKE', 'A%');
+    });
+
+    try {
+        $authors = (new Author)->get();
+        $cachedAuthors = (new Author)->get();
+    } finally {
+        Author::setAllGlobalScopes($globalScopes);
+    }
+
+    expect($authors->pluck('id')->all())
+        ->toEqual((new UncachedAuthor)->pluck('id')->all())
+        ->and($authors->pluck('name'))->toContain('Zelda')
+        ->and($cachedAuthors->pluck('id')->all())->toEqual($authors->pluck('id')->all());
+});

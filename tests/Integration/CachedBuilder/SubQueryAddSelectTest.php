@@ -13,7 +13,6 @@ test('add select', function () {
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
     ];
 
-    /** @var Collection $publishers */
     $publishers = UncachedPublisher::factory()->count(5)->create();
 
     $publishers->each(function (UncachedPublisher $publisher) {

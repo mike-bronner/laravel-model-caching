@@ -4,6 +4,8 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
+use Illuminate\Database\Eloquent\RelationNotFoundException;
+use Illuminate\Support\Facades\DB;
 
 test('with limited query', function () {
     $authors = (new Author)
@@ -95,4 +97,48 @@ test('with belongs to many relationship query', function () {
 
     expect($stores->pluck("id"))->toEqual($liveResults->pluck("id"));
     expect($cachedResults->pluck("id"))->toEqual($liveResults->pluck("id"));
+});
+
+test('eager loading a dynamic relation returns its related models', function () {
+    Author::resolveRelationUsing('dynamicallyResolvedBooks', fn ($author) => $author->hasMany(Book::class));
+
+    $author = (new Author)
+        ->with('dynamicallyResolvedBooks')
+        ->find(1);
+
+    expect($author->relationLoaded('dynamicallyResolvedBooks'))->toBeTrue()
+        ->and($author->dynamicallyResolvedBooks->pluck('id')->sort()->values()->all())
+        ->toEqual(DB::table('books')->where('author_id', 1)->orderBy('id')->pluck('id')->all());
+});
+
+test('a dynamic relation eager load is invalidated when the related model is written', function () {
+    Author::resolveRelationUsing('dynamicBooks', fn ($author) => $author->hasMany(Book::class));
+    (new Author)->with('dynamicBooks')->find(1);
+
+    Book::factory()->create(['author_id' => 1]);
+
+    expect((new Author)->with('dynamicBooks')->find(1)->dynamicBooks)
+        ->toHaveCount(DB::table('books')->where('author_id', 1)->count());
+});
+
+test('constrained eager loads of a dynamic relation are cached separately', function () {
+    Author::resolveRelationUsing('dynamicBooks', fn ($author) => $author->hasMany(Book::class));
+    $firstBookId = DB::table('books')->where('author_id', 1)->min('id');
+    $lastBookId = DB::table('books')->where('author_id', 1)->max('id');
+
+    $first = (new Author)
+        ->with(['dynamicBooks' => fn ($query) => $query->where('id', $firstBookId)])
+        ->find(1);
+    $last = (new Author)
+        ->with(['dynamicBooks' => fn ($query) => $query->where('id', $lastBookId)])
+        ->find(1);
+
+    expect($first->dynamicBooks->pluck('id')->all())->toEqual([$firstBookId])
+        ->and($last->dynamicBooks->pluck('id')->all())->toEqual([$lastBookId]);
+});
+
+test('eager loading a missing relation throws and caches nothing', function () {
+    expect(fn () => (new Author)->with('missing')->get())
+        ->toThrow(RelationNotFoundException::class)
+        ->and(modelCacheKeys())->toBe([]);
 });

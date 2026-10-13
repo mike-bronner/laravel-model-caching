@@ -3,19 +3,6 @@
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 
-// whereDate(), whereDay(), whereMonth(), whereYear() and whereTime() all compile
-// to "= ?" against the same column, so a key built from the operator alone
-// cannot tell them apart — from each other, or from a plain where(). whereDay(5)
-// and whereMonth(5) are the worst pair: Laravel zero-pads both bindings to "05",
-// so the two keys matched byte for byte while the queries return unrelated rows.
-//
-// Book carries no global scope; Author's SoftDeletes scope adds clauses that
-// would mask which segment of the key actually changed.
-
-// This is the constraint the whole change is held to: a plain where() clause
-// renders by its operator alone, exactly as it always has, so no ordinary
-// query goes cold on upgrade. It is the only clause type with that
-// exemption, and this pins it.
 test('plain where key is unchanged', function () {
     expect(cacheKey((new Book)->where("published_at", "=", "2020-01-05")))->toEqual(
         keyPrefix() . "-published_at_=_2020%2D01%2D05",
@@ -74,9 +61,6 @@ test('where date returns its own results after where was cached', function () {
         ->whereDate("published_at", "=", "2020-01-05")
         ->get();
 
-    // The plain where() matches nothing — "2020-01-05" is not the stored
-    // datetime — while whereDate() matches the row. Sharing a key served the
-    // empty result for both.
     expect($results)->toHaveCount(1);
     expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
 });
@@ -102,10 +86,6 @@ test('where month returns its own results after where day was cached', function 
     );
 });
 
-// Both queries bind the same value, 2020, which is the whole point: the
-// binding is the only thing the key used to carry, so the two shared it.
-// whereYear matches the row and whereTime matches nothing, so serving one
-// from the other's cache entry is observable.
 test('where time returns its own results after where year was cached', function () {
     $book = (new UncachedBook)->first();
     $book->published_at = "2020-01-05 13:45:00";
@@ -136,9 +116,6 @@ test('where time returns its own results after where year was cached', function 
     expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
 });
 
-// Not the date family, but the same defect from the same cause: the type
-// was dropped, so the clause was named by its operator alone and matched a
-// plain where() on the same column and value.
 test('where json length produces a different cache key than where', function () {
     expect(cacheKey((new Book)->where("description", ">", 1)))->toEqual(
         keyPrefix() . "-description_>_1",

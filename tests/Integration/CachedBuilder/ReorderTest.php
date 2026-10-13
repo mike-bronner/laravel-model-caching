@@ -41,7 +41,6 @@ test('reorder with no arguments clears order and produces different cache key', 
 });
 
 test('reorder with column produces different cache key from order by', function () {
-    // First query: orderBy('name', 'asc') without reorder
     $orderedAuthors = (new Author)
         ->orderBy('name', 'asc')
         ->get();
@@ -52,15 +51,11 @@ test('reorder with column produces different cache key from order by', function 
         . "-authors.deleted_at_null_orderBy_name_asc"
     );
 
-    // Second query: orderBy('id', 'desc') then reorder('name', 'asc')
-    // This should clear the id ordering and apply name asc
     $reorderedAuthors = (new Author)
         ->orderBy('id', 'desc')
         ->reorder('name', 'asc')
         ->get();
 
-    // After reorder('name', 'asc'), the orders array should only have name asc
-    // So the cache key should be the same as a simple orderBy('name', 'asc')
     $reorderedKey = sha1(
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:"
         . "authors:genealabslaravelmodelcachingtestsfixturesauthor"
@@ -81,12 +76,10 @@ test('reorder with column produces different cache key from order by', function 
 });
 
 test('reorder does not return stale cached results', function () {
-    // Execute an ordered query first to populate cache
     $orderedAuthors = (new Author)
         ->orderBy('name', 'desc')
         ->get();
 
-    // Now execute same base query but with reorder() to clear ordering
     $reorderedAuthors = (new Author)
         ->orderBy('name', 'desc')
         ->reorder()
@@ -95,18 +88,13 @@ test('reorder does not return stale cached results', function () {
     $liveOrderedResults = (new UncachedAuthor)->orderBy('name', 'desc')->get();
     $liveReorderedResults = (new UncachedAuthor)->orderBy('name', 'desc')->reorder()->get();
 
-    // Ordered results should match live ordered results
     expect($orderedAuthors->pluck('id')->toArray())->toEqual(
         $liveOrderedResults->pluck('id')->toArray(),
     );
 
-    // Reordered results should match live reordered results (default ordering)
     expect($reorderedAuthors->pluck('id')->toArray())->toEqual(
         $liveReorderedResults->pluck('id')->toArray(),
     );
-
-    // They should NOT be the same ordering (unless data happens to be in same order)
-    // At minimum, the cache keys are different (verified by the cache retrieval working)
 });
 
 test('multiple reorder calls produce correct results', function () {

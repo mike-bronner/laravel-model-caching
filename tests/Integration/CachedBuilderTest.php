@@ -6,11 +6,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Http\Resources\Author as AuthorResource;
 use Illuminate\Support\Str;
 
-/**
-* @SuppressWarnings(PHPMD.TooManyPublicMethods)
-* @SuppressWarnings(PHPMD.TooManyMethods)
- */
-
 test('cache is empty before loading models', function () {
     $results = $this->cache()->tags([
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",

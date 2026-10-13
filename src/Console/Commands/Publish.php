@@ -15,7 +15,11 @@ class Publish extends Command
     public function handle(): void
     {
         if ($this->option('assets')) {
-            $this->call('casts:publish', ['--assets' => true]);
+            $this->call('vendor:publish', [
+                '--provider' => Service::class,
+                '--tag' => ['assets'],
+                '--force' => true,
+            ]);
         }
 
         if ($this->option('config')) {

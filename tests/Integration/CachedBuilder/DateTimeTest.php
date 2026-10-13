@@ -64,8 +64,6 @@ test('where clause works with carbon date', function () {
     expect($results)->not->toBeEmpty();
     expect($cachedResults)->not->toBeEmpty();
     expect($liveResults)->not->toBeEmpty();
-    // A predicate matching every row makes the comparison above vacuous,
-    // which is what querying the absent "publish_at" column used to do.
     expect($liveResults->count())->toBeLessThan((new UncachedBook)->count());
 });
 
@@ -94,8 +92,6 @@ test('where clause works with date time immutable object', function () {
     expect($results)->not->toBeEmpty();
     expect($cachedResults)->not->toBeEmpty();
     expect($liveResults)->not->toBeEmpty();
-    // A predicate matching every row makes the comparison above vacuous,
-    // which is what querying the absent "publish_at" column used to do.
     expect($liveResults->count())->toBeLessThan((new UncachedBook)->count());
 });
 
@@ -124,8 +120,6 @@ test('where clause works with date time object', function () {
     expect($results)->not->toBeEmpty();
     expect($cachedResults)->not->toBeEmpty();
     expect($liveResults)->not->toBeEmpty();
-    // A predicate matching every row makes the comparison above vacuous,
-    // which is what querying the absent "publish_at" column used to do.
     expect($liveResults->count())->toBeLessThan((new UncachedBook)->count());
 });
 

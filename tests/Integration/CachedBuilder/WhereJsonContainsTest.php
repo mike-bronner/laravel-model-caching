@@ -5,9 +5,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\RunsOnPostgres;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
-// This file runs against PostgreSQL, which SQLite cannot stand in for: its
-// grammar refuses to compile a JSON "contains" predicate at all. RunsOnPostgres
-// skips each test when no server is reachable.
 uses(RefreshDatabase::class, RunsOnPostgres::class);
 
 beforeEach(function () {
@@ -15,10 +12,6 @@ beforeEach(function () {
     Author::factory()->count(10)->create();
 });
 
-// The key-level twin of this lives in WhereNotTest and runs on SQLite,
-// because building a key touches no database. This is the half that needs a
-// server: whereJsonContains() and whereJsonDoesntContain() shared one cache
-// key, so the negated query was served the rows it exists to exclude.
 test('where json doesnt contain returns its own results after where json contains was cached', function () {
     $containsKey = sha1(postgresAuthorKeyPrefix() . "-finances->total_jsoncontains_5000-authors.deleted_at_null");
     $doesntContainKey = sha1(postgresAuthorKeyPrefix() . "-finances->total_not_jsoncontains_5000-authors.deleted_at_null");

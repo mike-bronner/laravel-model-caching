@@ -30,8 +30,6 @@ test('cursor paginate with cursor returns next page', function () {
 });
 
 test('row values where clause serializes into cache key', function () {
-    // Directly test that whereRowValues doesn't crash cache key generation
-    // by fetching results — the get() call triggers makeCacheKey internally
     $results = (new Author)
         ->whereRowValues(['id', 'name'], '>', [1, 'test'])
         ->orderBy('id')

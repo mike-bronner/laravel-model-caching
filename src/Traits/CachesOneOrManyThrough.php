@@ -67,13 +67,6 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    /**
-     * There is deliberately no $total parameter here, unlike Buildable's
-     * paginate(). The relations this trait serves — CachedHasManyThrough and
-     * CachedHasOneThrough — inherit HasOneOrManyThrough::paginate(), which
-     * declares four parameters and runs its own count. A total accepted here
-     * could only be dropped on the floor.
-     */
     public function paginate($perPage = null, $columns = ['*'], $pageName = 'page', $page = null): LengthAwarePaginator
     {
         if (! $this->isCachable()) {
@@ -165,12 +158,6 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    /**
-     * Override the base retrieveCachedValue to disable caching on the inner
-     * Eloquent builder, preventing double-caching. Without this, the inner
-     * CachedBuilder stores a separate cache entry tagged only with the
-     * end-model, which is not invalidated when the through-model changes.
-     */
     protected function retrieveCachedValue(
         array $arguments,
         string $cacheKey,
@@ -193,9 +180,6 @@ trait CachesOneOrManyThrough
             return $cachedResult;
         }
 
-        // Disable caching on the inner Eloquent builder so that the
-        // parent call hits the database directly instead of returning
-        // a stale inner-cached value.
         $innerBuilder = $this->getQuery();
 
         if (method_exists($innerBuilder, 'disableModelCaching')) {

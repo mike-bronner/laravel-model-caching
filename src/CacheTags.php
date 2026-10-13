@@ -185,9 +185,6 @@ class CacheTags
             ? $builder->getRelatedSubqueryTables()
             : [];
 
-        // The walks run in this order, wheres then joins then unions, because
-        // $seen is shared: a builder reached first is walked there and skipped
-        // everywhere after it.
         return collect($tables)
             ->merge(collect($builder->wheres ?? [])
                 ->flatMap(function ($where) use ($seen) {
@@ -254,7 +251,10 @@ class CacheTags
                 $carry = $carry ?: $this->model;
                 $carry = $this->getRelatedModel($carry);
 
-                if (! method_exists($carry, $name)) {
+                if (
+                    ! method_exists($carry, $name)
+                    && ! $carry->isRelation($name)
+                ) {
                     return null;
                 }
 
@@ -275,7 +275,10 @@ class CacheTags
         $model = $this->model;
 
         foreach ($segments as $segment) {
-            if (! method_exists($model, $segment)) {
+            if (
+                ! method_exists($model, $segment)
+                && ! $model->isRelation($segment)
+            ) {
                 return null;
             }
 

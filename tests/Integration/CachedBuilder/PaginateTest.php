@@ -6,11 +6,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\StoreWithUncachedBooks;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use Illuminate\Support\Facades\DB;
 
-/**
-* @SuppressWarnings(PHPMD.TooManyPublicMethods)
-* @SuppressWarnings(PHPMD.TooManyMethods)
- */
-
 test('pagination is cached', function () {
     $authors = (new Author)
         ->paginate(3);
@@ -112,7 +107,6 @@ test('custom page name pagination fetches correct pages', function () {
 });
 
 test('paginator base url reflects current request', function () {
-    // First request from domain A
     \Illuminate\Pagination\Paginator::currentPathResolver(function () {
         return "https://domain-a.com/authors";
     });
@@ -120,25 +114,21 @@ test('paginator base url reflects current request', function () {
     $authorsFromDomainA = (new Author)->paginate(3);
     expect($authorsFromDomainA->url(1))->toContain("domain-a.com");
 
-    // Second request from domain B — should use domain B's URL, not cached domain A
     \Illuminate\Pagination\Paginator::currentPathResolver(function () {
         return "https://domain-b.com/authors";
     });
 
     $authorsFromDomainB = (new Author)->paginate(3);
-    // Cached paginator should use current request domain, not the domain that populated the cache
     expect($authorsFromDomainB->url(1))->toContain("domain-b.com");
 });
 
 test('cached paginator path is reapplied from current request', function () {
-    // Populate cache with a specific path
     \Illuminate\Pagination\Paginator::currentPathResolver(function () {
         return "https://original.com/users";
     });
 
     (new Author)->paginate(3);
 
-    // Retrieve from cache with a different path
     \Illuminate\Pagination\Paginator::currentPathResolver(function () {
         return "https://different.com/users";
     });
@@ -151,21 +141,12 @@ test('cached paginator path is reapplied from current request', function () {
 
     $cachedRaw = $this->cache()->tags($tags)->get($key)['value'];
 
-    // The cached raw paginator may have the old URL, but when retrieved
-    // through the model caching layer, it should have the current URL
     $result = (new Author)->paginate(3);
 
-    // Paginator path should be re-applied from current request after cache retrieval
     expect($result->url(1))->toContain("different.com");
-    // Paginator should not retain the original cached domain
     expect($result->url(1))->not->toContain("original.com");
 });
 
-// disableModelCaching() cannot exercise this: it makes newQuery() return a
-// plain Eloquent builder, so Buildable::paginate() never runs and the test
-// measures Laravel's own paginate() instead. A cachable model eager-loading
-// an uncachable one is the construction that reaches Buildable::paginate()
-// with isCachable() false.
 test('uncached pagination honors provided total', function () {
     $builder = (new StoreWithUncachedBooks)->with("books");
 
@@ -188,11 +169,6 @@ test('uncached pagination honors provided total', function () {
     );
 });
 
-// CachesOneOrManyThrough::paginate() lost its inert $total parameter and now
-// matches the four-parameter signature HasOneOrManyThrough declares. Author
-// has the only relation in the fixtures that reaches that trait
-// (hasManyThrough), so this is what covers the changed method: it still
-// paginates and still caches.
 test('has many through pagination is cached', function () {
     $relation = (new Author)
         ->first()
@@ -212,9 +188,6 @@ test('has many through pagination is cached', function () {
     expect($cached["value"]->pluck("id"))->toEqual($printers->pluck("id"));
 });
 
-// A page passed as an array, such as page[size]=1&page[number]=2, reaches
-// the key through recursiveImplodeWithKey(). Each key and value is written
-// after its own "_", and the key format depends on that exact spelling.
 test('array page is written into the key as key value pairs', function () {
     $builder = (new Author)->newQuery();
     $segment = (new ReflectionMethod($builder, "recursiveImplodeWithKey"))
@@ -230,3 +203,14 @@ function assertActivePageInLinks(int $page, string $linksHtml): void
         "Expected page {$page} to be marked as the active page in pagination links.",
     );
 }
+
+test('pagination with a given total is cached per total', function () {
+    $firstPage = (new Author)->paginate(3, ['*'], 'page', 1, 50);
+    $sameTotal = (new Author)->paginate(3, ['*'], 'page', 1, fn () => 50);
+    $otherTotal = (new Author)->paginate(3, ['*'], 'page', 1, 60);
+
+    expect($firstPage->total())->toBe(50)
+        ->and($sameTotal->total())->toBe(50)
+        ->and($otherTotal->total())->toBe(60)
+        ->and($otherTotal->pluck('id'))->toEqual($firstPage->pluck('id'));
+});

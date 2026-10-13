@@ -1,6 +1,8 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 test('retrieved event fires on cache miss', function () {
     $firedCount = 0;
@@ -18,7 +20,6 @@ test('retrieved event fires on cache miss', function () {
 });
 
 test('retrieved event fires on cache hit', function () {
-    // First call — cache miss, populates cache
     (new Author)->get();
 
     $firedCount = 0;
@@ -27,7 +28,6 @@ test('retrieved event fires on cache hit', function () {
         $firedCount++;
     });
 
-    // Second call — cache hit
     $authors = (new Author)->get();
 
     expect($authors->count())->toBeGreaterThan(0);
@@ -43,7 +43,6 @@ test('retrieved event fires on cache hit for find', function () {
         $firedCount++;
     });
 
-    // Cache hit
     $result = (new Author)->find($author->id);
 
     expect($result)->not->toBeNull();
@@ -54,7 +53,6 @@ test('retrieved event fires on cache hit for find', function () {
 });
 
 test('retrieved event fires on cache hit for first', function () {
-    // Cache miss
     (new Author)->first();
 
     $firedCount = 0;
@@ -63,7 +61,6 @@ test('retrieved event fires on cache hit for first', function () {
         $firedCount++;
     });
 
-    // Cache hit
     $result = (new Author)->first();
 
     expect($result)->not->toBeNull();
@@ -74,7 +71,6 @@ test('retrieved event fires on cache hit for first', function () {
 });
 
 test('retrieved event fires on cache hit for paginate', function () {
-    // Cache miss
     (new Author)->paginate(5);
 
     $firedCount = 0;
@@ -83,7 +79,6 @@ test('retrieved event fires on cache hit for paginate', function () {
         $firedCount++;
     });
 
-    // Cache hit
     $result = (new Author)->paginate(5);
 
     expect($result->count())->toBeGreaterThan(0);
@@ -91,4 +86,20 @@ test('retrieved event fires on cache hit for paginate', function () {
         0,
         'Retrieved event should fire on cache hit for paginate()',
     );
+});
+
+test('a cache hit is served when models have no event dispatcher', function () {
+    $authors = (new Author)->get();
+    $dispatcher = Model::getEventDispatcher();
+    Model::unsetEventDispatcher();
+
+    try {
+        DB::table('authors')->delete();
+        $cachedAuthors = (new Author)->get();
+    } finally {
+        Model::setEventDispatcher($dispatcher);
+    }
+
+    expect($cachedAuthors->pluck('id'))->toEqual($authors->pluck('id'))
+        ->and($authors)->not->toBeEmpty();
 });

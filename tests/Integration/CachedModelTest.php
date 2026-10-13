@@ -5,6 +5,7 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCooldown;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
+use Illuminate\Support\Carbon;
 
 test('all model results creates cache', function () {
     $authors = (new Author)->all();
@@ -181,8 +182,6 @@ test('model cache doesnt invalidate during cooldown period', function () {
         ->get();
 
     expect($authors)->toHaveCount(10);
-    // Creating via Author flushes the shared "authors" table tag,
-    // which also invalidates AuthorWithCooldown's cache.
     expect($authorsDuringCooldown)->toHaveCount(11);
     expect($uncachedAuthors)->toHaveCount(11);
     expect($authorsAfterCooldown)->toHaveCount(11);
@@ -201,4 +200,48 @@ test('model cache does invalidate when no cooldown period', function () {
     expect($authors)->toHaveCount(10);
     expect($authorsAfterCreate)->toHaveCount(11);
     expect($uncachedAuthors)->toHaveCount(11);
+});
+
+test('flushing a cooldown model records when it was saved', function () {
+    $method = (new ReflectionClass(AuthorWithCooldown::class))->getMethod('getModelCacheCooldown');
+    $author = (new AuthorWithCooldown)
+        ->withCacheCooldownSeconds(30)
+        ->first();
+
+    expect($method->invokeArgs($author, [$author])[2])->toBeNull();
+
+    $author->flushCache();
+    [$usesCacheCooldown, , $savedAt] = $method->invokeArgs($author, [$author]);
+
+    expect($usesCacheCooldown)->toEqual(30)
+        ->and($savedAt)->toBeInstanceOf(Carbon::class);
+});
+
+test('cooldown seconds default to the model setting', function () {
+    $method = (new ReflectionClass(AuthorWithCooldown::class))->getMethod('getModelCacheCooldown');
+    $author = new AuthorWithCooldown;
+    $author->cacheCooldownSeconds = 7;
+
+    $author->newQuery()->withCacheCooldownSeconds();
+
+    expect($author->cacheCooldownSeconds)->toBe(7)
+        ->and($method->invokeArgs($author, [$author])[0])->toEqual(7);
+});
+
+test('a cache prefix set at runtime keys the model queries', function () {
+    $author = new PrefixedAuthor;
+    $author->cachePrefix = 'runtime-prefix';
+
+    $query = $author->newQuery();
+    $key = cacheKey($query);
+    $tags = (new ReflectionMethod($query, 'makeCacheTags'))->invoke($query);
+
+    $authors = $query->get();
+    $cached = $this->cache()->tags($tags)->get(sha1($key));
+
+    expect($author->cachePrefix)->toBe('runtime-prefix')
+        ->and($cached['key'])->toBe($key)
+        ->and($cached['key'])->toContain(':runtime-prefix:authors:')
+        ->and($cached['key'])->not->toContain('model-prefix')
+        ->and($cached['value']->pluck('id'))->toEqual($authors->pluck('id'));
 });

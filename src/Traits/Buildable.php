@@ -11,9 +11,6 @@ use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 
-/**
- * @SuppressWarnings(PHPMD.TooManyPublicMethods)
- */
 trait Buildable
 {
     use CachedValueRetrievable;
@@ -69,9 +66,6 @@ trait Buildable
         return $result;
     }
 
-    /**
-     * @SuppressWarnings(PHPMD.ShortVariable)
-     */
     public function find($id, $columns = ["*"]): Model|EloquentCollection|null
     {
         if (! $this->isCachable()) {

@@ -3,15 +3,6 @@
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 
-/**
- * inRandomOrder() sets $this->isCachable = false on CachedBuilder, so
- * each call goes to the database instead of the cache. Verify the query
- * executes and returns a valid model instance.
- *
- * The previous assertion assertNotEquals($result1, $result2) was
- * probabilistically flaky: with a random seed, the same row can be
- * returned on consecutive calls.
- */
 test('in random order caches results', function () {
     $cachedBook1 = (new Book)
         ->inRandomOrder()

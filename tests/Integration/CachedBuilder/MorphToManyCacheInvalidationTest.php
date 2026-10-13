@@ -6,10 +6,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Tag;
 use Illuminate\Support\Facades\DB;
 
-/**
- * @see https://github.com/mikebronner/laravel-model-caching/issues/538
- */
-
 test('morph to many attach invalidates cache', function () {
     $post = (new Post)->first();
     $newTag = Tag::factory()->create(['name' => 'attach-tag']);

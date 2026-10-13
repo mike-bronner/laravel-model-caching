@@ -5,13 +5,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-// Verifies `modelCache:clear` (no --model) genuinely empties the model cache on
-// every supported provider, not just Redis. Each provider is proven the same
-// client-agnostic way: prime the cache, mutate the underlying row behind its
-// back, then assert the post-clear read returns fresh data (a populated cache
-// would keep serving the stale value). Redis (single + prefixed) is covered by
-// FlushTest / FlushWithClientPrefixTest and DynamoDB by DynamoDbModelCachingTest.
-
 beforeEach(function () {
     $token = (int) env('TEST_TOKEN', 1);
     $this->fileCachePath = sys_get_temp_dir() . "/lmc-file-cache-{$token}";
@@ -34,8 +27,6 @@ beforeEach(function () {
         });
     }
 
-    // The file store persists on disk between runs (temp dir), so clear it up
-    // front to keep the stale-read check idempotent.
     $this->app['cache']->store('file-test')->flush();
 });
 
@@ -69,10 +60,6 @@ test('clear empties memcached store', function () {
         ]],
     ]]);
 
-    // The extension is present on CI runners even when no memcached server is
-    // running, so probe for a reachable server (a round-trip) rather than just
-    // a loaded extension. Without this, the store silently no-ops and the
-    // stale-read assertion below fails instead of skipping.
     try {
         $store = $this->app['cache']->store('memcached-test');
         $store->forever('lmc-memcached-probe', 'ok');
@@ -97,7 +84,6 @@ function assertClearEmptiesStore(string $storeName): void
     $authorId = UncachedAuthor::query()->value('id');
     Author::query()->get();
 
-    // Mutate the row behind the cache's back so a stale cache is observable.
     UncachedAuthor::query()
         ->where('id', $authorId)
         ->update(['name' => 'CLEARED_AUTHOR']);

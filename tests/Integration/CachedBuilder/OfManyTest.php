@@ -68,15 +68,6 @@ test('of many queries with different bindings produce different cache keys', fun
 
     $keys = $authors
         ->map(function (Author $author) {
-            // Build the relation the way eager loading does, inside
-            // `Relation::noConstraints()`. Calling `$author->oldestBook()`
-            // directly runs `HasOneOrMany::addConstraints()` while
-            // `isOneOfMany` is still false, which bakes a plain
-            // `where author_id = ?` onto the OUTER query — that ordinary
-            // clause alone would differentiate the two keys through
-            // `getWhereClauses()`, so the test would pass even with the
-            // deferred slug gutted. Suppressing it leaves the deferred
-            // `beforeQuery` join bindings as the only differentiator.
             $relation = Relation::noConstraints(
                 fn () => (new Author)->oldestBook(),
             );
@@ -113,8 +104,6 @@ test('composite of many eager load matches uncached result', function () {
         "price" => 99.00,
         "published_at" => "2021-01-01 00:00:00",
     ]);
-    // Ties the highest price, so the second aggregate (published_at)
-    // decides — the composite path, not the single-column one.
     $expectedBook = Book::factory()->create([
         "author_id" => $author->id,
         "price" => 99.00,
@@ -139,8 +128,6 @@ test('composite of many eager load matches uncached result', function () {
 test('composite of many cache key generation leaves the executed query unchanged', function () {
     $author = (new Author)->orderBy("id")->first();
 
-    // Control: an identical relation that never has a cache key generated
-    // from it. Its compiled SQL is what the subject must still produce.
     $controlQuery = makeCompositeOfManyRelation($author)
         ->getQuery()
         ->getQuery();
@@ -148,10 +135,6 @@ test('composite of many cache key generation leaves the executed query unchanged
     $subject = makeCompositeOfManyRelation($author);
     $subjectQuery = $subject->getQuery()->getQuery();
 
-    // Key generation runs the deferred callbacks speculatively on a clone.
-    // The composite relation's callbacks mutate a nested subquery that the
-    // clone SHARES with the original, so do it twice: the second pass must
-    // observe the already-mutated subquery and still produce the same key.
     $keys = collect([1, 2])
         ->map(fn () => (new CacheKey(
             [],
@@ -168,11 +151,6 @@ test('composite of many cache key generation leaves the executed query unchanged
 
     $controlSql = $controlQuery->toSql();
 
-    // Guards the comparison below against passing on two empty or
-    // join-less strings: the joined subquery must really be there, and
-    // both aggregate columns must take part in it. Matches the join alias
-    // and the column names rather than aggregate syntax, so it survives
-    // grammar differences across the supported Laravel versions.
     expect($controlSql)->toContain("inner join");
     expect($controlSql)->toContain('"latestBookByPriceThenDate"');
     expect($controlSql)->toContain("price");
@@ -223,9 +201,6 @@ test('queries without deferred callbacks keep their cache key format', function 
     );
 });
 
-// Builds the composite `ofMany()` relation through the eager-load path, so
-// no ordinary `where` lands on the outer query and the deferred callbacks
-// stay the only source of the join.
 function makeCompositeOfManyRelation(Author $author): HasOne
 {
     $relation = Relation::noConstraints(

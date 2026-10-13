@@ -2,9 +2,6 @@
 
 namespace GeneaLabs\LaravelModelCaching\Tests;
 
-// Adds a Redis cache store whose keys carry no prefix at all, on a database of
-// its own. The configuration has to exist before the application boots, because
-// the Redis manager copies its connection list when it is first resolved.
 trait ConfiguresUnprefixedStore
 {
     private const UNPREFIXED_DATABASE = 3;

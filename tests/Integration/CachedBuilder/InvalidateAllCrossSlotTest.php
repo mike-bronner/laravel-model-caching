@@ -7,11 +7,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CrossSlotDeleteRedisStore;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CrossSlotFlushRepository;
 use Illuminate\Cache\Repository;
 
-// Cluster coverage for the entire-cache clear path (issue #598 follow-through).
-// invalidateAll() must (a) survive a CROSSSLOT rejection on a batched DEL by
-// falling back to per-key deletes, and (b) the slot-safe tag recovery must keep
-// working when the connection carries a client-level prefix.
-
 const INVALIDATE_ALL_TAG = 'cross-slot-tag';
 
 test('invalidate all recovers from cross slot delete failure', function () {
@@ -22,8 +17,6 @@ test('invalidate all recovers from cross slot delete failure', function () {
 
     expect(modelCacheKeys())->not->toBeEmpty();
 
-    // A store whose batched DEL raises CROSSSLOT, forcing invalidateAll() onto
-    // its per-key fallback. The cache must still be physically emptied.
     $store = new CrossSlotDeleteRedisStore(app('redis'), $realStore->getPrefix(), 'model-cache');
     $modelCacheRepository = new ModelCacheRepository(new Repository($store), false);
 
@@ -33,8 +26,6 @@ test('invalidate all recovers from cross slot delete failure', function () {
 });
 
 test('invalidate tags recovers from cross slot failure with client prefix', function () {
-    // The slot-safe tag recovery must also clear keys when the connection
-    // carries a client-level prefix layered over the store prefix (issue #598).
     $repository = app('cache')->store('model-prefixed');
     $store = $repository->getStore();
     app('redis')->connection('model-cache-prefixed')->flushdb();

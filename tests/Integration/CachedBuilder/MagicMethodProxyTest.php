@@ -15,7 +15,6 @@ afterEach(function () {
 
 test('global macro proxy does not throw bad method call exception', function () {
     Builder::macro('type', function (string $type) {
-        /** @var Builder $this */
         return $this->where('name', 'like', "%{$type}%");
     });
 
@@ -30,7 +29,6 @@ test('global macro proxy does not throw bad method call exception', function () 
 
 test('global macro produces distinct cache keys', function () {
     Builder::macro('type', function (string $type) {
-        /** @var Builder $this */
         return $this->where('name', 'like', "%{$type}%");
     });
 
@@ -47,12 +45,10 @@ test('global macro produces distinct cache keys', function () {
 
 test('two different global macros produce distinct cache keys', function () {
     Builder::macro('ofType', function (string $type) {
-        /** @var Builder $this */
         return $this->where('name', 'like', "%{$type}%");
     });
 
     Builder::macro('customFilter', function (string $value) {
-        /** @var Builder $this */
         return $this->where('email', 'like', "%{$value}%");
     });
 
@@ -69,7 +65,6 @@ test('two different global macros produce distinct cache keys', function () {
 
 test('global macro results are cached', function () {
     Builder::macro('type', function (string $type) {
-        /** @var Builder $this */
         return $this->where('name', 'like', "%{$type}%");
     });
 
