@@ -13,11 +13,8 @@ trait CreatesApplication
     private static $baseLineDatabaseMigrated = false;
 
     protected $cache;
-    protected $testingSqlitePath;
+    public $testingSqlitePath;
 
-    // PHPUnit runs tearDown() even for a test that skipped in setUp(), so a
-    // tearDown that talks to Redis throws where the test itself correctly
-    // skipped. Any such tearDown checks this first.
     protected bool $redisIsAvailable = false;
 
     protected function cache(): object
@@ -136,17 +133,6 @@ trait CreatesApplication
         $this->flushWorkerCacheKeys();
     }
 
-    // Redis is not optional for this suite: it is the cache store every test
-    // reads and writes. Without it, each test used to raise its own
-    // connection-refused error and none of them said what was missing.
-    // PostgreSQL, DynamoDB and Memcached all skip with a reason instead, so
-    // this brings Redis in line with them.
-    //
-    // The probe runs at the top of setUp() rather than inside
-    // flushWorkerCacheKeys(), because that method is not the first thing to
-    // reach Redis. setUpBaseLineSqlLiteDatabase() seeds cachable models, whose
-    // "created" events flush the cache, so the store is touched during
-    // seeding. Guarding one call site left that one throwing.
     protected function skipWithoutRedis(): void
     {
         try {
@@ -179,10 +165,6 @@ trait CreatesApplication
         }
     }
 
-    // Collects every key matching $pattern via the connection-level SCAN so it
-    // works under both phpredis and Predis. The two clients disagree on the
-    // initial cursor: phpredis (with SCAN_RETRY) treats 0 as "complete" and needs
-    // null, while Predis rejects null with "ERR invalid cursor" and needs 0.
     protected function scanRedisKeys(object $connection, string $pattern): array
     {
         $cursor = $connection->client() instanceof \Predis\ClientInterface ? 0 : null;
@@ -205,9 +187,6 @@ trait CreatesApplication
         return $keys;
     }
 
-    /**
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-     */
     protected function getPackageProviders($app)
     {
         return [
@@ -291,11 +270,6 @@ trait CreatesApplication
             'connection' => 'model-cache',
             'prefix' => "lmc-test-{$token}:",
         ]);
-        // A second Redis store whose connection carries a non-empty client-level
-        // prefix (phpredis OPT_PREFIX / Predis KeyPrefixProcessor). Per-connection
-        // options override the global empty prefix, so existing tests are
-        // unaffected while this store reproduces the real-world layering that
-        // exposes issue #598. Physical keys become "tenant-{token}:lmc-test-{token}:…".
         $app['config']->set('database.redis.model-cache-prefixed', [
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'password' => env('REDIS_PASSWORD', null),
@@ -309,40 +283,5 @@ trait CreatesApplication
             'prefix' => "lmc-test-{$token}:",
         ]);
         $app['config']->set('laravel-model-caching.store', 'model');
-    }
-
-    public function appVersionEightAndNine(): bool
-    {
-        return version_compare(app()->version(), '8.0.0', '>=')
-            && version_compare(app()->version(), '10.0.0', '<');
-    }
-
-    public function appVersionFiveBetweenSeven(): bool
-    {
-        return version_compare(app()->version(), '5.6.0', '>=')
-            && version_compare(app()->version(), '8.0.0', '<');
-    }
-
-    public function appVersionOld(): bool
-    {
-        return version_compare(app()->version(), '5.4.0', '>=')
-            && version_compare(app()->version(), '5.6.0', '<');
-    }
-
-    public function appVersionTen(): bool
-    {
-        return version_compare(app()->version(), '10.0.0', '>=')
-            && version_compare(app()->version(), '11.0.0', '<');
-    }
-
-    public function appVersionEleven(): bool
-    {
-        return version_compare(app()->version(), '11.0.0', '>=')
-            && version_compare(app()->version(), '12.0.0', '<');
-    }
-
-    public function appVersionTwelve(): bool
-    {
-        return version_compare(app()->version(), '12.0.0', '>=');
     }
 }

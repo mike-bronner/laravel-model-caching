@@ -1,49 +1,54 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorOrder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\IntegerStatus;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\StringStatus;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class WhereEnumTest extends IntegrationTestCase
-{
-    public function testWhereWithIntegerBackedEnum()
-    {
-        $authors = (new Author)
-            ->where('id', IntegerStatus::Active)
-            ->get();
+test('where with integer backed enum', function () {
+    $authors = (new Author)
+        ->where('id', IntegerStatus::Active)
+        ->get();
 
-        $this->assertNotNull($authors);
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $authors);
-    }
+    expect($authors)->not->toBeNull();
+    expect($authors)->toBeInstanceOf(\Illuminate\Database\Eloquent\Collection::class);
+});
 
-    public function testWhereWithStringBackedEnum()
-    {
-        $authors = (new Author)
-            ->where('name', StringStatus::Active)
-            ->get();
+test('where with string backed enum', function () {
+    $authors = (new Author)
+        ->where('name', StringStatus::Active)
+        ->get();
 
-        $this->assertNotNull($authors);
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $authors);
-    }
+    expect($authors)->not->toBeNull();
+    expect($authors)->toBeInstanceOf(\Illuminate\Database\Eloquent\Collection::class);
+});
 
-    public function testWhereInWithIntegerBackedEnums()
-    {
-        $authors = (new Author)
-            ->whereIn('id', [IntegerStatus::Active, IntegerStatus::Inactive])
-            ->get();
+test('where in with integer backed enums', function () {
+    $authors = (new Author)
+        ->whereIn('id', [IntegerStatus::Active, IntegerStatus::Inactive])
+        ->get();
 
-        $this->assertNotNull($authors);
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $authors);
-    }
+    expect($authors)->not->toBeNull();
+    expect($authors)->toBeInstanceOf(\Illuminate\Database\Eloquent\Collection::class);
+});
 
-    public function testWhereInWithStringBackedEnums()
-    {
-        $authors = (new Author)
-            ->whereIn('name', [StringStatus::Active, StringStatus::Inactive])
-            ->get();
+test('where in with string backed enums', function () {
+    $authors = (new Author)
+        ->whereIn('name', [StringStatus::Active, StringStatus::Inactive])
+        ->get();
 
-        $this->assertNotNull($authors);
-        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $authors);
-    }
-}
+    expect($authors)->not->toBeNull();
+    expect($authors)->toBeInstanceOf(\Illuminate\Database\Eloquent\Collection::class);
+});
+
+test('where with a pure enum keys and reads by case name', function () {
+    Author::factory()->create(['name' => 'Newest']);
+    Author::factory()->create(['name' => 'Oldest']);
+
+    $newest = (new Author)->where('name', AuthorOrder::Newest)->get();
+    $oldest = (new Author)->where('name', AuthorOrder::Oldest)->get();
+
+    expect(cacheKey((new Author)->where('name', AuthorOrder::Newest)))->toContain('-name_=_Newest')
+        ->and($newest->pluck('name')->all())->toBe(['Newest'])
+        ->and($oldest->pluck('name')->all())->toBe(['Oldest']);
+});

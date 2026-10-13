@@ -18,7 +18,6 @@ class AuthorWithDynamicFillable extends Model
 
     public function __construct(array $attributes = [])
     {
-        // Simulate dynamic fillable modification (e.g. based on user role)
         $this->fillable[] = 'is_famous';
 
         parent::__construct($attributes);

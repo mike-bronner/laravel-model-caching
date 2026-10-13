@@ -1,4 +1,8 @@
-<?php namespace GeneaLabs\LaravelModelCaching;
+<?php
+
+declare(strict_types=1);
+
+namespace GeneaLabs\LaravelModelCaching;
 
 use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
@@ -9,6 +13,7 @@ use Illuminate\Support\Str;
 use SplObjectStorage;
 use Throwable;
 
+// phpcs:ignore SlevomatCodingStandard.Files.TypeNameMatchesFileName.NoMatchBetweenTypeNameAndFileName,SlevomatCodingStandard.Classes.ClassLength.ClassTooLong
 class CacheTags
 {
     use CachePrefixing;
@@ -17,17 +22,15 @@ class CacheTags
     protected $model;
     protected $query;
 
-    public function __construct(
-        array $eagerLoad,
-        $model,
-        $query
-    ) {
+    // phpcs:ignore SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+    public function __construct(array $eagerLoad, $model, $query) {
         $this->eagerLoad = $eagerLoad;
         $this->model = $model;
         $this->query = $query;
     }
 
-    public function make() : array
+    // phpcs:ignore SlevomatCodingStandard.Functions.FunctionLength.FunctionLength
+    public function make(): array
     {
         $tags = collect($this->eagerLoad)
             ->keys()
@@ -47,7 +50,7 @@ class CacheTags
                 $relatedModel = $relation->getQuery()->getModel();
 
                 return [$this->getCachePrefixForModel($relatedModel)
-                    . (new Str)->slug(get_class($relatedModel))];
+                    . Str::slug($relatedModel::class)];
             })
             ->filter()
             ->unique()
@@ -65,14 +68,7 @@ class CacheTags
             ->toArray();
     }
 
-    /**
-     * The query builder the tags are read from.
-     *
-     * `$this->query` is an Eloquent builder on the read path and a plain query
-     * builder on the write path, and only the latter carries `joins`, `wheres`,
-     * and the recorded subquery tables.
-     */
-    protected function resolveBaseQuery() : mixed
+    protected function resolveBaseQuery(): mixed
     {
         if (method_exists($this->query, 'getQuery')) {
             return $this->query->getQuery();
@@ -81,10 +77,7 @@ class CacheTags
         return $this->query;
     }
 
-    /**
-     * Strip a table alias, e.g. "products as p" -> "products".
-     */
-    protected function stripTableAlias(string $table) : string
+    protected function stripTableAlias(string $table): string
     {
         if (stripos($table, ' as ') === false) {
             return $table;
@@ -93,17 +86,7 @@ class CacheTags
         return trim(explode(' as ', strtolower($table))[0]);
     }
 
-    /**
-     * Tags for the tables named by the query's own joins.
-     *
-     * A join names a bare table and no model, so unlike the subquery tags
-     * below these keep the querying model's cache prefix. A joined table
-     * belonging to a model on another connection, or to one declaring its own
-     * `$cachePrefix`, is therefore still tagged under the wrong prefix and its
-     * write does not bust this query. Closing that needs a table-name to model
-     * lookup, which cannot be made reliable: two models may map to one table.
-     */
-    protected function getJoinTags() : array
+    protected function getJoinTags(): array
     {
         $baseQuery = $this->resolveBaseQuery();
 
@@ -111,14 +94,6 @@ class CacheTags
             ->map(function ($join) {
                 $table = $join->table;
 
-                // `joinSub()` — and anything else joining a raw expression —
-                // stores an Expression here instead of a table name, and the
-                // stripos() below raises a TypeError on it. Eloquent's
-                // `ofMany()` relations build exactly such a join, so any query
-                // whose joins are already materialized when the tags are made
-                // fails there. The table behind the expression is recovered
-                // from the builder below, which recorded it before Laravel
-                // compiled the subquery.
                 if (! is_string($table)) {
                     return null;
                 }
@@ -135,55 +110,30 @@ class CacheTags
             ->toArray());
     }
 
-    /**
-     * Turn table entries into tags.
-     *
-     * A null model means the caller could not identify one, and the querying
-     * model's prefix stands in — which is correct only while that model shares
-     * a connection and a `$cachePrefix` with the table's real owner.
-     *
-     * @param  array<int, array{table: string, model: Model|null}>  $entries
-     */
-    protected function makeTableTags(array $entries) : array
+    protected function makeTableTags(array $entries): array
     {
         return collect($entries)
-            ->map(fn (array $entry) => $this->getCachePrefixForModel($entry["model"] ?: $this->model)
-                . (new Str)->slug($entry["table"]))
+            ->map(function (array $entry): string {
+                return $this->getCachePrefixForModel($entry["model"] ?: $this->model)
+                    . Str::slug($entry["table"]);
+            })
             ->unique()
             ->values()
             ->toArray();
     }
 
-    protected function getJoinedSubqueryTables(mixed $baseQuery) : array
+    protected function getJoinedSubqueryTables(mixed $baseQuery): array
     {
         if (! method_exists($baseQuery, "getJoinedSubqueryTables")) {
             return [];
         }
 
-        return array_merge(
-            $baseQuery->getJoinedSubqueryTables(),
-            $this->getDeferredJoinedSubqueryTables($baseQuery),
-        );
+        return collect($baseQuery->getJoinedSubqueryTables())
+            ->merge($this->getDeferredJoinedSubqueryTables($baseQuery))
+            ->all();
     }
 
-    /**
-     * Tables joined by a subquery that has not been built yet.
-     *
-     * Eloquent defers some of its own subquery joins into a beforeQuery()
-     * callback — `ofMany()` is the one in Laravel — and tags are made before
-     * the query runs, so those callbacks have not fired and there is nothing
-     * recorded yet. Running them on a clone materializes the joins, and the
-     * tables they read, without touching the query that will actually execute.
-     *
-     * The callbacks are shared by reference with the original query, so they
-     * run once here and again at execution. That is the same trade CacheKey
-     * already makes to build a key for an `ofMany()` query: harmless for
-     * Eloquent's idempotent, self-clearing family, observable to a custom
-     * non-idempotent callback. A callback that throws yields no tables rather
-     * than breaking tag generation, which leaves the pre-existing gap in place
-     * instead of failing the query outright.
-     */
-    protected function getDeferredJoinedSubqueryTables(mixed $baseQuery) : array
+    protected function getDeferredJoinedSubqueryTables(mixed $baseQuery): array
     {
         if (
             ! property_exists($baseQuery, "beforeQueryCallbacks")
@@ -202,22 +152,7 @@ class CacheTags
         }
     }
 
-    /**
-     * Tags for tables reached through a subquery, recursively.
-     *
-     * Two sources feed this. Subqueries Laravel still holds as builders —
-     * whereHas()/whereExists() and friends — are walked out of `wheres`, and
-     * name a table but no model. Subqueries Laravel compiled to an Expression
-     * and discarded were recorded on the builder as the constraint was added
-     * (CachedQueryBuilder::getRelatedSubqueryTables()), and most of those name
-     * the owning model as well.
-     *
-     * Where a table arrives from both, the recorded entry wins and the walked
-     * one is dropped: they name the same table, but only the recorded one
-     * carries the model whose write has to bust this query, and so only it can
-     * build the prefix that model flushes under.
-     */
-    protected function getSubqueryWhereTags() : array
+    protected function getSubqueryWhereTags(): array
     {
         $entries = $this->getSubqueryTablesFromBuilder(
             $this->resolveBaseQuery(),
@@ -235,57 +170,42 @@ class CacheTags
             ->toArray());
     }
 
-    /**
-     * @return array<int, array{table: string, model: Model|null}>
-     */
-    protected function getSubqueryTablesFromBuilder($builder, SplObjectStorage $seen) : array
+    // phpcs:ignore SlevomatCodingStandard.Complexity.Cognitive.ComplexityTooHigh,SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint,SlevomatCodingStandard.Functions.FunctionLength.FunctionLength
+    protected function getSubqueryTablesFromBuilder($builder, SplObjectStorage $seen): array
     {
-        if (! is_object($builder) || $seen->contains($builder)) {
+        if (
+            ! is_object($builder)
+            || $seen->offsetExists($builder)
+        ) {
             return [];
         }
 
-        $seen->attach($builder);
+        $seen->offsetSet($builder);
 
         $tables = method_exists($builder, "getRelatedSubqueryTables")
             ? $builder->getRelatedSubqueryTables()
             : [];
 
-        // `havings` is deliberately not walked. Of the six having types
-        // Illuminate\Database\Query\Builder builds, only the nested one carries
-        // a builder, and that builder comes from forNestedWhere(), which copies
-        // `from` off the outer query. A nested having can therefore only ever
-        // name the table already tagged by getTableTagName(), so walking it
-        // cannot produce a tag, and no test can tell the walk from its absence.
-        $tables = array_merge(
-            $tables,
-            collect($builder->wheres ?? [])
+        return collect($tables)
+            ->merge(collect($builder->wheres ?? [])
                 ->flatMap(function ($where) use ($seen) {
                     return $this->getSubqueryTablesFromWhere($where, $seen);
-                })
-                ->toArray(),
-        );
-
-        foreach ($builder->joins ?? [] as $join) {
-            foreach ($join->wheres ?? [] as $where) {
-                $tables = array_merge($tables, $this->getSubqueryTablesFromWhere($where, $seen));
-            }
-        }
-
-        foreach ($builder->unions ?? [] as $union) {
-            $unionQuery = $union['query'] ?? null;
-
-            if (is_object($unionQuery)) {
-                $tables = array_merge($tables, $this->getSubqueryTablesFromBuilder($unionQuery, $seen));
-            }
-        }
-
-        return $tables;
+                }))
+            ->merge(collect($builder->joins ?? [])
+                ->flatMap(fn ($join) => $join->wheres ?? [])
+                ->flatMap(function ($where) use ($seen) {
+                    return $this->getSubqueryTablesFromWhere($where, $seen);
+                }))
+            ->merge(collect($builder->unions ?? [])
+                ->map(fn ($union) => $union['query'] ?? null)
+                ->filter(fn ($unionQuery) => is_object($unionQuery))
+                ->flatMap(function ($unionQuery) use ($seen) {
+                    return $this->getSubqueryTablesFromBuilder($unionQuery, $seen);
+                }))
+            ->all();
     }
 
-    /**
-     * @return array<int, array{table: string, model: Model|null}>
-     */
-    protected function getSubqueryTablesFromWhere(array $where, SplObjectStorage $seen) : array
+    protected function getSubqueryTablesFromWhere(array $where, SplObjectStorage $seen): array
     {
         $type = $where['type'] ?? null;
 
@@ -304,15 +224,18 @@ class CacheTags
 
         if (is_string($from)) {
             $tables[] = [
-                "table" => $this->stripTableAlias($from),
                 "model" => null,
+                "table" => $this->stripTableAlias($from),
             ];
         }
 
-        return array_merge($tables, $this->getSubqueryTablesFromBuilder($query, $seen));
+        return collect($tables)
+            ->merge($this->getSubqueryTablesFromBuilder($query, $seen))
+            ->all();
     }
 
-    protected function getRelatedModel($carry) : Model
+    // phpcs:ignore SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+    protected function getRelatedModel($carry): Model
     {
         if ($carry instanceof Relation) {
             return $carry->getQuery()->getModel();
@@ -321,24 +244,23 @@ class CacheTags
         return $carry;
     }
 
-    protected function getRelation(string $relationName) : ?Relation
+    // phpcs:ignore SlevomatCodingStandard.Complexity.Cognitive.ComplexityTooHigh
+    protected function getRelation(string $relationName): ?Relation
     {
         return collect(explode('.', $relationName))
             ->reduce(function ($carry, $name) {
                 $carry = $carry ?: $this->model;
                 $carry = $this->getRelatedModel($carry);
 
-                if (! method_exists($carry, $name)) {
+                if (
+                    ! method_exists($carry, $name)
+                    && ! $carry->isRelation($name)
+                ) {
                     return null;
                 }
 
                 $relation = $carry->{$name}();
 
-                // MorphTo cannot be resolved to a concrete type statically;
-                // the actual model class depends on the row's morph-type
-                // column. Stop the chain here so downstream segments
-                // (e.g. "commentable.tags") don't blow up calling a method
-                // that only exists on one of the possible morph targets.
                 if ($relation instanceof MorphTo) {
                     return null;
                 }
@@ -347,13 +269,17 @@ class CacheTags
             });
     }
 
-    protected function getMorphToTagsForRelation(string $relationName) : ?array
+    // phpcs:ignore SlevomatCodingStandard.Complexity.Cognitive.ComplexityTooHigh
+    protected function getMorphToTagsForRelation(string $relationName): ?array
     {
         $segments = explode('.', $relationName);
         $model = $this->model;
 
         foreach ($segments as $segment) {
-            if (! method_exists($model, $segment)) {
+            if (
+                ! method_exists($model, $segment)
+                && ! $model->isRelation($segment)
+            ) {
                 return null;
             }
 
@@ -373,20 +299,19 @@ class CacheTags
         return null;
     }
 
-    protected function getMorphToTags(MorphTo $relation) : array
+    // phpcs:ignore SlevomatCodingStandard.Complexity.Cognitive.ComplexityTooHigh,SlevomatCodingStandard.Functions.FunctionLength.FunctionLength
+    protected function getMorphToTags(MorphTo $relation): array
     {
         $morphMap = Relation::morphMap();
 
-        if (! empty($morphMap)) {
-            $tags = [];
+        if ($morphMap) {
+            $tags = collect($morphMap)
+                ->filter(fn ($type) => class_exists($type))
+                ->map(fn ($type) => $this->getCachePrefix() . (new Str)->slug($type))
+                ->values()
+                ->all();
 
-            foreach ($morphMap as $type) {
-                if (class_exists($type)) {
-                    $tags[] = $this->getCachePrefix() . (new Str)->slug($type);
-                }
-            }
-
-            if (! empty($tags)) {
+            if ($tags) {
                 return $tags;
             }
         }
@@ -410,26 +335,6 @@ class CacheTags
         return $tags;
     }
 
-    /**
-     * The morph types actually stored in a morphTo column.
-     *
-     * Without a morph map there is no way to know which classes a morphTo can
-     * point at other than asking the table, and that SELECT DISTINCT ran on
-     * every tag generation — once per cached query touching the relation, for
-     * reads and for flushes alike. Caching a query is not worth an uncached
-     * query each time.
-     *
-     * The answer is memoized in the cache store rather than in a static, tagged
-     * with the very table it reads. A new morph type can only appear through a
-     * write to that table, and a write to a cachable model invalidates its
-     * table tag, so the memo is dropped exactly when it stops being true. A
-     * static would instead hold a snapshot for the life of the process and leak
-     * it between requests, between queue jobs, and between tests.
-     *
-     * ModelCacheRepository already decides how a store that cannot tag is
-     * handled: it stores the entry untagged and invalidates by flushing the
-     * whole repository, so the memo is dropped there too.
-     */
     protected function getMorphTypesInUse(MorphTo $relation, string $table, string $column) : array
     {
         return ModelCacheRepository::make()->rememberForever(
@@ -455,7 +360,7 @@ class CacheTags
             . (new Str)->slug(get_class($this->model));
     }
 
-    protected function getTableTagName() : string
+    protected function getTableTagName(): string
     {
         return $this->getCachePrefix()
             . (new Str)->slug($this->model->getTable());

@@ -2,10 +2,6 @@
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-// A book that counts how many times its relation method is called. Reads the
-// same `books` table as Book and returns the same relation, so the only thing
-// that distinguishes it is the tally — which is what pins how often the
-// tag-recording code resolves a relation.
 class CountingBook extends Book
 {
     protected $table = "books";

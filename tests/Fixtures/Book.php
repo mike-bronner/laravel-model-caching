@@ -59,6 +59,11 @@ class Book extends Model
         return $this->belongsToMany(Store::class);
     }
 
+    public function prefixedStores() : BelongsToMany
+    {
+        return $this->belongsToMany(PrefixedStore::class, "book_store", "book_id", "store_id");
+    }
+
     public function scopeStartsWith(Builder $query, string $startOfName) : Builder
     {
         return $query->where("title", "LIKE", "{$startOfName}%");

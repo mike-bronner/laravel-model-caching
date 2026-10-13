@@ -2,276 +2,222 @@
 
 declare(strict_types=1);
 
-namespace GeneaLabs\LaravelModelCaching\Tests\Integration;
-
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\FakeDynamoDbStore;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\ThrowingCacheStore;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedRole;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
-use Illuminate\Cache\CacheManager;
 use Illuminate\Cache\Repository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\FakeDynamoDbConnectionException;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\FakeDynamoDbNonConnectionException;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Role;
 
-class DynamoDbCacheFallbackTest extends IntegrationTestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        FakeDynamoDbStore::reset();
-        app('cache')->extend('dynamodb', function () {
-            return new Repository(new FakeDynamoDbStore);
-        });
-        app('cache')->forgetDriver('dynamodb-model');
-
-        config([
-            'cache.stores.dynamodb-model' => ['driver' => 'dynamodb'],
-            'laravel-model-caching.store' => 'dynamodb-model',
-        ]);
-    }
-
-    private function breakCacheConnection(string $exceptionClass): void
-    {
-        $throwingStore = new ThrowingCacheStore($exceptionClass);
-        $throwingRepo = new Repository($throwingStore);
+beforeEach(function () {
+    FakeDynamoDbStore::reset();
+    app('cache')->extend('dynamodb', function () {
+        return new Repository(new FakeDynamoDbStore);
+    });
+    app('cache')->forgetDriver('dynamodb-model');
 
-        $this->app->extend('cache', function ($cache) use ($throwingRepo) {
-            return new class($this->app, $throwingRepo) extends CacheManager
-            {
-                public function __construct($app, private Repository $throwingRepo)
-                {
-                    parent::__construct($app);
-                }
+    config([
+        'cache.stores.dynamodb-model' => ['driver' => 'dynamodb'],
+        'laravel-model-caching.store' => 'dynamodb-model',
+    ]);
+});
 
-                public function store($name = null)
-                {
-                    return $this->throwingRepo;
-                }
+test('dynamo db connection failures fall back to database when enabled', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-                public function driver($driver = null)
-                {
-                    return $this->throwingRepo;
-                }
-            };
-        });
-    }
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-    public function test_dynamo_db_connection_failures_fall_back_to_database_when_enabled(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    $authors = Author::all();
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+    expect($authors)->not->toBeEmpty();
+});
 
-        $authors = Author::all();
+test('non connection dynamo db exceptions are not swallowed', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
+    breakCacheConnection(FakeDynamoDbNonConnectionException::class);
 
-        $this->assertNotEmpty($authors);
-    }
+    expect(fn () => Author::all())->toThrow(FakeDynamoDbNonConnectionException::class);
+});
 
-    public function test_non_connection_dynamo_db_exceptions_are_not_swallowed(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
-        $this->breakCacheConnection(FakeDynamoDbNonConnectionException::class);
+test('delete succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $this->expectException(FakeDynamoDbNonConnectionException::class);
+    $author = Author::factory()->create(['name' => 'Dynamo Delete Test']);
 
-        Author::all();
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_delete_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $author = Author::factory()->create(['name' => 'Dynamo Delete Test']);
+    $result = Author::where('id', $author->id)->delete();
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    expect($result)->toBeGreaterThanOrEqual(1);
+});
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+test('force delete succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $result = Author::where('id', $author->id)->delete();
+    $author = Author::factory()->create(['name' => 'Dynamo Force Delete Test']);
 
-        $this->assertGreaterThanOrEqual(1, $result);
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_force_delete_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $author = Author::factory()->create(['name' => 'Dynamo Force Delete Test']);
+    $result = Author::where('id', $author->id)->forceDelete();
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    expect($result)->toBeGreaterThanOrEqual(1);
+});
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+test('increment succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $result = Author::where('id', $author->id)->forceDelete();
+    $book = Book::first();
+    $originalPrice = $book->price;
 
-        $this->assertGreaterThanOrEqual(1, $result);
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_increment_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $book = Book::first();
-        $originalPrice = $book->price;
+    Book::where('id', $book->id)->increment('price', 10);
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    $book->refresh();
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+    expect($book->price)->toEqual($originalPrice + 10);
+});
 
-        Book::where('id', $book->id)->increment('price', 10);
+test('decrement succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $book->refresh();
+    $book = Book::first();
+    $originalPrice = $book->price;
 
-        $this->assertEquals($originalPrice + 10, $book->price);
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_decrement_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $book = Book::first();
-        $originalPrice = $book->price;
+    Book::where('id', $book->id)->decrement('price', 5);
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    $book->refresh();
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+    expect($book->price)->toEqual($originalPrice - 5);
+});
 
-        Book::where('id', $book->id)->decrement('price', 5);
+test('model save succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $book->refresh();
+    $author = Author::first();
+    $author->name = 'Saved During Dynamo Outage';
 
-        $this->assertEquals($originalPrice - 5, $book->price);
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_model_save_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $author = Author::first();
-        $author->name = 'Saved During Dynamo Outage';
+    expect($author->save())->toBeTrue();
+});
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+test('model create succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-        $this->assertTrue($author->save());
-    }
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-    public function test_model_create_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    $author = Author::create([
+        'name' => 'Created During Dynamo Outage',
+        'email' => 'dynamo-outage@test.com',
+    ]);
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    expect($author->id)->not->toBeNull();
+});
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+test('pivot attach succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $author = Author::create([
-            'name' => 'Created During Dynamo Outage',
-            'email' => 'dynamo-outage@test.com',
-        ]);
+    $user = User::query()->first();
+    $newRole = Role::factory()->create();
 
-        $this->assertNotNull($author->id);
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_pivot_attach_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $user = User::query()->first();
-        $newRole = Role::factory()->create();
+    $user->roles()->attach($newRole->id);
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    expect($user->roles()->where('roles.id', $newRole->id)->exists())->toBeTrue();
+});
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+test('pivot sync succeeds when dynamo db invalidation fails', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $user->roles()->attach($newRole->id);
+    $pivotRow = DB::table('role_user')->first();
+    $user = (new User)->newQueryWithoutScopes()->find($pivotRow->user_id);
+    $roleIds = DB::table('role_user')
+        ->where('user_id', $user->id)
+        ->pluck('role_id')
+        ->toArray();
 
-        $this->assertTrue($user->roles()->where('roles.id', $newRole->id)->exists());
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_pivot_sync_succeeds_when_dynamo_db_invalidation_fails(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $pivotRow = DB::table('role_user')->first();
-        $user = (new User)->newQueryWithoutScopes()->find($pivotRow->user_id);
-        $roleIds = DB::table('role_user')
-            ->where('user_id', $user->id)
-            ->pluck('role_id')
-            ->toArray();
+    $result = $user->roles()->sync($roleIds);
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    expect($result)->toBeArray();
+});
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+test('uncached related model invalidation succeeds when dynamo db is unavailable', function () {
+    config(['laravel-model-caching.fallback-to-database' => true]);
 
-        $result = $user->roles()->sync($roleIds);
+    $pivotRow = DB::table('role_user')->first();
+    $user = (new User)->newQueryWithoutScopes()->find($pivotRow->user_id);
+    $newRole = UncachedRole::create(['name' => 'uncached-dynamo-role']);
 
-        $this->assertIsArray($result);
-    }
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-    public function test_uncached_related_model_invalidation_succeeds_when_dynamo_db_is_unavailable(): void
-    {
-        config(['laravel-model-caching.fallback-to-database' => true]);
+    Log::shouldReceive('warning')
+        ->atLeast()
+        ->once()
+        ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
 
-        $pivotRow = DB::table('role_user')->first();
-        $user = (new User)->newQueryWithoutScopes()->find($pivotRow->user_id);
-        $newRole = UncachedRole::create(['name' => 'uncached-dynamo-role']);
+    $user->uncachedRolesWithCustomPivot()->attach($newRole->id);
 
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
+    expect($user->fresh()->uncachedRolesWithCustomPivot()->where('roles.id', $newRole->id)->exists())->toBeTrue();
+});
 
-        Log::shouldReceive('warning')
-            ->atLeast()
-            ->once()
-            ->withArgs(fn ($message) => str_contains($message, 'laravel-model-caching'));
+test('clear command returns non zero when dynamo db is unavailable', function () {
+    breakCacheConnection(FakeDynamoDbConnectionException::class);
 
-        $user->uncachedRolesWithCustomPivot()->attach($newRole->id);
-
-        $this->assertTrue(
-            $user->fresh()->uncachedRolesWithCustomPivot()->where('roles.id', $newRole->id)->exists(),
-        );
-    }
-
-    public function test_clear_command_returns_non_zero_when_dynamo_db_is_unavailable(): void
-    {
-        $this->breakCacheConnection(FakeDynamoDbConnectionException::class);
-
-        $this->artisan('modelCache:clear')
-            ->assertExitCode(1);
-    }
-}
+    $this->artisan('modelCache:clear')
+        ->assertExitCode(1);
+});

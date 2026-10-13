@@ -1,76 +1,67 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 
-class FindTest extends IntegrationTestCase
-{
-    public function testFindModelResultsCreatesCache()
-    {
-        $author = collect()->push((new Author)->find(1));
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_1");
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
-        ];
+test('find model results creates cache', function () {
+    $author = collect()->push((new Author)->find(1));
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor_1");
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+    ];
 
-        $cachedResults = collect()->push($this->cache()->tags($tags)
-            ->get($key));
-        $liveResults = collect()->push((new UncachedAuthor)->find(1));
+    $cachedResults = collect()->push($this->cache()->tags($tags)
+        ->get($key));
+    $liveResults = collect()->push((new UncachedAuthor)->find(1));
 
-        $this->assertEmpty($author->diffKeys($cachedResults));
-        $this->assertEmpty($liveResults->diffKeys($cachedResults));
-    }
+    expect($author->diffKeys($cachedResults))->toBeEmpty();
+    expect($liveResults->diffKeys($cachedResults))->toBeEmpty();
+});
 
-    public function testFindMultipleModelResultsCreatesCache()
-    {
-        $authors = (new Author)
-            ->find([1, 2, 3]);
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null-find_list_1_2_3");
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
-        ];
+test('find multiple model results creates cache', function () {
+    $authors = (new Author)
+        ->find([1, 2, 3]);
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null-find_list_1_2_3");
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+    ];
 
-        $cachedResults = $this
-            ->cache()
-            ->tags($tags)
-            ->get($key)["value"];
-        $liveResults = (new UncachedAuthor)->find([1, 2, 3]);
+    $cachedResults = $this
+        ->cache()
+        ->tags($tags)
+        ->get($key)["value"];
+    $liveResults = (new UncachedAuthor)->find([1, 2, 3]);
 
-        $this->assertEquals($authors->pluck("id"), $cachedResults->pluck("id"));
-        $this->assertEquals($liveResults->pluck("id"), $cachedResults->pluck("id"));
-    }
+    expect($cachedResults->pluck("id"))->toEqual($authors->pluck("id"));
+    expect($cachedResults->pluck("id"))->toEqual($liveResults->pluck("id"));
+});
 
-    public function testSubsequentFindsReturnDifferentModels()
-    {
-        $author1 = (new Author)->find(1);
-        $author2 = (new Author)->find(2);
+test('subsequent finds return different models', function () {
+    $author1 = (new Author)->find(1);
+    $author2 = (new Author)->find(2);
 
-        $this->assertNotEquals($author1, $author2);
-        $this->assertEquals($author1->id, 1);
-        $this->assertEquals($author2->id, 2);
-    }
+    expect($author2)->not->toEqual($author1);
+    expect(1)->toEqual($author1->id);
+    expect(2)->toEqual($author2->id);
+});
 
-    public function testFindWithArrayReturnsResults()
-    {
-        $author = (new Author)->find([1, 2]);
-        $uncachedAuthor = (new UncachedAuthor)->find([1, 2]);
+test('find with array returns results', function () {
+    $author = (new Author)->find([1, 2]);
+    $uncachedAuthor = (new UncachedAuthor)->find([1, 2]);
 
-        $this->assertEquals($uncachedAuthor->count(), $author->count());
-        $this->assertEquals($uncachedAuthor->pluck("id"), $author->pluck("id"));
-    }
+    expect($author->count())->toEqual($uncachedAuthor->count());
+    expect($author->pluck("id"))->toEqual($uncachedAuthor->pluck("id"));
+});
 
-    public function testFindWithSingleElementArrayDoesntConflictWithNormalFind()
-    {
-        $author1 = (new Author)
-            ->find(1);
-        $author2 = (new Author)
-            ->find([1]);
-        
-        $this->assertNotEquals($author1, $author2);
-        $this->assertIsIterable($author2);
-        $this->assertEquals(Author::class, get_class($author1));
-    }
-}
+test('find with single element array doesnt conflict with normal find', function () {
+    $author1 = (new Author)
+        ->find(1);
+    $author2 = (new Author)
+        ->find([1]);
+    
+    expect($author2)->not->toEqual($author1);
+    expect($author2)->toBeIterable();
+    expect(get_class($author1))->toEqual(Author::class);
+});
