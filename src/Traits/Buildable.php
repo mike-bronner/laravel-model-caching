@@ -239,7 +239,10 @@ trait Buildable
 
     public function value($column): mixed
     {
-        if (! $this->isCachable()) {
+        if (
+            ! $this->isCachable()
+            || $this->afterQueryCallbacksOf($this) !== []
+        ) {
             return parent::value($column);
         }
 
@@ -251,6 +254,12 @@ trait Buildable
     public function cachedValue(array $arguments, string $cacheKey): mixed
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
+
+        return $this->storedValue($method, $arguments, $cacheKey);
+    }
+
+    protected function storedValue(string $method, array $arguments, string $cacheKey): mixed
+    {
         $cacheTags = $this->makeCacheTags();
 
         return $this->withCacheFallback(

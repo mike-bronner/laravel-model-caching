@@ -16,7 +16,9 @@ use ReflectionClass;
 
 class CachedBuilder extends Builder
 {
-    use Buildable;
+    use Buildable {
+        Buildable::storedValue as storedValueBeforeCallbacks;
+    }
     use BuilderCaching;
     use Caching;
 
@@ -72,6 +74,45 @@ class CachedBuilder extends Builder
         $this->innerBuilder?->setModel($model);
 
         return parent::setModel($model);
+    }
+
+    protected function replayAfterQueryCallbacks(string $method, mixed $result): mixed
+    {
+        return match ($method) {
+            'get', 'pluck' => $this->applyAfterQueryCallbacks($result),
+            'paginate' => $result->setCollection(
+                    $this->applyAfterQueryCallbacks($result->getCollection()),
+                ),
+            'first' => $this->replayAfterQueryCallbacksOnModel($result),
+            'find' => match (is_iterable($result)) {
+                true => $this->applyAfterQueryCallbacks($result),
+                false => $this->replayAfterQueryCallbacksOnModel($result),
+            },
+            default => $result,
+        };
+    }
+
+    protected function replayAfterQueryCallbacksOnModel(?Model $model): ?Model
+    {
+        $models = $this->getModel()
+            ->newCollection(collect([$model])->filter()->all());
+
+        return $this->applyAfterQueryCallbacks($models)
+            ->first();
+    }
+
+    protected function storedValue(string $method, array $arguments, string $cacheKey): mixed
+    {
+        $callbacks = $this->afterQueryCallbacks;
+        $this->afterQueryCallbacks = [];
+
+        try {
+            $result = $this->storedValueBeforeCallbacks($method, $arguments, $cacheKey);
+        } finally {
+            $this->afterQueryCallbacks = $callbacks;
+        }
+
+        return $this->replayAfterQueryCallbacks($method, $result);
     }
 
     protected function syncStateToInner(): void

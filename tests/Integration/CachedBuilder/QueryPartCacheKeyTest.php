@@ -1,8 +1,10 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\CacheKey;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
+use Illuminate\Database\Eloquent\RelationNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 test('group by columns reach the key', function () {
@@ -268,4 +270,219 @@ test('a base query after query callback does not share the plain query cache ent
     $builder->get();
 
     expect((new Book)->where("id", 1)->get()->pluck("title")->all())->not->toBe(["after query"]);
+});
+
+test('a relation after query callback leaves the plain relation entry raw', function (): void {
+    $author = (new Author)->first();
+    $retitle = function ($books) {
+        $books->each(function ($book): void {
+            $book->title = "after query";
+        });
+
+        return $books;
+    };
+
+    $author->books()
+        ->afterQuery($retitle)
+        ->get();
+    $plainTitles = $author->books()
+        ->get()
+        ->pluck("title");
+
+    expect($plainTitles)
+        ->not
+        ->toContain("after query");
+});
+
+dataset("after query reads", [
+    "get" => ["get", []],
+    "first" => ["first", []],
+    "find" => ["find", [1]],
+    "find many" => ["find", [[1]]],
+    "paginate" => ["paginate", [1]],
+]);
+
+test('an after query callback runs on every read and is not stored', function (
+    string $method,
+    array $arguments,
+): void {
+    $calls = [];
+    $suffixTitle = function ($books) use (&$calls) {
+        $calls[] = "called";
+        $books->each(function ($book): void {
+            $book->title = "{$book->title} (after query)";
+        });
+
+        return $books;
+    };
+    $read = fn () => (new Book)
+        ->where("id", 1)
+        ->afterQuery($suffixTitle)
+        ->{$method}(...$arguments);
+    $plainTitle = (new UncachedBook)
+        ->find(1)
+        ->title;
+
+    $miss = $read();
+    DB::table("books")
+        ->where("id", 1)
+        ->update(["title" => "Changed behind the cache"]);
+    $hit = $read();
+    $plainRead = (new Book)
+        ->where("id", 1)
+        ->{$method}(...$arguments);
+
+    expect($calls)
+        ->toBe(["called", "called"]);
+    expect(data_get($miss, "*.title", [data_get($miss, "title")]))
+        ->toBe(["{$plainTitle} (after query)"]);
+    expect(data_get($hit, "*.title", [data_get($hit, "title")]))
+        ->toBe(["{$plainTitle} (after query)"]);
+    expect(data_get($plainRead, "*.title", [data_get($plainRead, "title")]))
+        ->toBe([$plainTitle]);
+})->with("after query reads");
+
+test('an after query callback runs on every pluck read', function (): void {
+    $calls = [];
+    $suffixTitles = function ($titles) use (&$calls) {
+        $calls[] = "called";
+
+        return $titles->map(fn (string $title): string => "{$title} (after query)");
+    };
+    $read = fn () => (new Book)
+        ->where("id", 1)
+        ->afterQuery($suffixTitles)
+        ->pluck("title")
+        ->all();
+    $plainTitle = (new UncachedBook)
+        ->find(1)
+        ->title;
+
+    $miss = $read();
+    DB::table("books")
+        ->where("id", 1)
+        ->update(["title" => "Changed behind the cache"]);
+    $hit = $read();
+    $plainTitles = (new Book)
+        ->where("id", 1)
+        ->pluck("title")
+        ->all();
+
+    expect($miss)
+        ->toBe(["{$plainTitle} (after query)"]);
+    expect($hit)
+        ->toBe(["{$plainTitle} (after query)"]);
+    expect($calls)
+        ->toBe(["called", "called"]);
+    expect($plainTitles)
+        ->toBe([$plainTitle]);
+});
+
+test('an after query callback that throws leaves the stored entry raw', function (): void {
+    $plainTitle = (new UncachedBook)
+        ->find(1)
+        ->title;
+    $retitleThenThrow = function ($books): void {
+        $books->each(function ($book): void {
+            $book->title = "after query";
+        });
+
+        throw new RuntimeException("after query failed");
+    };
+    $throwingRead = fn () => (new Book)
+        ->where("id", 1)
+        ->afterQuery($retitleThenThrow)
+        ->get();
+
+    expect($throwingRead)
+        ->toThrow(RuntimeException::class, "after query failed");
+
+    DB::table("books")
+        ->where("id", 1)
+        ->update(["title" => "Changed behind the cache"]);
+    $plainTitles = (new Book)
+        ->where("id", 1)
+        ->pluck("title")
+        ->all();
+    $storedTitles = (new Book)
+        ->where("id", 1)
+        ->get()
+        ->pluck("title")
+        ->all();
+
+    expect($plainTitles)
+        ->toBe(["Changed behind the cache"]);
+    expect($storedTitles)
+        ->toBe([$plainTitle]);
+});
+
+test('a read that fails keeps its after query callbacks for the next read', function (): void {
+    $calls = [];
+    $countCalls = function ($books) use (&$calls) {
+        $calls[] = "called";
+
+        return $books;
+    };
+    $query = (new Book)
+        ->where("id", 1)
+        ->afterQuery($countCalls)
+        ->with("missing");
+
+    expect(fn () => $query->get())
+        ->toThrow(RelationNotFoundException::class);
+
+    $books = $query->setEagerLoads([])
+        ->get();
+
+    expect($books)
+        ->toHaveCount(1);
+    expect($calls)
+        ->toBe(["called"]);
+});
+
+test('an eloquent after query callback does not run for an aggregate', function (): void {
+    $calls = [];
+    $countCalls = function ($result) use (&$calls) {
+        $calls[] = "called";
+
+        return $result;
+    };
+    $counts = collect(["miss", "hit"])
+        ->map(fn () => (new Book)
+            ->where("id", 1)
+            ->afterQuery($countCalls)
+            ->count());
+
+    expect($counts->all())
+        ->toBe([1, 1]);
+    expect($calls)
+        ->toBe([]);
+});
+
+test('a value read with an after query callback reads the cached row', function (): void {
+    $plainTitle = (new UncachedBook)
+        ->find(1)
+        ->title;
+    $suffixTitle = function ($books) {
+        $books->each(function ($book): void {
+            $book->title = "{$book->title} (after query)";
+        });
+
+        return $books;
+    };
+    $value = fn () => (new Book)
+        ->where("id", 1)
+        ->afterQuery($suffixTitle)
+        ->value("title");
+
+    $miss = $value();
+    DB::table("books")
+        ->where("id", 1)
+        ->update(["title" => "Changed behind the cache"]);
+    $hit = $value();
+
+    expect($miss)
+        ->toBe("{$plainTitle} (after query)");
+    expect($hit)
+        ->toBe("{$plainTitle} (after query)");
 });

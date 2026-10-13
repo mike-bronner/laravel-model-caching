@@ -595,7 +595,7 @@ trait Caching
         return $this->isCachable
             && $allRelationshipsAreCachable
             && ! $hasLock
-            && ! $this->hasAfterQueryCallbacks();
+            && ! $this->hasUncachableAfterQueryCallbacks();
     }
 
     protected function modelHasRelation(Model $model, string $relation): bool
@@ -604,13 +604,13 @@ trait Caching
             || $model->isRelation($relation);
     }
 
-    protected function hasAfterQueryCallbacks(): bool
+    protected function hasUncachableAfterQueryCallbacks(): bool
     {
         $query = property_exists($this, "query")
             ? $this->query
             : null;
 
-        return collect([$this, $query, $query instanceof Builder ? $query->getQuery() : null])
+        return collect([$query, $query instanceof Builder ? $query->getQuery() : null])
             ->contains(fn ($builder): bool => $this->afterQueryCallbacksOf($builder) !== []);
     }
 

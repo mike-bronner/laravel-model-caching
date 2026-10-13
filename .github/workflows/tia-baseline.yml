@@ -13,6 +13,12 @@ jobs:
       contents: read
 
     steps:
+      - name: Mask the hook secrets
+        env:
+          TIA_BASELINE_SECRETS: ${{ secrets.TIA_BASELINE_SECRETS }}
+        run: |
+          jq -r 'select(type == "object") | .. | select(type == "string" or type == "number") | tostring | splits("\r?\n") | select(test("\\S")) | gsub("%"; "%25") | gsub("\r"; "%0D") | "::add-mask::" + .' <<< "$TIA_BASELINE_SECRETS" 2> /dev/null || true
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -21,7 +27,7 @@ jobs:
         if: hashFiles('.github/actions/tia-baseline-before-install/action.yml', '.github/actions/tia-baseline-before-install/action.yaml') != ''
         uses: ./.github/actions/tia-baseline-before-install
         with:
-          secrets: ${{ toJSON(secrets) }}
+          secrets: ${{ secrets.TIA_BASELINE_SECRETS || '{}' }}
 
       - name: Choose the PHP version
         id: php
@@ -62,7 +68,7 @@ jobs:
         if: hashFiles('.github/actions/tia-baseline-after-install/action.yml', '.github/actions/tia-baseline-after-install/action.yaml') != ''
         uses: ./.github/actions/tia-baseline-after-install
         with:
-          secrets: ${{ toJSON(secrets) }}
+          secrets: ${{ secrets.TIA_BASELINE_SECRETS || '{}' }}
 
       - name: Record and publish the baseline
         uses: mike-bronner/laravel-development-settings/.github/actions/tia-baseline@main

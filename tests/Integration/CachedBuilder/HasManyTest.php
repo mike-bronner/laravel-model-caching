@@ -64,16 +64,36 @@ test('lazyloaded has many', function () {
     expect($liveResults)->not->toBeEmpty();
 });
 
-test('a chaperoned relation query is served fresh', function () {
+test('a chaperoned relation is served from the cache with its inverse set', function (): void {
     $author = (new Author)->first();
-    $books = $author->books()->chaperone()->get();
+    $books = $author->books()
+        ->chaperone()
+        ->get();
+    $titles = $books->pluck('title')
+        ->all();
 
-    DB::table('books')->where('author_id', $author->id)->update(['title' => 'Changed behind the cache']);
+    DB::table('books')
+        ->where('author_id', $author->id)
+        ->update(['title' => 'Changed behind the cache']);
 
-    $freshBooks = $author->books()->chaperone()->get();
+    $cachedBooks = $author->books()
+        ->chaperone()
+        ->get();
+    $cachedTitles = $cachedBooks->pluck('title')
+        ->all();
+    $hasInverse = $cachedBooks->every(fn ($book) => $book->relationLoaded('author'));
+    $inverseIsParent = $cachedBooks->every(fn ($book) => $book->author === $author);
 
-    expect($books)->not->toBeEmpty()
-        ->and($books->first()->relationLoaded('author'))->toBeTrue()
-        ->and($freshBooks->pluck('title')->unique()->all())->toBe(['Changed behind the cache'])
-        ->and($freshBooks->first()->author->is($author))->toBeTrue();
+    expect($books)
+        ->not
+        ->toBeEmpty();
+    expect($cachedTitles)
+        ->toBe($titles);
+    expect($cachedTitles)
+        ->not
+        ->toContain('Changed behind the cache');
+    expect($hasInverse)
+        ->toBeTrue();
+    expect($inverseIsParent)
+        ->toBeTrue();
 });
