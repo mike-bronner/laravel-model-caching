@@ -16,9 +16,6 @@ class AuthorWithConditionalFillable extends Model
         'email',
     ];
 
-    /**
-     * Toggle to simulate context-dependent fillable (e.g. admin vs non-admin).
-     */
     public static bool $adminMode = false;
 
     public function __construct(array $attributes = [])

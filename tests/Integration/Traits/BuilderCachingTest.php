@@ -1,36 +1,30 @@
-<?php namespace GeneaLabs\LaravelModelCaching\Tests\Integration\Traits;
+<?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
-use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
 use Illuminate\Database\Eloquent\Collection;
 
-class BuilderCachingTest extends IntegrationTestCase
-{
-    public function testDisablingAllQuery()
-    {
-        $allAuthors = (new Author)
-            ->disableCache()
-            ->all();
-        $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor");
-        $tags = [
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
-        ];
-        $cachedAuthors = $this
-            ->cache()
-            ->tags($tags)
-            ->get($key)["value"]
-            ?? null;
+test('disabling all query', function () {
+    $allAuthors = (new Author)
+        ->disableCache()
+        ->all();
+    $key = sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor");
+    $tags = [
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors",
+    ];
+    $cachedAuthors = $this
+        ->cache()
+        ->tags($tags)
+        ->get($key)["value"]
+        ?? null;
 
-        $this->assertInstanceOf(Collection::class, $allAuthors);
-        $this->assertNull($cachedAuthors);
-    }
+    expect($allAuthors)->toBeInstanceOf(Collection::class);
+    expect($cachedAuthors)->toBeNull();
+});
 
-    public function testUsingTruncateInvalidatesCache()
-    {
-        (new Author)->get();
-        Author::truncate();
+test('using truncate invalidates cache', function () {
+    (new Author)->get();
+    Author::truncate();
 
-        $this->assertTrue((new Author)->get()->isEmpty());
-    }
-}
+    expect((new Author)->get()->isEmpty())->toBeTrue();
+});

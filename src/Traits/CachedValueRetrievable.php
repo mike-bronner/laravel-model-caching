@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use Illuminate\Contracts\Pagination\Paginator;
@@ -8,7 +10,7 @@ use Illuminate\Support\Collection;
 
 trait CachedValueRetrievable
 {
-    public function cachedValue(array $arguments, string $cacheKey)
+    public function cachedValue(array $arguments, string $cacheKey): mixed
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
         $cacheTags = $this->makeCacheTags();
@@ -43,7 +45,7 @@ trait CachedValueRetrievable
         string $cacheKey,
         array $cacheTags,
         string $method,
-    ) {
+    ): mixed {
         if ($result["key"] === $cacheKey) {
             return $result["value"];
         }
@@ -65,7 +67,7 @@ trait CachedValueRetrievable
         string $cacheKey,
         array $cacheTags,
         string $method,
-    ) {
+    ): array {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
         }

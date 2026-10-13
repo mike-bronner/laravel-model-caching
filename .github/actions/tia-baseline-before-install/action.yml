@@ -1,0 +1,38 @@
+name: TIA baseline setup before Composer
+description: >-
+  Redis and PostgreSQL for the Pest TIA baseline, and the PHP version it is
+  recorded on. The services match the ones the test job in laravel.yml uses.
+
+inputs:
+  secrets:
+    description: Every secret of the repository, as JSON. Nothing here reads one.
+    required: true
+
+outputs:
+  # Pest's fingerprint holds the PHP minor version, so the baseline is
+  # recorded on the version developers run locally. composer.json allows 8.3,
+  # which would record on Pest 4, and Pest 4 has no Test Impact Analysis.
+  php-version:
+    description: The PHP version the graph is recorded on.
+    value: '8.5'
+  php-extensions:
+    description: The same extensions the test job in laravel.yml sets up.
+    value: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, gd, pgsql, pdo_pgsql
+
+runs:
+  using: composite
+  steps:
+    - name: Start Redis
+      shell: bash
+      run: |
+        docker run --detach --name redis --publish 6379:6379 \
+          --health-cmd "redis-cli ping" --health-interval 2s redis:7-alpine
+        until [ "$(docker inspect --format '{{.State.Health.Status}}' redis)" = healthy ]; do sleep 2; done
+
+    - name: Start PostgreSQL
+      shell: bash
+      run: |
+        docker run --detach --name postgres --publish 5432:5432 \
+          --env POSTGRES_DB=testing --env POSTGRES_USER=forge --env POSTGRES_PASSWORD=secret \
+          --health-cmd pg_isready --health-interval 2s postgres:15-alpine
+        until [ "$(docker inspect --format '{{.State.Health.Status}}' postgres)" = healthy ]; do sleep 2; done

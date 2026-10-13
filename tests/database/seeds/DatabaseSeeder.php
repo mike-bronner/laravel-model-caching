@@ -5,7 +5,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Comment;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\History;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Image;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Observers\AuthorObserver;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Printer;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Profile;
@@ -54,7 +53,6 @@ class DatabaseSeeder extends Seeder
                 ]);
             });
         $publishers = Publisher::factory()->count(10)->create();
-        (new Author)->observe(AuthorObserver::class);
         Author::factory()->count(10)->create()
             ->each(function ($author) use ($publishers) {
                 $profile = Profile::factory()->make();

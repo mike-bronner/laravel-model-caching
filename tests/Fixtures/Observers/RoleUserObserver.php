@@ -6,13 +6,8 @@ namespace GeneaLabs\LaravelModelCaching\Tests\Fixtures\Observers;
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\RoleUser;
 
-/**
- * Observer for the RoleUser custom pivot model.
- * Used to test that pivot model observers fire when caching is enabled (#548).
- */
 class RoleUserObserver
 {
-    /** @var array<string, int> */
     public static array $events = [];
 
     public static function reset(): void

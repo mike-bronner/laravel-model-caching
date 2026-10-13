@@ -1,10 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 
 trait CachesOneOrManyThrough
 {
@@ -12,7 +18,7 @@ trait CachesOneOrManyThrough
         CachedValueRetrievable::retrieveCachedValue as baseRetrieveCachedValue;
     }
 
-    public function get($columns = ['*'])
+    public function get($columns = ['*']): EloquentCollection
     {
         if (! $this->isCachable()) {
             return parent::get($columns);
@@ -24,7 +30,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function first($columns = ['*'])
+    public function first($columns = ['*']): ?Model
     {
         if (! $this->isCachable()) {
             return parent::first($columns);
@@ -36,7 +42,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function find($id, $columns = ['*'])
+    public function find($id, $columns = ['*']): Model|EloquentCollection|null
     {
         if (! $this->isCachable()) {
             return parent::find($id, $columns);
@@ -50,7 +56,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function count($columns = '*')
+    public function count($columns = '*'): int
     {
         if (! $this->isCachable()) {
             return parent::count($columns);
@@ -61,14 +67,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    /**
-     * There is deliberately no $total parameter here, unlike Buildable's
-     * paginate(). The relations this trait serves — CachedHasManyThrough and
-     * CachedHasOneThrough — inherit HasOneOrManyThrough::paginate(), which
-     * declares four parameters and runs its own count. A total accepted here
-     * could only be dropped on the floor.
-     */
-    public function paginate($perPage = null, $columns = ['*'], $pageName = 'page', $page = null)
+    public function paginate($perPage = null, $columns = ['*'], $pageName = 'page', $page = null): LengthAwarePaginator
     {
         if (! $this->isCachable()) {
             return parent::paginate($perPage, $columns, $pageName, $page);
@@ -81,7 +80,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function pluck($column, $key = null)
+    public function pluck($column, $key = null): Collection
     {
         if (! $this->isCachable()) {
             return parent::pluck($column, $key);
@@ -93,7 +92,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function avg($column)
+    public function avg($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::avg($column);
@@ -104,7 +103,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function sum($column)
+    public function sum($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::sum($column);
@@ -115,7 +114,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function min($column)
+    public function min($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::min($column);
@@ -126,7 +125,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function max($column)
+    public function max($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::max($column);
@@ -137,7 +136,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function exists()
+    public function exists(): bool
     {
         if (! $this->isCachable()) {
             return parent::exists();
@@ -148,7 +147,7 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    public function value($column)
+    public function value($column): mixed
     {
         if (! $this->isCachable()) {
             return parent::value($column);
@@ -159,18 +158,12 @@ trait CachesOneOrManyThrough
         return $this->cachedValue(func_get_args(), $cacheKey);
     }
 
-    /**
-     * Override the base retrieveCachedValue to disable caching on the inner
-     * Eloquent builder, preventing double-caching. Without this, the inner
-     * CachedBuilder stores a separate cache entry tagged only with the
-     * end-model, which is not invalidated when the through-model changes.
-     */
     protected function retrieveCachedValue(
         array $arguments,
         string $cacheKey,
         array $cacheTags,
         string $method,
-    ) {
+    ): array {
         if (property_exists($this, "model")) {
             $this->checkCooldownAndRemoveIfExpired($this->model);
         }
@@ -187,9 +180,6 @@ trait CachesOneOrManyThrough
             return $cachedResult;
         }
 
-        // Disable caching on the inner Eloquent builder so that the
-        // parent call hits the database directly instead of returning
-        // a stale inner-cached value.
         $innerBuilder = $this->getQuery();
 
         if (method_exists($innerBuilder, 'disableModelCaching')) {

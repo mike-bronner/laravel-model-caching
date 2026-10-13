@@ -1,10 +1,5 @@
 <?php namespace GeneaLabs\LaravelModelCaching\Tests\Fixtures;
 
-// Decorates a real Redis connection so a batched DEL spanning multiple keys
-// raises CROSSSLOT — as a cluster would — while single-key DELs and every other
-// command pass through to the genuine connection. This lets the no-model clear
-// path (invalidateAll -> flushRedisStoreByPrefix -> deleteRedisKeys) exercise its
-// slot-safe per-key fallback without an actual multi-node cluster.
 class CrossSlotDeleteConnection
 {
     public function __construct(
