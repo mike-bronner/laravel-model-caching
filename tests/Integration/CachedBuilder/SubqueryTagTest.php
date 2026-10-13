@@ -159,6 +159,58 @@ test('aliased join tags the unaliased table', function () {
     );
 });
 
+test('a join sub inside an exists subquery tags the tables it reads', function () {
+    assertCachedUnderTags(
+        (new Book)->whereExists(fn ($query) => $query
+            ->select("authors.id")
+            ->from("authors")
+            ->joinSub(
+                fn ($sub) => $sub->select("author_id")->from("profiles"),
+                "p",
+                "p.author_id",
+                "=",
+                "authors.id",
+            )
+            ->whereColumn("authors.id", "books.author_id")),
+        [...bookTags(), tagPrefix() . "authors", tagPrefix() . "profiles"],
+    );
+});
+
+test('an aliased join inside a subquery tags the unaliased table', function () {
+    assertCachedUnderTags(
+        (new Book)->whereExists(fn ($query) => $query
+            ->select("profiles.id")
+            ->from("profiles")
+            ->join("authors as a", "a.id", "=", "profiles.author_id")
+            ->whereColumn("a.id", "books.author_id")),
+        [...bookTags(), tagPrefix() . "profiles", tagPrefix() . "authors"],
+    );
+});
+
+test('joins inside a subquery tag each joined table before the tables its own subquery reads', function () {
+    assertCachedUnderTags(
+        (new Book)->whereExists(fn ($query) => $query
+            ->select("authors.id")
+            ->from("authors")
+            ->join("profiles", "profiles.author_id", "=", "authors.id")
+            ->join("publishers", function ($join) {
+                $join->on("publishers.id", "=", "books.publisher_id")
+                    ->whereExists(fn ($query) => $query
+                        ->select("id")
+                        ->from("printers")
+                        ->whereColumn("printers.book_id", "books.id"));
+            })
+            ->whereColumn("authors.id", "books.author_id")),
+        [
+            ...bookTags(),
+            tagPrefix() . "authors",
+            tagPrefix() . "profiles",
+            tagPrefix() . "publishers",
+            tagPrefix() . "printers",
+        ],
+    );
+});
+
 test('aliased subquery from tags the unaliased table', function () {
     assertCachedUnderTags(
         (new Book)->whereExists(fn ($query) => $query

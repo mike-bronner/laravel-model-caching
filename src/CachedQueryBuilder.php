@@ -43,6 +43,9 @@ class CachedQueryBuilder extends Builder
         return parent::whereIn($column, $values, $boolean, $not);
     }
 
+    // The subquery's table is tagged with the querying model's prefix, so a source model
+    // on another connection or with its own $cachePrefix is not flushed by its own writes.
+    // fromRaw() is not tagged, because its table name is inside a raw string.
     public function fromSub($query, $as): static
     {
         return parent::fromSub($this->recordRelatedWhereSubqueryTable($query), $as);

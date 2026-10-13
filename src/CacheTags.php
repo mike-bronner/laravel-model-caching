@@ -18,6 +18,8 @@ class CacheTags
 {
     use CachePrefixing;
 
+    private const MORPH_TYPES_TTL_SECONDS = 60;
+
     protected $eagerLoad;
     protected $model;
     protected $query;
@@ -191,6 +193,11 @@ class CacheTags
                 ->flatMap(function ($where) use ($seen) {
                     return $this->getSubqueryTablesFromWhere($where, $seen);
                 }))
+            // A joined table, such as a pivot, is recorded with no model, so its tag takes the
+            // querying model's prefix, as in getJoinTags(). A pivot on another connection or
+            // with its own $cachePrefix is tagged under a prefix its own writes never flush.
+            // This runs on the outer query's joins too, because getSubqueryWhereTags() passes
+            // resolveBaseQuery(), not only on joins nested inside a subquery.
             ->merge(collect($builder->joins ?? [])
                 ->flatMap(fn ($join) => collect([$join->table ?? null])
                     ->filter(fn ($table) => is_string($table))
@@ -202,6 +209,13 @@ class CacheTags
                         ->flatMap(function ($where) use ($seen) {
                             return $this->getSubqueryTablesFromWhere($where, $seen);
                         }))))
+            ->merge(collect([$builder])
+                ->filter(fn ($builder) => method_exists($builder, "getJoinedSubqueryTables"))
+                ->flatMap(fn ($builder) => $builder->getJoinedSubqueryTables())
+                ->map(fn (string $table) => [
+                    "table" => $table,
+                    "model" => null,
+                ]))
             ->merge(collect($builder->unions ?? [])
                 ->map(fn ($union) => $union['query'] ?? null)
                 ->filter(fn ($unionQuery) => is_object($unionQuery))
@@ -343,9 +357,12 @@ class CacheTags
 
     protected function getMorphTypesInUse(MorphTo $relation, string $table, string $column) : array
     {
-        return ModelCacheRepository::make()->rememberForever(
-            $this->getCachePrefix() . "morph-types:" . $table . ":" . $column,
-            $this->makeTableTags([["table" => $table, "model" => $relation->getParent()]]),
+        $owner = $relation->getParent();
+
+        return ModelCacheRepository::make()->remember(
+            $this->getCachePrefixForModel($owner) . "morph-types:" . $table . ":" . $column,
+            $this->makeTableTags([["table" => $table, "model" => $owner]]),
+            self::MORPH_TYPES_TTL_SECONDS,
             static function () use ($relation, $table, $column) : array {
                 return $relation->getParent()
                     ->newQuery()

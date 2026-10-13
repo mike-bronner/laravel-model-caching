@@ -13,6 +13,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use JsonSerializable;
 use Ramsey\Uuid\Uuid;
 use ReflectionReference;
 use SplObjectStorage;
@@ -63,6 +64,7 @@ class CacheKey
     protected $withoutGlobalScopes = [];
     protected $withoutAllGlobalScopes = false;
     private ?string $unkeyableMarker = null;
+    private bool $hasUnkeyableBinding = false;
 
     public function __construct(
         array $eagerLoad,
@@ -123,9 +125,10 @@ class CacheKey
             $query = clone $this->query;
             $sql = $query->toSql();
 
-            return "-beforeQuery_" . sha1($sql . $this->encodeForKeyHash($query->getBindings()));
+            return "-beforeQuery_"
+                . sha1($sql . $this->encodeBindingsForKeyHash($query->getBindings()));
         } catch (Throwable) {
-            return "";
+            return $this->unkeyableMarker();
         }
     }
 
@@ -134,6 +137,51 @@ class CacheKey
         $encoded = json_encode($value);
 
         return $encoded === false ? serialize($value) : $encoded;
+    }
+
+    private function encodeBindingsForKeyHash(array $bindings) : string
+    {
+        return $this->encodeForKeyHash(collect($bindings)
+            ->map($this->keyableBinding(...))
+            ->all());
+    }
+
+    private function keyableBinding(mixed $binding) : mixed
+    {
+        return match (true) {
+            $this->isResource($binding) => $this->unkeyableBinding(),
+            ! $this->hidesStateFromJson($binding) => $binding,
+            $binding instanceof Stringable => (string) $binding,
+            default => $this->unkeyableBinding(),
+        };
+    }
+
+    private function unkeyableBinding() : null
+    {
+        $this->hasUnkeyableBinding = true;
+
+        return null;
+    }
+
+    private function hidesStateFromJson(mixed $value) : bool
+    {
+        if (
+            ! is_object($value)
+            || $value instanceof JsonSerializable
+            || $value instanceof DateTimeInterface
+        ) {
+            return false;
+        }
+
+        $names = collect(get_mangled_object_vars($value))->keys();
+
+        return $names->isEmpty()
+            || $names->contains(fn (int|string $name) => str_starts_with((string) $name, "\0"));
+    }
+
+    private function isResource(mixed $value) : bool
+    {
+        return str_starts_with(gettype($value), "resource");
     }
 
     protected function getBindingsSlug() : string
@@ -368,7 +416,7 @@ class CacheKey
             ->map(fn ($union) => (data_get($union, "all") ? "all_" : "")
                 . sha1(
                     $union["query"]->toSql()
-                    . $this->encodeForKeyHash($union["query"]->getBindings())
+                    . $this->encodeBindingsForKeyHash($union["query"]->getBindings())
                 ))
             ->implode("_");
 
@@ -527,7 +575,9 @@ class CacheKey
         $clause = array_shift($segments);
 
         foreach ($segments as $segment) {
-            $clause .= $this->getCurrentBinding("where") . $segment;
+            $binding = $this->getCurrentBinding("where");
+            $clause .= ($this->isResource($binding) ? $this->unkeyableMarker() : $binding)
+                . $segment;
             $this->currentBinding++;
         }
 
@@ -554,7 +604,7 @@ class CacheKey
         if ($from instanceof Expression) {
             $from = "sub-" . sha1(
                 $this->expressionToString($from)
-                    . $this->encodeForKeyHash($this->query->bindings["from"] ?? []),
+                    . $this->encodeBindingsForKeyHash($this->query->bindings["from"] ?? []),
             );
         }
 
@@ -720,9 +770,10 @@ class CacheKey
                 return "";
             }
 
-            return "=" . sha1($this->encodeForKeyHash($addedWheres) . $this->encodeForKeyHash($addedBindings));
+            return "=" . sha1($this->encodeForKeyHash($addedWheres)
+                . $this->encodeBindingsForKeyHash($addedBindings));
         } catch (Throwable) {
-            return "";
+            return $this->unkeyableMarker();
         }
     }
 
@@ -749,6 +800,10 @@ class CacheKey
 
     private function stringifyBinding(mixed $binding) : string
     {
+        if ($this->isResource($binding)) {
+            return $this->unkeyableMarker();
+        }
+
         if ($binding instanceof DateTimeInterface) {
             $binding = $binding->format("Y-m-d-H-i-s");
         }
@@ -821,6 +876,8 @@ class CacheKey
             return $this->expressionToString($value);
         } elseif ($value instanceof DateTimeInterface) {
             return $value->format("Y-m-d-H-i-s");
+        } elseif ($this->isResource($value)) {
+            return $this->unkeyableMarker();
         }
 
         // An object with no string form cannot be interpolated below, and PHP
@@ -860,8 +917,9 @@ class CacheKey
 
     private function hasUnkeyableSegment(string $key): bool
     {
-        return $this->unkeyableMarker !== null
-            && str_contains($key, $this->unkeyableMarker);
+        return $this->hasUnkeyableBinding
+            || ($this->unkeyableMarker !== null
+                && str_contains($key, $this->unkeyableMarker));
     }
 
     private function holdsResource(

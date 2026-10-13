@@ -4,8 +4,10 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\SerializesWithoutItsHandle;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\SleepsWithChosenProperties;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 test('a having value that cannot be serialized runs the query uncached', function () {
     $value = (object) ["filter" => fn () => true];
@@ -100,6 +102,86 @@ test('an unexpected value error raised while keying the query is not swallowed',
     expect(fn () => (new Book)->where("author_id", ">", $value)->get())
         ->toThrow(UnexpectedValueException::class, "first conversion failed");
 });
+
+test('a bare resource binding runs the query uncached', function (Closure $query) {
+    $books = $query(new Book, streamHolding("first"))->get();
+    $liveResults = $query(new UncachedBook, streamHolding("first"))->get();
+
+    expect($books)->not->toBeEmpty()
+        ->and($books->toArray())->toEqual($liveResults->toArray())
+        ->and(modelCacheKeys())->toBe([]);
+})->with([
+    "where" => fn (Model $model, $stream) => $model->where("title", "!=", $stream),
+    "where raw" => fn (Model $model, $stream) => $model->whereRaw("title != ?", [$stream]),
+    "where not in" => fn (Model $model, $stream) => $model->whereNotIn("title", [$stream]),
+    "where row values" => fn (Model $model, $stream) => $model->whereRowValues(["title"], "!=", [$stream]),
+    "having" => fn (Model $model, $stream) => $model
+        ->groupBy("author_id")
+        ->having("author_id", "!=", $stream),
+    "from sub" => fn (Model $model, $stream) => $model->fromSub(
+        fn ($query) => $query->from("books")->where("title", "!=", $stream),
+        "books",
+    ),
+    "union" => fn (Model $model, $stream) => $model
+        ->where("id", 0)
+        ->union(DB::table("books")->where("title", "!=", $stream)),
+    "before query" => fn (Model $model, $stream) => $model
+        ->beforeQuery(fn ($query) => $query->where("title", "!=", $stream)),
+    "eager load constraint" => fn (Model $model, $stream) => $model
+        ->with(["author" => fn ($query) => $query->where("name", "!=", $stream)]),
+    "join" => fn (Model $model, $stream) => $model
+        ->select("books.*")
+        ->join("authors", fn ($join) => $join
+            ->on("authors.id", "=", "books.author_id")
+            ->where("authors.name", "!=", $stream)),
+    "group by" => fn (Model $model, $stream) => $model
+        ->groupByRaw("author_id, ?", [$stream]),
+]);
+
+test('a before query callback that throws while the key is built runs the query uncached', function () {
+    [$first, $second] = DB::table("authors")->orderBy("id")->limit(2)->pluck("name")->all();
+    $query = fn (string $name) => (new Author)
+        ->beforeQuery(throwsOnFirstCall(fn ($query) => $query->where("name", $name)));
+
+    $query($first)->get();
+    $authors = $query($second)->get();
+
+    expect($authors->pluck("name")->all())->toBe([$second])
+        ->and(modelCacheKeys())->toBe([]);
+});
+
+test('an eager load constraint that throws while the key is built runs the query uncached', function () {
+    [$first, $second] = DB::table("books")->orderBy("id")->limit(2)->pluck("title")->all();
+    $query = fn (string $title) => (new Author)
+        ->with(["books" => throwsOnFirstCall(fn ($query) => $query->where("title", $title))]);
+    $liveResults = (new UncachedAuthor)
+        ->with(["books" => fn ($query) => $query->where("title", $second)])
+        ->get();
+
+    $query($first)->get();
+
+    expect($query($second)->get()->toArray())->toEqual($liveResults->toArray());
+});
+
+function throwsOnFirstCall(Closure $constraint): Closure
+{
+    $calls = 0;
+
+    return function ($query) use (&$calls, $constraint) {
+        throw_if($calls++ === 0, RuntimeException::class, "first call failed");
+
+        $constraint($query);
+    };
+}
+
+function streamHolding(string $contents)
+{
+    $stream = fopen("php://memory", "r+");
+    fwrite($stream, $contents);
+    rewind($stream);
+
+    return $stream;
+}
 
 function selfReferencingValue(mixed $neighbour): object
 {

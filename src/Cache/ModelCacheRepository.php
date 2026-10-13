@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Cache;
 
+use DateInterval;
+use DateTimeInterface;
 use Illuminate\Cache\DynamoDbStore;
 use Illuminate\Cache\RedisStore;
 use Illuminate\Cache\RedisTagSet;
@@ -59,8 +61,47 @@ class ModelCacheRepository
 
     public function get(string $key, array $tags = [], bool $hash = false): mixed
     {
-        $cached = $this->repositoryFor(tags: $tags)->get(key: $this->itemKey(key: $key, tags: $tags, hash: $hash));
+        $itemKey = $this->itemKey(key: $key, tags: $tags, hash: $hash);
 
+        return $this->unwrap(cached: $this->repositoryFor(tags: $tags)->get(key: $itemKey));
+    }
+
+    public function remember(
+        string $key,
+        array $tags,
+        DateTimeInterface|DateInterval|int $ttl,
+        callable $callback,
+        bool $hash = false,
+    ): mixed {
+        $prefix = static::SERIALIZED_VALUE_PREFIX;
+
+        return $this->unwrap(cached: $this->repositoryFor(tags: $tags)->remember(
+            key: $this->itemKey(key: $key, tags: $tags, hash: $hash),
+            ttl: $ttl,
+            callback: static function () use ($callback, $prefix): string {
+                return $prefix . serialize(value: $callback());
+            },
+        ));
+    }
+
+    public function rememberForever(
+        string $key,
+        array $tags,
+        callable $callback,
+        bool $hash = false,
+    ): mixed {
+        $prefix = static::SERIALIZED_VALUE_PREFIX;
+
+        return $this->unwrap(cached: $this->repositoryFor(tags: $tags)->rememberForever(
+            key: $this->itemKey(key: $key, tags: $tags, hash: $hash),
+            callback: static function () use ($callback, $prefix): string {
+                return $prefix . serialize(value: $callback());
+            },
+        ));
+    }
+
+    protected function unwrap(mixed $cached): mixed
+    {
         if (! is_string(value: $cached)) {
             return $cached;
         }
@@ -71,34 +112,6 @@ class ModelCacheRepository
 
         return unserialize(
             data: substr(string: $cached, offset: strlen(string: static::SERIALIZED_VALUE_PREFIX)),
-            options: ["allowed_classes" => true],
-        );
-    }
-
-    public function rememberForever(
-        string $key,
-        array $tags,
-        callable $callback,
-        bool $hash = false,
-    ): mixed {
-        $prefix = static::SERIALIZED_VALUE_PREFIX;
-        $cached = $this->repositoryFor(tags: $tags)->rememberForever(
-            key: $this->itemKey(key: $key, tags: $tags, hash: $hash),
-            callback: static function () use ($callback, $prefix): string {
-                return $prefix . serialize(value: $callback());
-            },
-        );
-
-        if (! is_string(value: $cached)) {
-            return $cached;
-        }
-
-        if (! str_starts_with(haystack: $cached, needle: $prefix)) {
-            return $cached;
-        }
-
-        return unserialize(
-            data: substr(string: $cached, offset: strlen(string: $prefix)),
             options: ["allowed_classes" => true],
         );
     }
