@@ -18,7 +18,7 @@ class CacheTags
 {
     use CachePrefixing;
 
-    private const MORPH_TYPES_TTL_SECONDS = 60;
+    protected int $morphTypesTtlSeconds = 60;
 
     protected $eagerLoad;
     protected $model;
@@ -362,7 +362,7 @@ class CacheTags
         return ModelCacheRepository::make()->remember(
             $this->getCachePrefixForModel($owner) . "morph-types:" . $table . ":" . $column,
             $this->makeTableTags([["table" => $table, "model" => $owner]]),
-            self::MORPH_TYPES_TTL_SECONDS,
+            $this->morphTypesTtlSeconds,
             static function () use ($relation, $table, $column) : array {
                 return $relation->getParent()
                     ->newQuery()

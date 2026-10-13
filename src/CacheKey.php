@@ -9,6 +9,8 @@ use DateTimeInterface;
 use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
 use Illuminate\Contracts\Database\Query\Expression;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -46,6 +48,23 @@ class CacheKey
         "wheres",
     ];
 
+    protected string $afterQueryProperty = "\0*\0afterQueryCallbacks";
+
+    protected array $unkeyedEagerState = [
+        "\0*\0joinedSubqueryTables",
+        "\0*\0model",
+        "\0*\0parent",
+        "\0*\0pivotWhereBetweens",
+        "\0*\0pivotWhereIns",
+        "\0*\0pivotWhereNulls",
+        "\0*\0pivotWheres",
+        "\0*\0query",
+        "\0*\0related",
+        "\0*\0relatedSubqueryTables",
+        "\0*\0withoutAllGlobalScopes",
+        "wheres",
+    ];
+
     private const UNKEYED_INFRASTRUCTURE_PROPERTIES = [
         "bindings",
         "bitwiseOperators",
@@ -63,8 +82,8 @@ class CacheKey
     protected $query;
     protected $withoutGlobalScopes = [];
     protected $withoutAllGlobalScopes = false;
-    private ?string $unkeyableMarker = null;
-    private bool $hasUnkeyableBinding = false;
+    protected ?string $unkeyableMarker = null;
+    protected bool $hasUnkeyableBinding = false;
 
     public function __construct(
         array $eagerLoad,
@@ -139,14 +158,14 @@ class CacheKey
         return $encoded === false ? serialize($value) : $encoded;
     }
 
-    private function encodeBindingsForKeyHash(array $bindings) : string
+    protected function encodeBindingsForKeyHash(array $bindings) : string
     {
         return $this->encodeForKeyHash(collect($bindings)
             ->map($this->keyableBinding(...))
             ->all());
     }
 
-    private function keyableBinding(mixed $binding) : mixed
+    protected function keyableBinding(mixed $binding) : mixed
     {
         return match (true) {
             $this->isResource($binding) => $this->unkeyableBinding(),
@@ -156,14 +175,14 @@ class CacheKey
         };
     }
 
-    private function unkeyableBinding() : null
+    protected function unkeyableBinding() : null
     {
         $this->hasUnkeyableBinding = true;
 
         return null;
     }
 
-    private function hidesStateFromJson(mixed $value) : bool
+    protected function hidesStateFromJson(mixed $value) : bool
     {
         if (
             ! is_object($value)
@@ -179,7 +198,7 @@ class CacheKey
             || $names->contains(fn (int|string $name) => str_starts_with((string) $name, "\0"));
     }
 
-    private function isResource(mixed $value) : bool
+    protected function isResource(mixed $value) : bool
     {
         return str_starts_with(gettype($value), "resource");
     }
@@ -760,21 +779,115 @@ class CacheKey
             $relation = $freshModel->$related();
             $baseWheres   = $relation->getQuery()->getQuery()->wheres ?? [];
             $baseBindings = $relation->getQuery()->getQuery()->bindings['where'] ?? [];
+            $baseState = $this->getEagerLoadState($relation);
             $constraint($relation);
             $afterWheres   = $relation->getQuery()->getQuery()->wheres ?? [];
             $afterBindings = $relation->getQuery()->getQuery()->bindings['where'] ?? [];
             $addedWheres   = array_slice($afterWheres,   count($baseWheres));
             $addedBindings = array_slice($afterBindings, count($baseBindings));
+            $changedStateKey = $this->getChangedStateKey($relation, $baseState);
 
             if (empty($addedWheres)) {
-                return "";
+                return $changedStateKey;
             }
 
             return "=" . sha1($this->encodeForKeyHash($addedWheres)
-                . $this->encodeBindingsForKeyHash($addedBindings));
+                . $this->encodeBindingsForKeyHash($addedBindings))
+                . $changedStateKey;
         } catch (Throwable) {
             return $this->unkeyableMarker();
         }
+    }
+
+    protected function getEagerLoadState(Relation $relation) : array
+    {
+        $query = $relation->getBaseQuery();
+
+        return [
+            "relation" => $this->getKeyedState($relation),
+            "builder" => $this->getKeyedState($relation->getQuery()),
+            "query" => Collection::make($this->getKeyedState($query))
+                ->except(self::UNKEYED_INFRASTRUCTURE_PROPERTIES)
+                ->all(),
+            "sql" => $this->getSqlWithoutWheres($query),
+        ];
+    }
+
+    protected function getKeyedState(object $value) : array
+    {
+        return Collection::make(get_mangled_object_vars($value))
+            ->except($this->unkeyedEagerState)
+            ->all();
+    }
+
+    protected function getSqlWithoutWheres(QueryBuilder $query) : ?string
+    {
+        try {
+            $query = clone $query;
+            $query->wheres = [];
+            $query->bindings["where"] = [];
+
+            return $query->toSql() . $this->encodeBindingsForKeyHash($query->getBindings());
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    protected function getChangedStateKey(Relation $relation, array $baseState) : string
+    {
+        $state = $this->getEagerLoadState($relation);
+
+        if ($state === $baseState) {
+            return "";
+        }
+
+        $builder = $relation->getQuery();
+        $nestedEagerLoads = $this->getNestedEagerLoadsSlug($builder);
+
+        if (
+            $nestedEagerLoads === null
+            || $this->changesAfterQueryCallbacks($state, $baseState)
+        ) {
+            return $this->unkeyableMarker();
+        }
+
+        $scoped = $builder->applyScopes()
+            ->getQuery();
+        $objectState = $this->normalizeForHash([
+            data_get($state, "relation"),
+            data_get($state, "builder"),
+        ]);
+
+        return "+" . sha1($scoped->toSql()
+            . $this->encodeBindingsForKeyHash($scoped->getBindings())
+            . $this->encodeForKeyHash($objectState)
+            . $nestedEagerLoads);
+    }
+
+    protected function changesAfterQueryCallbacks(array $state, array $baseState) : bool
+    {
+        return Collection::make(["builder", "query"])
+            ->contains(function (string $part) use ($state, $baseState) {
+                $callbacks = data_get($state, [$part, $this->afterQueryProperty], []);
+                $baseCallbacks = data_get($baseState, [$part, $this->afterQueryProperty], []);
+
+                return $callbacks !== $baseCallbacks;
+            });
+    }
+
+    protected function getNestedEagerLoadsSlug(EloquentBuilder $builder) : ?string
+    {
+        $nested = new self(
+            $builder->getEagerLoads(),
+            $builder->getModel(),
+            $builder->getQuery(),
+            "",
+            [],
+            false,
+        );
+        $slug = $nested->getWithModels();
+
+        return $nested->hasUnkeyableSegment($slug) ? null : $slug;
     }
 
     protected function recursiveImplode(array $items, string $glue = ",") : string
@@ -909,20 +1022,20 @@ class CacheKey
         };
     }
 
-    private function unkeyableMarker(): string
+    protected function unkeyableMarker(): string
     {
         return $this->unkeyableMarker ??= "unkeyable" . Uuid::uuid4()
             ->getHex();
     }
 
-    private function hasUnkeyableSegment(string $key): bool
+    protected function hasUnkeyableSegment(string $key): bool
     {
         return $this->hasUnkeyableBinding
             || ($this->unkeyableMarker !== null
                 && str_contains($key, $this->unkeyableMarker));
     }
 
-    private function holdsResource(
+    protected function holdsResource(
         mixed $value,
         SplObjectStorage $seen,
         Collection $references,
@@ -935,7 +1048,7 @@ class CacheKey
         };
     }
 
-    private function arrayHoldsResource(
+    protected function arrayHoldsResource(
         array $value,
         SplObjectStorage $seen,
         Collection $references,
@@ -946,7 +1059,7 @@ class CacheKey
                 && $this->holdsResource($item, $seen, $references));
     }
 
-    private function isFirstVisitOf(?ReflectionReference $reference, Collection $references): bool
+    protected function isFirstVisitOf(?ReflectionReference $reference, Collection $references): bool
     {
         $refId = $reference?->getId();
         $isFirstVisit = $refId === null
@@ -956,7 +1069,7 @@ class CacheKey
         return $isFirstVisit;
     }
 
-    private function objectHoldsResource(
+    protected function objectHoldsResource(
         object $value,
         SplObjectStorage $seen,
         Collection $references,
@@ -968,7 +1081,7 @@ class CacheKey
             && $this->holdsResource($this->serializedState($value), $seen, $references);
     }
 
-    private function serializedState(object $value): array
+    protected function serializedState(object $value): array
     {
         return match (true) {
             method_exists($value, "__serialize") => $value->__serialize(),
@@ -977,7 +1090,7 @@ class CacheKey
         };
     }
 
-    private function sleepingState(object $value): array
+    protected function sleepingState(object $value): array
     {
         $sleeping = collect($value->__sleep())
             ->map(fn (string $name) => Str::afterLast($name, "\0"));

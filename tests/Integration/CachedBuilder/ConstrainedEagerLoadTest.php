@@ -1,10 +1,14 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Publisher;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedPublisher;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 test('constrained eager loads produce different results', function () {
     $publisher = Publisher::factory()->create();
@@ -144,4 +148,182 @@ test('dynamic local scope in with closure produces distinct cache keys', functio
         'Book for B',
         'Changing the scope parameter should return different cached results.',
     );
+});
+
+test('eager load constraints that differ only in order, limit or columns keep their own rows', function (Closure $first, Closure $second) {
+    $liveResults = (new UncachedAuthor)->with(["books" => $second])->get()->toArray();
+
+    expect(cacheKey((new Author)->with(["books" => $first])))
+        ->not->toBe(cacheKey((new Author)->with(["books" => $second])));
+
+    (new Author)->with(["books" => $first])->get();
+
+    expect((new Author)->with(["books" => $second])->get()->toArray())->toEqual($liveResults);
+})->with([
+    "no constraint and an order" => [
+        fn ($query) => $query,
+        fn ($query) => $query->orderByDesc("title"),
+    ],
+    "two orders" => [
+        fn ($query) => $query->orderBy("title"),
+        fn ($query) => $query->orderByDesc("title"),
+    ],
+    "a where with two orders" => [
+        fn ($query) => $query->where("id", ">", 0)->orderBy("title"),
+        fn ($query) => $query->where("id", ">", 0)->orderByDesc("title"),
+    ],
+    "two limits" => [
+        fn ($query) => $query->limit(1),
+        fn ($query) => $query->limit(2),
+    ],
+    "a where with two limits" => [
+        fn ($query) => $query->where("id", ">", 0)->limit(1),
+        fn ($query) => $query->where("id", ">", 0)->limit(2),
+    ],
+    "two selects" => [
+        fn ($query) => $query->select("id", "author_id"),
+        fn ($query) => $query->select("id", "author_id", "title"),
+    ],
+    "a where with two selects" => [
+        fn ($query) => $query->where("id", ">", 0)->select("id", "author_id"),
+        fn ($query) => $query->where("id", ">", 0)->select("id", "author_id", "title"),
+    ],
+]);
+
+test('an eager load constraint that changes another query part enters the key', function (Closure $constraint) {
+    expect(cacheKey((new Author)->with(["books" => $constraint])))
+        ->not->toBe(cacheKey((new Author)->with("books")));
+})->with([
+    "offset" => fn ($query) => $query->offset(1),
+    "group by" => fn ($query) => $query->groupBy("author_id"),
+    "having" => fn ($query) => $query->having("id", ">", 0),
+    "join" => fn ($query) => $query->join("publishers", "publishers.id", "=", "books.publisher_id"),
+    "union" => fn ($query) => $query->union(Book::query()->getQuery()),
+    "distinct" => fn ($query) => $query->distinct(),
+    "from" => fn ($query) => $query->from("books as b"),
+    "before query" => fn ($query) => $query->beforeQuery(fn ($query) => $query->orderBy("id")),
+    "lock" => fn ($query) => $query->lockForUpdate(),
+]);
+
+test('a plain eager load and a where-only constraint keep their key', function () {
+    expect(cacheKey((new Author)->with("books")))->toEndWith("testing.sqlite:books")
+        ->and(cacheKey((new Author)->with(["books" => fn ($query) => $query->where("id", ">", 0)])))
+        ->toEndWith("testing.sqlite:books=a0fb20c51f775e86474ed119a779a7eeb56944ce");
+});
+
+test('where-only constraints of other shapes keep their key', function (Closure $query, string $suffix) {
+    expect(cacheKey($query()))->toEndWith("testing.sqlite:{$suffix}");
+})->with([
+    "a plain belongs to" => [
+        fn () => (new Book)->with("author"),
+        "author",
+    ],
+    "a where on a belongs to many" => [
+        fn () => (new Book)->with(["stores" => fn ($query) => $query->where("stores.id", ">", 0)]),
+        "stores=f515135f138528b74a1d1541d9087456761a5b82",
+    ],
+    "a where in subquery" => [
+        fn () => (new Author)->with(["books" => fn ($query) => $query
+            ->whereIn("publisher_id", fn ($sub) => $sub->select("id")->from("publishers"))]),
+        "books=54d199896d516bdbf4a78e69dcf80e44943b7801",
+    ],
+    "a where has" => [
+        fn () => (new Author)->with(["books" => fn ($query) => $query
+            ->whereHas("publisher", fn ($publisher) => $publisher->where("name", "!=", ""))]),
+        "books=32629fbc8484553e944ce556cfb34374a835615a",
+    ],
+    "a where pivot" => [
+        fn () => (new Book)->with(["stores" => fn ($query) => $query->wherePivot("store_id", ">", 0)]),
+        "stores=67d2af62f3bc3fc16192f851b5eb34a70f176c42",
+    ],
+    "a where pivot in" => [
+        fn () => (new Book)->with(["stores" => fn ($query) => $query->wherePivotIn("store_id", [1, 2])]),
+        "stores=f3c7107d522165cb417e656bd036ee597026fffa",
+    ],
+    "a where pivot between" => [
+        fn () => (new Book)->with(["stores" => fn ($query) => $query->wherePivotBetween("store_id", [1, 2])]),
+        "stores=fa6478aa0c96d08988288a7f7ccbdd6def1339f8",
+    ],
+    "a where pivot null" => [
+        fn () => (new Book)->with(["stores" => fn ($query) => $query->wherePivotNull("store_id")]),
+        "stores=67d09f945c4e5bff8bc041c363167c784384f606",
+    ],
+    "a where pivot closure" => [
+        fn () => (new Book)->with(["stores" => fn ($query) => $query
+            ->wherePivot(fn ($pivot) => $pivot->where("book_store.store_id", ">", 0))]),
+        "stores=20488d434d41e2db3d6c67fe63efb95837371f45",
+    ],
+    "a nested where" => [
+        fn () => (new Author)->with(["books" => fn ($query) => $query
+            ->where(fn ($nested) => $nested->where("title", "!=", ""))]),
+        "books=41e13e69bfe5057419418d4ce7cf963e36a1b3e6",
+    ],
+    "a local scope that nests a where" => [
+        fn () => (new Author)->with(["books" => fn ($query) => $query->titledLike("A%")]),
+        "books=de93775f6c026fb65d06638207c7550df32e0ece",
+    ],
+]);
+
+test('a trashed eager load and a plain eager load keep their own authors', function (array $order) {
+    (new Book)->first()->author->delete();
+    $queries = [
+        "plain" => fn (Model $book) => $book->with("author"),
+        "trashed" => fn (Model $book) => $book->with(["author" => fn ($query) => $query->withTrashed()]),
+    ];
+    $authorIds = fn (Model $book, string $name) => $queries[$name]($book)
+        ->get()
+        ->pluck("author.id", "id")
+        ->all();
+
+    foreach ($order as $name) {
+        expect($authorIds(new Book, $name))->toBe($authorIds(new UncachedBook, $name));
+    }
+
+    expect($authorIds(new UncachedBook, "plain"))->not->toBe($authorIds(new UncachedBook, "trashed"));
+})->with([
+    "plain first" => [["plain", "trashed"]],
+    "trashed first" => [["trashed", "plain"]],
+]);
+
+test('an eager load constraint that changes the relation builder does not share the plain key', function (Closure $constraint) {
+    expect(cacheKey((new Book)->with(["author" => $constraint])))
+        ->not->toBe(cacheKey((new Book)->with("author")));
+})->with([
+    "without global scopes" => fn ($query) => $query->withoutGlobalScopes(),
+    "without one global scope" => fn ($query) => $query->withoutGlobalScope(SoftDeletingScope::class),
+    "a nested eager load" => fn ($query) => $query->with("books"),
+]);
+
+test('eager load constraints with different nested eager loads keep their own keys', function () {
+    $nested = fn (string $title) => (new Author)->with(["books" => fn ($query) => $query
+        ->with(["publisher" => fn ($publisher) => $publisher->where("name", $title)])]);
+
+    expect(cacheKey($nested("first")))->not->toBe(cacheKey($nested("second")))
+        ->and(cacheKey($nested("first")))->not->toBe(cacheKey((new Author)->with("books")));
+});
+
+test('an eager load constraint that changes a pivot join in place does not share the plain key', function () {
+    $changed = (new Book)->with(["stores" => function ($query) {
+        $query->getBaseQuery()->joins[0]->where("book_store.store_id", ">", 0);
+    }]);
+
+    expect(cacheKey($changed))->not->toBe("")
+        ->and(cacheKey($changed))->not->toBe(cacheKey((new Book)->with("stores")));
+});
+
+test('an eager load constraint with an after query callback runs uncached', function (Closure $constraint) {
+    expect(cacheKey((new Author)->with(["books" => $constraint])))->toBe("");
+})->with([
+    "on the eloquent builder" => fn ($query) => $query->afterQuery(fn ($books) => $books),
+    "on the base query" => fn ($query) => $query->getBaseQuery()->afterQuery(fn ($books) => $books),
+    "in a nested eager load" => fn ($query) => $query
+        ->with(["publisher" => fn ($publisher) => $publisher->afterQuery(fn ($publishers) => $publishers)]),
+]);
+
+test('an eager load constraint that changes only the relation does not share the plain key', function () {
+    $withPivot = fn (string $column) => (new Book)
+        ->with(["stores" => fn ($query) => $query->withPivot($column)]);
+
+    expect(cacheKey($withPivot("created_at")))->not->toBe(cacheKey((new Book)->with("stores")))
+        ->and(cacheKey($withPivot("created_at")))->not->toBe(cacheKey($withPivot("updated_at")));
 });

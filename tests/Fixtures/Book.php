@@ -68,4 +68,9 @@ class Book extends Model
     {
         return $query->where("title", "LIKE", "{$startOfName}%");
     }
+
+    public function scopeTitledLike(Builder $query, string $title) : Builder
+    {
+        return $query->where(fn (Builder $query) => $query->where("title", "LIKE", $title));
+    }
 }
