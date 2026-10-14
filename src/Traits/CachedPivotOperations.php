@@ -35,9 +35,6 @@ trait CachedPivotOperations
         $this->flushPivotTableCache();
     }
 
-    // A cached read of this relation carries the pivot table's tags, and the related model may not
-    // be Cachable, so the pivot write flushes them itself rather than relying on either model. Only
-    // the cool-down lookup is limited to Cachable models, because only they can open a window.
     protected function flushPivotTableCache(): void
     {
         $isEnabled = Container::getInstance()
