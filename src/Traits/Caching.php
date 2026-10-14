@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Scope;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use JsonException;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -40,6 +41,7 @@ trait Caching
     protected bool $isCachable = true;
     protected $scopesAreApplied = false;
     protected $macroKey = "";
+    protected bool $hasUnkeyableMacroArgument = false;
     protected $withoutGlobalScopes = [];
     protected $withoutAllGlobalScopes = false;
 
@@ -52,11 +54,7 @@ trait Caching
             && $this->innerBuilder
             && method_exists($this->innerBuilder, $method)
         ) {
-            $this->macroKey .= "-{$method}";
-
-            if ($parameters) {
-                $this->macroKey .= $this->macroKeyArguments($parameters);
-            }
+            $this->appendMacroKey($method, $parameters);
 
             $result = $this->innerBuilder->{$method}(...$parameters);
             $this->flushCacheAfterForwardedWrite($method);
@@ -72,11 +70,7 @@ trait Caching
             isset($this->localMacros[$method])
             || (method_exists(static::class, 'hasGlobalMacro') && static::hasGlobalMacro($method))
         ) {
-            $this->macroKey .= "-{$method}";
-
-            if ($parameters) {
-                $this->macroKey .= $this->macroKeyArguments($parameters);
-            }
+            $this->appendMacroKey($method, $parameters);
         }
 
         $this->flushCacheAfterForwardedWrite($method);
@@ -105,12 +99,34 @@ trait Caching
         return $recorder->recordSubqueryCall($method, $parameters);
     }
 
+    protected function appendMacroKey(string $method, array $parameters): void
+    {
+        $this->macroKey .= "-{$method}";
+
+        if (! $parameters) {
+            return;
+        }
+
+        try {
+            $this->macroKey .= $this->macroKeyArguments($parameters);
+        } catch (UnkeyableValueException | JsonException) {
+            $this->hasUnkeyableMacroArgument = true;
+        }
+    }
+
+    /**
+     * Spell macro arguments for the cache key. An argument with no faithful
+     * spelling throws, so the query runs uncached rather than sharing a key
+     * with a call that differs only in that argument.
+     */
     protected function macroKeyArguments(array $parameters): string
     {
         return collect($parameters)
             ->map(function ($parameter) {
                 if (is_array($parameter)) {
-                    return json_encode($parameter, JSON_PARTIAL_OUTPUT_ON_ERROR);
+                    $this->assertKeyableMacroArray($parameter);
+
+                    return json_encode($parameter, JSON_THROW_ON_ERROR);
                 }
 
                 if ($parameter instanceof \BackedEnum) {
@@ -121,13 +137,51 @@ trait Caching
                     return $parameter->name;
                 }
 
-                if (is_object($parameter) && ! $parameter instanceof \Stringable) {
-                    return get_class($parameter);
-                }
+                throw_unless(
+                    $parameter === null
+                        || is_scalar($parameter)
+                        || $parameter instanceof \Stringable,
+                    UnkeyableValueException::class,
+                );
 
                 return $parameter;
             })
             ->implode("_");
+    }
+
+    /**
+     * An array keys by its JSON. json_encode throws on a value it cannot
+     * encode, such as a unit enum, a resource or a malformed string, but it
+     * spells any other object by its public properties, so a closure becomes
+     * "{}". This walk rejects those objects at any depth. Stringable objects
+     * keep their JSON spelling. The depth limit matches json_encode's and
+     * stops a self-referencing array.
+     */
+    protected function assertKeyableMacroArray(array $values, int $depth = 1): void
+    {
+        throw_if($depth > 512, UnkeyableValueException::class);
+
+        foreach ($values as $value) {
+            if (is_array($value)) {
+                $this->assertKeyableMacroArray($value, $depth + 1);
+
+                continue;
+            }
+
+            throw_if(
+                is_object($value)
+                    && ! $value instanceof \Stringable
+                    && ! $value instanceof \UnitEnum,
+                UnkeyableValueException::class,
+            );
+        }
+    }
+
+    protected function keyableMacroKey(): string
+    {
+        throw_if($this->hasUnkeyableMacroArgument, UnkeyableValueException::class);
+
+        return $this->macroKey;
     }
 
     protected function flushCacheAfterForwardedWrite(string $method): void
@@ -334,7 +388,7 @@ trait Caching
         $query = $this->cacheKeyQuery();
 
         try {
-            return (new CacheKey($eagerLoad, $model, $query, $this->macroKey, $this->withoutGlobalScopes, $this->withoutAllGlobalScopes))
+            return (new CacheKey($eagerLoad, $model, $query, $this->keyableMacroKey(), $this->withoutGlobalScopes, $this->withoutAllGlobalScopes))
                 ->make($columns, $idColumn, $keyDifferentiator);
         } catch (UnkeyableValueException) {
             $this->disableModelCaching();
