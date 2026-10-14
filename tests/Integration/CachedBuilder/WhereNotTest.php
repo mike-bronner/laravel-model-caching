@@ -108,11 +108,3 @@ test('where json contains key returns its own results after where json doesnt co
     expect($doesntContainKeyResults)->toBeEmpty();
     expect($results->pluck("id"))->toEqual($liveResults->pluck("id"));
 });
-
-function authorKeyPrefix(): string
-{
-    $testingSqlitePath = test()->testingSqlitePath;
-
-    return "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite"
-        . ":authors:genealabslaravelmodelcachingtestsfixturesauthor";
-}

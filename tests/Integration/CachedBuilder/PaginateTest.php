@@ -196,14 +196,6 @@ test('array page is written into the key as key value pairs', function () {
     expect($segment)->toBe("_size_1_number_2");
 });
 
-function assertActivePageInLinks(int $page, string $linksHtml): void
-{
-    expect($linksHtml)->toMatch(
-        '/aria-current="page">\s*<span[^>]*>' . $page . '<\/span>/s',
-        "Expected page {$page} to be marked as the active page in pagination links.",
-    );
-}
-
 test('pagination with a given total is cached per total', function () {
     $firstPage = (new Author)->paginate(3, ['*'], 'page', 1, 50);
     $sameTotal = (new Author)->paginate(3, ['*'], 'page', 1, fn () => 50);

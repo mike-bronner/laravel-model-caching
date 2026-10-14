@@ -47,24 +47,3 @@ test('a nested eager load and a direct query share the memo of the model owning 
     expect($lookups)->toHaveCount(1)
         ->and($memo)->toContain(Post::class);
 });
-
-function insertMorphMemoComment(string $type, int $id): void
-{
-    DB::table("comments")->insert([
-        "commentable_id" => $id,
-        "commentable_type" => $type,
-        "description" => "Comment",
-        "subject" => "Comment",
-    ]);
-}
-
-function morphMemoCacheTags($query): array
-{
-    return (new ReflectionMethod($query, "makeCacheTags"))
-        ->invoke($query);
-}
-
-function morphMemoPrefix(): string
-{
-    return "genealabs:laravel-model-caching:testing:" . test()->testingSqlitePath . "testing.sqlite:";
-}

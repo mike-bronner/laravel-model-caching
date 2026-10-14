@@ -203,7 +203,7 @@ trait CachesOneOrManyThrough
         $idColumn = null,
         string $keyDifferentiator = '',
     ): string {
-        $eagerLoad = $this->eagerLoad ?? [];
+        $eagerLoad = $this->getQuery()->getEagerLoads();
         $model = $this->getModel();
         $query = $this->getQuery()->getQuery();
 
@@ -225,7 +225,7 @@ trait CachesOneOrManyThrough
 
     protected function makeCacheTags(): array
     {
-        $eagerLoad = $this->eagerLoad ?? [];
+        $eagerLoad = $this->getQuery()->getEagerLoads();
         $model = $this->getModel();
         $query = $this->getQuery()->getQuery();
 

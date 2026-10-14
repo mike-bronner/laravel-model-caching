@@ -1,7 +1,5 @@
 <?php
 
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -76,28 +74,3 @@ test('clear empties memcached store', function () {
 
     assertClearEmptiesStore('memcached-test');
 });
-
-function assertClearEmptiesStore(string $storeName): void
-{
-    config(['laravel-model-caching.store' => $storeName]);
-
-    $authorId = UncachedAuthor::query()->value('id');
-    Author::query()->get();
-
-    UncachedAuthor::query()
-        ->where('id', $authorId)
-        ->update(['name' => 'CLEARED_AUTHOR']);
-
-    expect(Author::query()->get()->firstWhere('id', $authorId)->name)->not->toBe(
-        'CLEARED_AUTHOR',
-        "[{$storeName}] cache should still serve the pre-mutation value",
-    );
-
-    test()->artisan('modelCache:clear')
-        ->assertExitCode(0);
-
-    expect(Author::query()->get()->firstWhere('id', $authorId)->name)->toBe(
-        'CLEARED_AUTHOR',
-        "[{$storeName}] clear should empty the model cache so fresh data is read",
-    );
-}

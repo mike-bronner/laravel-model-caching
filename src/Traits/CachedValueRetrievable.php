@@ -10,7 +10,6 @@ use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
@@ -203,13 +202,6 @@ trait CachedValueRetrievable
     ): void {
         $relation->addEagerConstraints($models->all());
         $constraint($relation);
-
-        if (
-            $relation instanceof BelongsToMany
-            && method_exists($relation, "disableModelCaching")
-        ) {
-            $relation->disableModelCaching();
-        }
 
         $relation->match(
             $relation->initRelation($models->all(), $name),

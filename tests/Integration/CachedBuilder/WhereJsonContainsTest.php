@@ -113,24 +113,3 @@ test('with in using collection query with collection values', function () {
     expect($authors->pluck("id"))->toEqual($liveResults->pluck("id"));
     expect($cachedResults->pluck("id"))->toEqual($liveResults->pluck("id"));
 });
-
-function postgresAuthorKeyPrefix(): string
-{
-    return "genealabs:laravel-model-caching:pgsql:testing"
-        . ":authors:genealabslaravelmodelcachingtestsfixturesauthor";
-}
-
-function postgresAuthorTags(): array
-{
-    return [
-        'genealabs:laravel-model-caching:pgsql:testing:genealabslaravelmodelcachingtestsfixturesauthor',
-        'genealabs:laravel-model-caching:pgsql:testing:authors',
-    ];
-}
-
-function cachedValueFor(string $key)
-{
-    return test()->cache()
-        ->tags(postgresAuthorTags())
-        ->get($key);
-}

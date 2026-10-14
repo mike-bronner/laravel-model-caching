@@ -5,8 +5,7 @@ use GeneaLabs\LaravelModelCaching\CachedHasOneThrough;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Printer;
-use Illuminate\Contracts\Pagination\Paginator;
-use Illuminate\Database\Eloquent\Model;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Publisher;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Collection;
@@ -124,58 +123,50 @@ test('a through relation is not cached when model caching is disabled', function
         ->and(modelCacheKeys())->toBe([]);
 });
 
-function throughReadArguments(Author $author, array $arguments): array
-{
-    return collect($arguments)
-        ->map(fn ($argument) => $argument === 'first printer'
-            ? DB::table('printers')
-                ->join('books', 'books.id', '=', 'printers.book_id')
-                ->where('books.author_id', $author->id)
-                ->min('printers.id')
-            : $argument)
-        ->all();
-}
+test('a has many through query keys its eager loads', function () {
+    $author = Author::factory()->create();
+    $book = Book::factory()->create(['author_id' => $author->id]);
+    Printer::factory()->create(['book_id' => $book->id]);
+    $author->printers()->get();
 
-function throughReadSummary(mixed $result): mixed
-{
-    if ($result instanceof Paginator) {
-        return $result->getCollection()->pluck('id')->all() ?: null;
-    }
+    $printer = $author->printers()
+        ->with('book')
+        ->get()
+        ->first();
 
-    if ($result instanceof Collection) {
-        return $result->all() === []
-            ? null
-            : $result->map(fn ($item) => $item instanceof Model ? $item->getKey() : $item)->all();
-    }
+    expect($printer->relationLoaded('book'))->toBeTrue();
+});
 
-    if ($result instanceof Model) {
-        return $result->getKey();
-    }
+test('a write to an eager loaded model clears a has many through query that loads it', function () {
+    $author = Author::factory()->create();
+    $book = Book::factory()->create(['author_id' => $author->id]);
+    Printer::factory()->create(['book_id' => $book->id]);
+    $readTitle = fn () => $author->printers()
+        ->with('book')
+        ->get()
+        ->first()
+        ->book
+        ->title;
+    $readTitle();
+    $book->update(['title' => 'Changed Title']);
 
-    return $result;
-}
+    expect($readTitle())->toBe('Changed Title');
+});
 
-function deletePrintersBehindTheCache(Author $author): void
-{
-    DB::table('printers')
-        ->whereIn('book_id', DB::table('books')->where('author_id', $author->id)->select('id'))
-        ->delete();
-}
+test('a write to a nested eager loaded model clears a has many through query that loads it', function () {
+    $author = Author::factory()->create();
+    $publisher = Publisher::factory()->create();
+    $book = Book::factory()->create(['author_id' => $author->id, 'publisher_id' => $publisher->id]);
+    Printer::factory()->create(['book_id' => $book->id]);
+    $readName = fn () => $author->printers()
+        ->with('book.publisher')
+        ->get()
+        ->first()
+        ->book
+        ->publisher
+        ->name;
+    $readName();
+    $publisher->update(['name' => 'Changed Name']);
 
-function hasManyThroughReads(): array
-{
-    return [
-        'get' => ['get', []],
-        'first' => ['first', []],
-        'find' => ['find', ['first printer']],
-        'count' => ['count', []],
-        'paginate' => ['paginate', [5]],
-        'pluck' => ['pluck', ['printers.name']],
-        'avg' => ['avg', ['printers.id']],
-        'sum' => ['sum', ['printers.id']],
-        'min' => ['min', ['printers.id']],
-        'max' => ['max', ['printers.id']],
-        'exists' => ['exists', []],
-        'value' => ['value', ['printers.name']],
-    ];
-}
+    expect($readName())->toBe('Changed Name');
+});

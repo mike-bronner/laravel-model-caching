@@ -5,7 +5,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CrossSlotFlushRepository;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\RedisStore;
 use Illuminate\Cache\Repository;
-use Illuminate\Redis\RedisManager;
 
 const REPOSITORY_TEST_TAG = 'model-cache-repository-test';
 
@@ -100,21 +99,3 @@ test('clearing the entire cache over predis deletes only package keys', function
     'with a client prefix' => ['predis-tenant:'],
     'without a client prefix' => [''],
 ]);
-
-function predisManager(string $clientPrefix): RedisManager
-{
-    $options = $clientPrefix === ''
-        ? []
-        : ['prefix' => $clientPrefix];
-
-    return new RedisManager(app(), 'predis', [
-        'options' => [],
-        'model-cache-predis' => [
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'password' => env('REDIS_PASSWORD', null),
-            'port' => env('REDIS_PORT', 6379),
-            'database' => 3,
-            'options' => $options,
-        ],
-    ]);
-}

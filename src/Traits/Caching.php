@@ -304,6 +304,20 @@ trait Caching
             $model = $this->getModel();
         }
 
+        $query = $this->cacheKeyQuery();
+
+        try {
+            return (new CacheKey($eagerLoad, $model, $query, $this->macroKey, $this->withoutGlobalScopes, $this->withoutAllGlobalScopes))
+                ->make($columns, $idColumn, $keyDifferentiator);
+        } catch (UnkeyableValueException) {
+            $this->disableModelCaching();
+
+            return "";
+        }
+    }
+
+    protected function cacheKeyQuery(): mixed
+    {
         $query = $this->query
             ?? Container::getInstance()
                 ->make("db")
@@ -316,19 +330,29 @@ trait Caching
             $query = $this->query->getQuery();
         }
 
-        try {
-            return (new CacheKey($eagerLoad, $model, $query, $this->macroKey, $this->withoutGlobalScopes, $this->withoutAllGlobalScopes))
-                ->make($columns, $idColumn, $keyDifferentiator);
-        } catch (UnkeyableValueException) {
-            $this->disableModelCaching();
+        return $query;
+    }
 
-            return "";
-        }
+    protected function cacheEagerLoads(): array
+    {
+        return match (true) {
+            $this instanceof Relation => $this->getQuery()->getEagerLoads(),
+            default => $this->eagerLoad ?? [],
+        };
+    }
+
+    protected function eagerLoadingModel(): mixed
+    {
+        return match (true) {
+            $this instanceof Relation => $this->getRelated(),
+            property_exists($this, "model") => $this->model,
+            default => null,
+        };
     }
 
     protected function makeCacheTags(): array
     {
-        $eagerLoad = $this->eagerLoad ?? [];
+        $eagerLoad = $this->cacheEagerLoads();
         $model = $this->getModel() instanceof Model
             ? $this->getModel()
             : $this;
@@ -558,22 +582,18 @@ trait Caching
 
         $allRelationshipsAreCachable = true;
 
-        if (
-            property_exists($this, "eagerLoad")
-            && $this->eagerLoad
-        ) {
-            $allRelationshipsAreCachable = collect($this
-                ->eagerLoad)
+        if ($this->cacheEagerLoads() !== []) {
+            $allRelationshipsAreCachable = collect($this->cacheEagerLoads())
                 ->keys()
                 ->reduce(function ($carry, $related) {
                     if (
-                        ! $this->modelHasRelation($this->model, $related)
+                        ! $this->modelHasRelation($this->eagerLoadingModel(), $related)
                         || $carry === false
                     ) {
                         return $carry;
                     }
 
-                    $relatedModel = $this->model->$related()->getRelated();
+                    $relatedModel = $this->eagerLoadingModel()->$related()->getRelated();
 
                     if (
                         ! method_exists($relatedModel, "isCachable")

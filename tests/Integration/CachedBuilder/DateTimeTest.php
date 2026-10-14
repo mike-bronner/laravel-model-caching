@@ -1,6 +1,5 @@
 <?php
 
-use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use Illuminate\Support\Carbon;
@@ -122,22 +121,3 @@ test('where clause works with date time object', function () {
     expect($liveResults)->not->toBeEmpty();
     expect($liveResults->count())->toBeLessThan((new UncachedBook)->count());
 });
-
-function valuesFromWhere(array $where): string
-{
-    $query = (new Book)->newQuery();
-    $cacheKey = new CacheKey([], new Book, $query->getQuery(), "", [], false);
-
-    return (new ReflectionMethod($cacheKey, "getValuesFromWhere"))
-        ->invoke($cacheKey, $where);
-}
-
-function rawCacheKeyFor(object $value): string
-{
-    $query = (new Book)
-        ->newQuery()
-        ->where("published_at", ">", $value);
-
-    return (new CacheKey([], new Book, $query->getQuery(), "", [], false))
-        ->make();
-}

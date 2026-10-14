@@ -319,13 +319,6 @@ test('dotted where has through a dynamic relation is busted when the last relate
     expect($query())->toBeEmpty();
 });
 
-function tagPrefix(): string
-{
-    $testingSqlitePath = test()->testingSqlitePath;
-
-    return "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:";
-}
-
 test('an exists subquery used twice tags its table', function () {
     $authoredBooks = DB::table("books")->whereColumn("books.author_id", "authors.id");
 

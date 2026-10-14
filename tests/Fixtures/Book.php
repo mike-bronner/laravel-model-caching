@@ -59,6 +59,11 @@ class Book extends Model
         return $this->belongsToMany(Store::class);
     }
 
+    public function storesWithBooks() : BelongsToMany
+    {
+        return $this->belongsToMany(StoreWithBooks::class, "book_store", "book_id", "store_id");
+    }
+
     public function prefixedStores() : BelongsToMany
     {
         return $this->belongsToMany(PrefixedStore::class, "book_store", "book_id", "store_id");

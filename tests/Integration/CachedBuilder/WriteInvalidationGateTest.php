@@ -1,7 +1,6 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 
 test('write does not flush while caching is disabled', function () {
     $before = cachedTitles();
@@ -30,13 +29,3 @@ test('write through locked query still flushes', function () {
 
     expect(cachedTitles())->toEqual(liveTitles());
 });
-
-function cachedTitles()
-{
-    return (new Book)->orderBy("id")->pluck("title");
-}
-
-function liveTitles()
-{
-    return (new UncachedBook)->orderBy("id")->pluck("title");
-}

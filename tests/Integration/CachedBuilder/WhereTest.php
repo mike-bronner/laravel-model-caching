@@ -105,36 +105,3 @@ test('where uses correct binding', function () {
     expect($authors->toArray())->toEqual($liveResults->toArray());
     expect($cachedResults->toArray())->toEqual($liveResults->toArray());
 });
-
-function processWhereClauseTestWithOperator(string $operator)
-{
-    $testingSqlitePath = test()->testingSqlitePath;
-
-    $author = (new Author)->first();
-    $authors = (new Author)
-        ->where('name', $operator, $author->name)
-        ->get();
-    $keyParts = [
-        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-name",
-        '_',
-        str_replace(' ', '_', strtolower($operator)),
-        '_',
-        $author->name,
-        "-authors.deleted_at_null"
-    ];
-    $key = sha1(implode('', $keyParts));
-    $tags = [
-        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesauthor",
-        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:authors",
-    ];
-
-    $cachedResults = test()->cache()
-        ->tags($tags)
-        ->get($key)['value'];
-    $liveResults = (new UncachedAuthor)
-        ->where('name', $operator, $author->name)
-        ->get();
-
-    expect($authors->diffKeys($cachedResults))->toBeEmpty();
-    expect($liveResults->diffKeys($cachedResults))->toBeEmpty();
-}

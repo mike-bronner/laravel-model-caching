@@ -102,31 +102,3 @@ test('read after cooldown expires flushes writes made during it', function () {
 
     expect(cachedPrices())->toEqual(livePrices());
 });
-
-function startCooldown(): void
-{
-    (new BookWithCooldown)
-        ->withCacheCooldownSeconds(60)
-        ->get();
-}
-
-function cachedPrices(): array
-{
-    return (new BookWithCooldown)->orderBy("id")->pluck("price", "id")->all();
-}
-
-function livePrices(): array
-{
-    return (new UncachedBook)->orderBy("id")->pluck("price", "id")->all();
-}
-
-function assertWriteKeepsCacheDuringCooldown(callable $write): void
-{
-    startCooldown();
-    $before = cachedPrices();
-
-    $write();
-
-    expect(livePrices())->not->toEqual($before, "The write must change what the database returns");
-    expect(cachedPrices())->toEqual($before);
-}

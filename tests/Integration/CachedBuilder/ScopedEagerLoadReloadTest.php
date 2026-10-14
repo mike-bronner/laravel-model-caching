@@ -11,28 +11,8 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Profile;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Store;
 use Illuminate\Cache\Events\CacheHit;
 use Illuminate\Cache\Events\CacheMissed;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-
-function runTwiceExcludingTheFirstResult(string $scopedClass, Closure $query) : array
-{
-    $globalScopes = Model::getAllGlobalScopes();
-    $excludedId = 0;
-    $scopedClass::addGlobalScope('excludesOneRow', function ($builder) use (&$excludedId, $scopedClass) {
-        $builder->where((new $scopedClass)->getTable() . '.id', '!=', $excludedId);
-    });
-
-    try {
-        $first = $query();
-        $excludedId = collect($first)->first();
-        $second = $query();
-    } finally {
-        Model::setAllGlobalScopes($globalScopes);
-    }
-
-    return [collect($first)->filter()->values()->all(), collect($second)->filter()->values()->all()];
-}
 
 test('a cached has many eager load reloads its scoped related models', function () {
     $author = Author::factory()->create();

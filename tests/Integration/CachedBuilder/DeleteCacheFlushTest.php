@@ -68,18 +68,3 @@ test('repeated deletes on empty result set do not flush cache', function () {
 
     expect($this->cache()->tags(bookTags())->get($key))->not->toBeNull();
 });
-
-function populateAuthorCache(): string
-{
-    $testingSqlitePath = test()->testingSqlitePath;
-
-    (new Author)->all();
-
-    $key = sha1(
-        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor-authors.deleted_at_null"
-    );
-
-    expect(test()->cache()->tags(authorTags())->get($key))->not->toBeNull();
-
-    return $key;
-}

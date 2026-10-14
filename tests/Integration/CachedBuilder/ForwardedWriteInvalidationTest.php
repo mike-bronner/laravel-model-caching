@@ -101,29 +101,3 @@ test('decrement each invalidates cache', function () {
 
     expect((new Book)->findOrFail(1)->price)->toEqual($before - 2);
 });
-
-function newBookRow(string $title): array
-{
-    $book = (new UncachedBook)->findOrFail(1);
-
-    return [
-        "author_id" => $book->author_id,
-        "publisher_id" => $book->publisher_id,
-        "published_at" => $book->published_at,
-        "title" => $title,
-        "price" => 1,
-    ];
-}
-
-function assertCachedTitlesMatchDatabase(callable $write): void
-{
-    $before = (new Book)->orderBy("id")->pluck("title");
-
-    $write();
-
-    $after = (new Book)->orderBy("id")->pluck("title");
-    $live = (new UncachedBook)->orderBy("id")->pluck("title");
-
-    expect($live)->not->toEqual($before, "The write must change what the database returns");
-    expect($after)->toEqual($live);
-}

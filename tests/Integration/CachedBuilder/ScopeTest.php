@@ -305,16 +305,6 @@ test('a global scope removed by an earlier global scope is not applied', functio
         ->and($cachedAuthors->pluck('id')->all())->toEqual($authors->pluck('id')->all());
 });
 
-function expectEachScopedQueryToMatchItsLiveRows(array $queries) : void
-{
-    collect($queries)->each(function (array $pair, string $description) {
-        [$cachedQuery, $liveQuery] = $pair;
-
-        expect($cachedQuery()->get()->pluck('id')->sort()->values()->all())
-            ->toEqual($liveQuery()->get()->pluck('id')->sort()->values()->all(), $description);
-    });
-}
-
 test('a closure where keeps the soft delete scope in its key', function (bool $withTrashedFirst) {
     Author::factory()->count(3)->create();
     (new Author)->first()->delete();

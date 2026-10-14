@@ -2,7 +2,6 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCooldown;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\ConfiguresUnprefixedStore;
 
 uses(ConfiguresUnprefixedStore::class);
@@ -44,22 +43,3 @@ test('clear on unprefixed store keeps application keys', function () {
         $this->artisan("modelCache:clear");
     }
 });
-
-function assertStaleCacheIsCleared(): void
-{
-    $authorId = (new Author)->get()->first()->id;
-    (new UncachedAuthor)->where("id", $authorId)->update(["name" => "CLEARED_AUTHOR"]);
-
-    expect((new Author)->get()->firstWhere("id", $authorId)->name)->not->toBe("CLEARED_AUTHOR");
-
-    test()->artisan("modelCache:clear")->assertExitCode(0);
-
-    expect((new Author)->get()->firstWhere("id", $authorId)->name)->toBe("CLEARED_AUTHOR");
-}
-
-function packageKeys(): array
-{
-    $token = (int) env("TEST_TOKEN", 1);
-
-    return test()->scanRedisKeys(app("redis")->connection("model-cache"), "lmc-test-{$token}:*");
-}

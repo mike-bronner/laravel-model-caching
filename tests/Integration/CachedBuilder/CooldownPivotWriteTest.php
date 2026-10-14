@@ -1,7 +1,6 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithCooldown;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Store;
 
 test('attach respects cooldown', function () {
     $storeId = newStoreId();
@@ -50,18 +49,3 @@ test('pivot write without cooldown still flushes', function () {
 
     expect(booksTagEntrySets())->toBeEmpty();
 });
-
-function startCooldownAndCacheBooks(): BookWithCooldown
-{
-    (new BookWithCooldown)->withCacheCooldownSeconds(60)->get();
-    (new BookWithCooldown)->orderBy("id")->pluck("title");
-
-    expect(booksTagEntrySets())->not->toBeEmpty();
-
-    return (new BookWithCooldown)->newQuery()->findOrFail(1);
-}
-
-function newStoreId(): int
-{
-    return Store::factory()->create()->id;
-}

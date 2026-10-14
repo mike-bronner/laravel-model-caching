@@ -4,7 +4,6 @@ use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 test('paginated of many eager load returns correct relation on later pages', function () {
@@ -200,13 +199,3 @@ test('queries without deferred callbacks keep their cache key format', function 
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:authors:genealabslaravelmodelcachingtestsfixturesauthor",
     );
 });
-
-function makeCompositeOfManyRelation(Author $author): HasOne
-{
-    $relation = Relation::noConstraints(
-        fn () => (new Author)->latestBookByPriceThenDate(),
-    );
-    $relation->addEagerConstraints([$author]);
-
-    return $relation;
-}

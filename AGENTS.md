@@ -155,9 +155,12 @@ expectations, in a file next to its siblings. Do not add a PHPUnit test class.
 `tests/Pest.php` binds every test file to `IntegrationTestCase`, so `$this`
 inside a test is the test case.
 
-Put a helper that several files share in `tests/Pest.php` as a plain function.
-Keep a helper that one file uses in that file. Every test file shares one
-global namespace, so give each function a name no other test file uses.
+Put every test helper in `tests/Helpers/` as a plain function. Each file there
+holds the helpers for one topic, such as `CacheTags.php`. Pest loads every file
+in `tests/Helpers/` on its own, so a test file needs no `require`. Do not put a
+helper in a test file or in `tests/Pest.php`. `tests/Pest.php` holds only
+global setup, such as the `pest()` configuration. Every helper shares one
+global namespace, so give each function a name no other helper uses.
 
 Pest 5 needs PHP 8.4, and its Laravel plugin needs Laravel 13. So CI resolves
 Pest 4 on PHP 8.3 and on Laravel 12, and Pest 5 everywhere else. Use only Pest

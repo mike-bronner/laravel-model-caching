@@ -15,7 +15,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedSupplier;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
-use Illuminate\Cache\Repository;
 
 beforeEach(function () {
     useInMemoryDynamoDbStore();
@@ -257,31 +256,3 @@ test('versioned key joins the global and sorted tag versions', function () {
 
     expect($key)->toBe('query:versions:global:version-a:version-b');
 });
-
-function useInMemoryDynamoDbStore(
-    string $driver = 'dynamodb',
-    string $storeClass = FakeDynamoDbStore::class,
-): void {
-    $storeClass::reset();
-
-    app('cache')->extend($driver, function () use ($storeClass) {
-        return new Repository(new $storeClass);
-    });
-
-    app('cache')->forgetDriver('dynamodb-model');
-
-    config([
-        'cache.stores.dynamodb-model' => ['driver' => $driver],
-        'laravel-model-caching.store' => 'dynamodb-model',
-    ]);
-}
-
-function invokeProtectedMethod(
-    object $target,
-    string $method,
-    array $arguments = [],
-): mixed {
-    $reflectionMethod = new ReflectionMethod($target, $method);
-
-    return $reflectionMethod->invokeArgs($target, $arguments);
-}

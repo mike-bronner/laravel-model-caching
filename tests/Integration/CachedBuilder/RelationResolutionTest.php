@@ -83,11 +83,3 @@ test('dotted chain resolves the first segment twice', function () {
         fn () => CountingBook::has("author.books")->get(),
     ))->toEqual(2);
 });
-
-function tally(callable $query): int
-{
-    CountingBook::$authorCalls = 0;
-    $query();
-
-    return CountingBook::$authorCalls;
-}

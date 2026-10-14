@@ -9,7 +9,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Supplier;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 test('belongs to many relation tags contain pivot table', function () {
     $tags = makeCacheTags((new Book)->first()->stores());
@@ -58,18 +57,3 @@ test('cached belongs to many read is invalidated by pivot table write', function
         'A cached belongsToMany read should be invalidated by a write to its pivot table.',
     );
 });
-
-function makeCacheTags(object $subject): array
-{
-    $method = new ReflectionMethod($subject, 'makeCacheTags');
-
-    return $method->invoke($subject);
-}
-
-function assertTagsContainTable(array $tags, string $table): void
-{
-    $suffix = ':' . (new Str)->slug($table);
-
-    expect(collect($tags)->contains(fn ($tag) => str_ends_with($tag, $suffix)))->toBeTrue("Relation cache tags should contain a tag for the joined table '{$table}'. Got: "
-            . implode(', ', $tags));
-}

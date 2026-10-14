@@ -130,10 +130,3 @@ test('nested where has cache is busted when deeply related table is written', fu
 
     expect($query())->toBeEmpty();
 });
-
-function tag(string $name): string
-{
-    $testingSqlitePath = test()->testingSqlitePath;
-
-    return "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:{$name}";
-}

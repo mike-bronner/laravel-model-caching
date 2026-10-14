@@ -1,8 +1,6 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\KeepsItsNamePrivate;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\StringStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -139,43 +137,3 @@ test('a from sub binding that keys correctly today keeps its key', function (mix
     "a date time immutable" => fn () => new DateTimeImmutable("2026-10-13 12:00:00"),
     "a backed enum" => fn () => StringStatus::Active,
 ]);
-
-function expectPrivateBindingsToKeepTheirOwnRows(Closure $query, array $values): void
-{
-    expectBindingsToKeepTheirOwnRows(
-        $query,
-        collect($values)
-            ->map(fn (string $value) => new KeepsItsNamePrivate($value))
-            ->all(),
-    );
-}
-
-function expectBindingsToKeepTheirOwnRows(Closure $query, array $bindings): void
-{
-    [$first, $second] = $bindings;
-    $liveResults = $query(new UncachedAuthor, $second)->get()->toArray();
-    $firstKey = cacheKey($query(new Author, $first));
-
-    expect($firstKey)->not->toBe("")
-        ->and($firstKey)->not->toBe(cacheKey($query(new Author, $second)));
-
-    $query(new Author, $first)->get();
-
-    expect($liveResults)->not->toBeEmpty()
-        ->and($query(new Author, $second)->get()->toArray())->toEqual($liveResults);
-}
-
-function firstTwoDistinctValues(string $table, string $column): array
-{
-    $values = DB::table($table)
-        ->orderBy("id")
-        ->pluck($column)
-        ->unique()
-        ->take(2)
-        ->values()
-        ->all();
-
-    expect($values)->toHaveCount(2);
-
-    return $values;
-}

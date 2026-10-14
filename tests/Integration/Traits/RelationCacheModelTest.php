@@ -3,15 +3,11 @@
 declare(strict_types=1);
 
 use GeneaLabs\LaravelModelCaching\CachedBelongsToMany;
-use GeneaLabs\LaravelModelCaching\CachedHasManyThrough;
-use GeneaLabs\LaravelModelCaching\CachedHasOneThrough;
-use GeneaLabs\LaravelModelCaching\CachedMorphToMany;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Store;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Supplier;
 use Illuminate\Database\Eloquent\Collection;
 
 test('the four subjects are the cached relation classes', function () {
@@ -77,31 +73,3 @@ test('truncate does not raise on a relation using builder caching', function () 
 
     expect((new Store)->get()->isEmpty())->toBeTrue();
 });
-
-function cachedRelations(): array
-{
-    return [
-        CachedBelongsToMany::class => (new Book)->first()->stores(),
-        CachedMorphToMany::class => (new Post)->first()->tags(),
-        CachedHasManyThrough::class => (new Author)->first()->printers(),
-        CachedHasOneThrough::class => (new Supplier)->first()->history(),
-    ];
-}
-
-function getCachePrefix(object $subject): string
-{
-    return (new ReflectionMethod($subject, "getCachePrefix"))->invoke($subject);
-}
-
-function cachedStoresPayload()
-{
-    $testingSqlitePath = test()->testingSqlitePath;
-
-    $key = sha1("genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:stores:genealabslaravelmodelcachingtestsfixturesstore");
-    $tags = [
-        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
-        "genealabs:laravel-model-caching:testing:{$testingSqlitePath}testing.sqlite:stores",
-    ];
-
-    return test()->cache()->tags($tags)->get($key);
-}

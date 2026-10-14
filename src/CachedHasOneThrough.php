@@ -18,7 +18,7 @@ class CachedHasOneThrough extends HasOneThrough
 
     protected function makeCacheTags(): array
     {
-        $eagerLoad = $this->eagerLoad ?? [];
+        $eagerLoad = $this->getQuery()->getEagerLoads();
         $model = $this->getModel();
         $query = $this->getQuery()->getQuery();
 
