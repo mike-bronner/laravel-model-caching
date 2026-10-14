@@ -473,6 +473,11 @@ it. A many-to-many relationship eager-loaded through a `morphTo`, such as
 pivot table outside the relationship, call `ModelCache::invalidate()` for the
 model that ran the query.
 
+A pivot `attach`, `detach`, `sync` or `updateExistingPivot` through the
+relationship flushes the pivot table's tags itself. That holds with model events
+off, and when the related model does not use `Cachable`. An active cool-down
+window on either model holds that flush back.
+
 ### 🔗 BelongsToMany with Custom Pivot Models
 Cache invalidation works for `BelongsToMany` relationships using custom pivot
 models (`->using(CustomPivot::class)`) as long as either the parent or the
