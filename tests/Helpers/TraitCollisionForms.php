@@ -12,7 +12,10 @@ function loadTraitCollisionForm(string $class): string
             var_export("{$root}/tests/TraitCollisionForms/{$class}.php", true),
             var_export("{$namespace}\\{$class}", true),
         );
-    $process = new Process([PHP_BINARY, "-d", "display_errors=stderr", "-r", $code]);
+    $process = new Process(
+            [PHP_BINARY, "-d", "display_errors=stderr", "-r", $code],
+            env: ["XDEBUG_MODE" => "off"],
+        );
     $process->run();
     $output = $process->getOutput();
 
