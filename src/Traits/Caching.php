@@ -398,10 +398,6 @@ trait Caching
         $cacheTags = new CacheTags($eagerLoad, $model, $query);
         $tags = $cacheTags->make();
 
-        // A many-to-many relation's own query joins the pivot table, and the
-        // join tag carries the related model's prefix. A pivot-table write
-        // flushes under the pivot's prefix instead, so the relation's entry
-        // carries the same pivot tags as a parent entry eager-loading it.
         if ($this instanceof BelongsToMany) {
             $tags = array_values(array_unique(array_merge(
                 $tags,

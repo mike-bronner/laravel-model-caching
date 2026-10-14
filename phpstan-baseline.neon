@@ -1531,6 +1531,102 @@ parameters:
 			path: tests/Fixtures/BookWithUncachedStore.php
 
 		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Relations\\Pivot\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableBookStorePivot\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableBookStorePivot.php
+
+		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1625,6 +1721,102 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/CachableRoleUser.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:\$cachePrefix\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:\$query\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableTaggable\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
+
+		-
+			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Fixtures/CachableTaggable.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Comment\:\:\$cacheCooldownSeconds\.$#'

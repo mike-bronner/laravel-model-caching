@@ -42,29 +42,11 @@ class CacheTags
     // phpcs:ignore SlevomatCodingStandard.Functions.FunctionLength.FunctionLength
     public function make(): array
     {
-        $tags = collect($this->eagerLoad)
+        $eagerLoadTags = collect($this->eagerLoad)
             ->keys()
-            ->flatMap(function ($relationName) {
-                $morphToTags = $this->getMorphToTagsForRelation($relationName);
-
-                if ($morphToTags !== null) {
-                    return $morphToTags;
-                }
-
-                $relation = $this->getRelation($relationName);
-
-                if (! $relation) {
-                    return [];
-                }
-
-                $relatedModel = $relation->getQuery()->getModel();
-
-                return [
-                    $this->getCachePrefixForModel($relatedModel)
-                        . Str::slug($relatedModel::class),
-                    ...$this->getPivotTableTags($relation),
-                ];
-            })
+            ->map(fn (string $relationName): array => $this->getEagerLoadTags($relationName));
+        $tags = $eagerLoadTags->pluck("related")
+            ->flatten()
             ->filter()
             ->unique()
             ->prepend($this->getTagName())
@@ -76,30 +58,36 @@ class CacheTags
 
         return $tags->merge($joinTags)
             ->merge($subqueryWhereTags)
+            ->merge($eagerLoadTags->pluck("pivot")->flatten())
             ->unique()
             ->values()
             ->toArray();
     }
 
-    // An eager-loaded many-to-many relation is cached inside the parent
-    // query's entry, so that entry must also carry the pivot table's tag.
-    // Without it, a pivot row written outside the relation's own attach/sync
-    // methods (a pivot model, or a cachable model on the pivot table) never
-    // invalidates the entry and the new member stays missing.
-    //
-    // A tag only works if it is spelled the way the writer flushes it, and
-    // the writer is not known here, so the table is tagged under each prefix
-    // a pivot-table write can flush:
-    //
-    // - the pivot Laravel builds for this relation, which carries the
-    //   parent's connection and, for a custom pivot class, that class's own
-    //   $cachePrefix. A pivot saved or deleted through the relation flushes
-    //   exactly this. For a plain Pivot it has no $cachePrefix, which is also
-    //   what a cachable model mapped to the pivot table usually flushes;
-    // - the relation's parent, for a writer that shares the parent's prefix.
-    //
-    // CachedBelongsToMany adds the same tags to the relation's own query,
-    // whose entry the rebuilt parent entry reads its related models from.
+    protected function getEagerLoadTags(string $relationName): array
+    {
+        $morphToTags = $this->getMorphToTagsForRelation($relationName);
+
+        if ($morphToTags !== null) {
+            return ["related" => $morphToTags, "pivot" => []];
+        }
+
+        $relation = $this->getRelation($relationName);
+
+        if (! $relation) {
+            return ["related" => [], "pivot" => []];
+        }
+
+        $relatedModel = $relation->getQuery()->getModel();
+
+        return [
+            "related" => [
+                $this->getCachePrefixForModel($relatedModel) . Str::slug($relatedModel::class),
+            ],
+            "pivot" => $this->getPivotTableTags($relation),
+        ];
+    }
+
     public function getPivotTableTags(Relation $relation): array
     {
         if (! $relation instanceof BelongsToMany) {

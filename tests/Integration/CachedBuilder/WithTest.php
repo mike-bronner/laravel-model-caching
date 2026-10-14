@@ -78,8 +78,8 @@ test('with belongs to many relationship query', function () {
     $tags = [
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
-        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:book-store",
         "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+        "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:book-store",
     ];
 
     $stores = (new Book)

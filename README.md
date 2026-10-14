@@ -465,6 +465,14 @@ Joined tables include the pivot or intermediate table of a `belongsToMany`,
 of that table through its own `Cachable` model therefore invalidates cached
 reads of the relationship.
 
+An eager-loaded `belongsToMany` or `morphToMany` relationship tags its pivot
+table as well. A write to the pivot table through a `Cachable` model, or through
+a `Cachable` custom pivot class, therefore invalidates the query that eager-loads
+it. A many-to-many relationship eager-loaded through a `morphTo`, such as
+`with('commentable.tags')`, does not tag its pivot table. After a write to that
+pivot table outside the relationship, call `ModelCache::invalidate()` for the
+model that ran the query.
+
 ### 🔗 BelongsToMany with Custom Pivot Models
 Cache invalidation works for `BelongsToMany` relationships using custom pivot
 models (`->using(CustomPivot::class)`) as long as either the parent or the

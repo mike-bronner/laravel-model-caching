@@ -123,8 +123,8 @@ test('belongs to many relationship is cached', function () {
     $results = collect($this->cache()->tags([
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesbook",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:genealabslaravelmodelcachingtestsfixturesstore",
-            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:book-store",
             "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books",
+            "genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:book-store",
         ])
         ->get(sha1("genealabs:laravel-model-caching:testing:{$this->testingSqlitePath}testing.sqlite:books:genealabslaravelmodelcachingtestsfixturesbook-testing:{$this->testingSqlitePath}testing.sqlite:stores"))['value']);
 
