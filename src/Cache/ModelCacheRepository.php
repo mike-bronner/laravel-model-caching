@@ -28,10 +28,9 @@ class ModelCacheRepository
     public function __construct(
         protected Repository $repository,
         protected bool $usesDynamoDb = false,
-        protected ?int $ttl = null,
     ) {}
 
-    public static function make(?int $ttl = null): static
+    public static function make(): static
     {
         $container = Container::getInstance();
         $cache = $container->make('cache');
@@ -52,11 +51,7 @@ class ModelCacheRepository
             $usesDynamoDb = $repository->getStore() instanceof DynamoDbStore;
         }
 
-        // A per-model TTL wins over the global config value.
-        $ttl = $ttl ?? (int) $config->get('laravel-model-caching.ttl');
-        $ttl = $ttl > 0 ? $ttl : null;
-
-        return new static($repository, $usesDynamoDb, $ttl);
+        return new static($repository, $usesDynamoDb);
     }
 
     public function usesDynamoDb(): bool
@@ -96,17 +91,13 @@ class ModelCacheRepository
         bool $hash = false,
     ): mixed {
         $prefix = static::SERIALIZED_VALUE_PREFIX;
-        $itemKey = $this->itemKey(key: $key, tags: $tags, hash: $hash);
-        $wrappedCallback = static function () use ($callback, $prefix): string {
-            return $prefix . serialize(value: $callback());
-        };
-        $repository = $this->repositoryFor(tags: $tags);
 
-        $cached = $this->ttl
-            ? $repository->remember(key: $itemKey, ttl: $this->ttl, callback: $wrappedCallback)
-            : $repository->rememberForever(key: $itemKey, callback: $wrappedCallback);
-
-        return $this->unwrap(cached: $cached);
+        return $this->unwrap(cached: $this->repositoryFor(tags: $tags)->rememberForever(
+            key: $this->itemKey(key: $key, tags: $tags, hash: $hash),
+            callback: static function () use ($callback, $prefix): string {
+                return $prefix . serialize(value: $callback());
+            },
+        ));
     }
 
     protected function unwrap(mixed $cached): mixed
@@ -127,13 +118,10 @@ class ModelCacheRepository
 
     public function forever(string $key, mixed $value, array $tags = [], bool $hash = false): bool
     {
-        $itemKey = $this->itemKey(key: $key, tags: $tags, hash: $hash);
-        $serializedValue = static::SERIALIZED_VALUE_PREFIX . serialize(value: $value);
-        $repository = $this->repositoryFor(tags: $tags);
-
-        return $this->ttl
-            ? $repository->put(key: $itemKey, value: $serializedValue, ttl: $this->ttl)
-            : $repository->forever(key: $itemKey, value: $serializedValue);
+        return $this->repositoryFor(tags: $tags)->forever(
+            key: $this->itemKey(key: $key, tags: $tags, hash: $hash),
+            value: static::SERIALIZED_VALUE_PREFIX . serialize(value: $value),
+        );
     }
 
     public function forget(string $key, array $tags = [], bool $hash = false): bool

@@ -185,7 +185,7 @@ return [
 | `MODEL_CACHE_STORE` | `null` | 💾 Cache store name from `config/cache.php`. Uses the default store when not set. |
 | `MODEL_CACHE_USE_DATABASE_KEYING` | `true` | 🔑 Include database connection and name in cache keys. Important for multi-tenant or multi-database apps. |
 | `MODEL_CACHE_FALLBACK_TO_DB` | `false` | 🛡️ When `true`, falls back to direct database queries if the cache backend is unavailable (e.g. Redis is down) instead of throwing an exception. |
-| `MODEL_CACHE_TTL` | `null` | ⏰ Global cache expiration in seconds. Unset means cache forever. See [Cache Expiration (TTL)](#-cache-expiration-ttl) — a per-model `$cacheTtlSeconds` overrides this. |
+| `MODEL_CACHE_TTL` | `null` | ⏰ Global cache expiration in whole seconds. Unset, empty or `0` means cache forever. Any other value that is not a whole number of seconds throws an exception. See [Cache Expiration (TTL)](#-cache-expiration-ttl) — a per-model `$cacheTtlSeconds` overrides this. |
 
 > **📝 Note:** The `cache-prefix` option is set directly in the config file (not via
 > an environment variable). For dynamic prefixes (e.g. multi-tenant), use the
@@ -254,11 +254,16 @@ expiration instead of a truly unbounded item. In current Laravel releases that
 window is several years, which means stale DynamoDB rows are bounded but can
 linger for a long time after invalidation.
 
+When a query resolves a TTL (see [Cache Expiration (TTL)](#-cache-expiration-ttl)),
+its row gets that expiration instead. Laravel stops serving the row once the
+expiration passes, even before DynamoDB's TTL process deletes it.
+
 Practical guidance:
-- Always enable TTL on `expires_at`.
+- Always enable TTL on `expires_at`. Without it, DynamoDB never deletes expired or invalidated rows.
 - Treat DynamoDB cache invalidation as logical invalidation first and physical cleanup later.
 - Expect dead query rows to accumulate temporarily on write-heavy or high-churn models.
-- If you need faster physical cleanup than Laravel's long-lived cache TTL allows, Redis is usually a better fit.
+- Set a model cache TTL if you want invalidated query rows to become eligible for deletion sooner than Laravel's long-lived forever expiration.
+- If you need faster physical cleanup than DynamoDB's TTL process gives, Redis is usually a better fit.
 
 #### Operational notes
 - Namespace control keys do not grow without bound. The package stores one global namespace key plus one key per normalized tag hash.
@@ -509,10 +514,45 @@ class ImportedProduct extends Model
 }
 ```
 
-An explicit `protected $cacheTtlSeconds = 0;` opts a model out of the global
-TTL entirely, caching it forever regardless of the global setting. Either
-level may be set without the other, and a model with no TTL configured at all
-keeps today's forever-cache behavior unchanged.
+**Valid values.** Both levels follow the same rules:
+
+| Value | Meaning |
+| --- | --- |
+| not set, `null` or `''` | No TTL at this level. A model falls back to the global TTL. The global level means "cache forever". |
+| `0` or `'0'` | Global: no TTL, so cache forever. Per-model: opt this model out of the global TTL, so it caches forever. |
+| A positive integer, or a string of digits such as `'3600'` | Expire after that many seconds. |
+| Anything else | Rejected. Every query that resolves the value throws an `InvalidArgumentException` that names the model or the config key, and the value. This covers negative numbers, decimals such as `1.9`, strings such as `'60s'` or `'abc'`, and booleans such as `MODEL_CACHE_TTL=true`. |
+
+**Eager loads.** A cached query result holds its eager-loaded models too. So
+the query takes the shortest TTL among its root model and every model it eager
+loads, nested eager loads (`with('books.publisher')`) and `morphTo` targets
+included. Each of those models contributes its own TTL, or the global TTL when
+it sets none. A model that contributes no TTL does not lower the result, and a
+model opted out with `0` does not force the whole query to cache forever. For
+example, `Author::with('books')->get()` expires after 3600 seconds when `Book`
+sets `$cacheTtlSeconds = 3600`, even though `Author` sets no TTL. A query with
+no TTL at any level keeps the forever-cache behavior unchanged.
+
+`Model::all()` counts the relations in the model's default `$with` as eager
+loads, for both its TTL and its cache tags. So a cached `Author::all()` on an
+`Author` with `protected $with = ['books']` takes `Book`'s TTL, and an Eloquent
+write to a `Book` flushes it.
+
+> **⬆️ Upgrade note:** `all()` entries for models that declare `$with` now carry
+> the tags of those relations. Those entries read cold once after you upgrade,
+> then cache as before. No cache key or tag format changes.
+
+**Redis.** An expired item leaves its entry behind in each cache tag's set,
+because Laravel's Redis tag sets do not expire with the items. Schedule
+Laravel's `cache:prune-stale-tags` Artisan command to remove those entries, for
+example hourly:
+
+```php
+// routes/console.php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('cache:prune-stale-tags')->hourly();
+```
 
 TTL and the cool-down period above solve different problems and can be used
 together: cool-down debounces how often a *write* flushes the cache, while TTL

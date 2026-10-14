@@ -34,8 +34,15 @@ Write queries exactly as you would without the package. Do not wrap them in
 `Cache::forget()` calls. Doing any of that caches the same rows twice under
 keys the package cannot invalidate.
 
-Entries are written with `rememberForever`. There is no time to live and no
-per-query expiry option, so freshness comes from invalidation alone.
+Entries are written with `rememberForever` unless a time to live is set.
+Freshness comes from invalidation. A time to live is an opt-in limit for data
+written outside Eloquent: the `MODEL_CACHE_TTL` config value, or a
+`protected $cacheTtlSeconds` property on a model, where `0` opts that model out
+of the global value. A query takes the shortest time to live among its model
+and every model it eager loads, and `Model::all()` counts the model's default
+`$with` relations as eager loads for both its time to live and its cache tags.
+Each value must be a whole number of seconds,
+as an integer or a string of digits. Any other value throws an exception.
 
 ## What invalidates an entry
 

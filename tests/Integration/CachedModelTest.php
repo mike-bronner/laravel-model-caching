@@ -2,12 +2,10 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCooldown;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithTtl;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 test('all model results creates cache', function () {
     $authors = (new Author)->all();
@@ -246,53 +244,4 @@ test('a cache prefix set at runtime keys the model queries', function () {
         ->and($cached['key'])->toContain(':runtime-prefix:authors:')
         ->and($cached['key'])->not->toContain('model-prefix')
         ->and($cached['value']->pluck('id'))->toEqual($authors->pluck('id'));
-});
-
-test('global ttl expires cache after configured seconds', function () {
-    config(['laravel-model-caching.ttl' => 1]);
-
-    $authors = (new Author)->get();
-
-    sleep(2);
-
-    $queryCount = 0;
-    DB::listen(function ($query) use (&$queryCount) {
-        if (
-            str_starts_with(strtolower(trim($query->sql)), "select")
-            && str_contains($query->sql, "authors")
-        ) {
-            $queryCount++;
-        }
-    });
-
-    (new Author)->get();
-
-    expect($authors)->toHaveCount(10);
-    expect($queryCount)->toBeGreaterThan(0, "Expected a fresh database hit after the global TTL expired");
-});
-
-test('per model ttl overrides longer global ttl', function () {
-    config(['laravel-model-caching.ttl' => 100]);
-
-    $authors = (new AuthorWithTtl)->get();
-
-    sleep(2);
-
-    $queryCount = 0;
-    DB::listen(function ($query) use (&$queryCount) {
-        if (
-            str_starts_with(strtolower(trim($query->sql)), "select")
-            && str_contains($query->sql, "authors")
-        ) {
-            $queryCount++;
-        }
-    });
-
-    (new AuthorWithTtl)->get();
-
-    expect($authors)->toHaveCount(10);
-    expect($queryCount)->toBeGreaterThan(
-        0,
-        "Expected the per-model TTL to expire the cache despite a much longer global TTL",
-    );
 });

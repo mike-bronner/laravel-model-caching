@@ -10,6 +10,7 @@ use GeneaLabs\LaravelModelCaching\CachedHasManyThrough;
 use GeneaLabs\LaravelModelCaching\CachedHasOneThrough;
 use GeneaLabs\LaravelModelCaching\CachedMorphToMany;
 use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
+use GeneaLabs\LaravelModelCaching\CacheTags;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
@@ -90,13 +91,6 @@ trait ModelCaching
         parent::__set($key, $value);
     }
 
-    public function getModelCacheTtlSeconds(): ?int
-    {
-        return property_exists($this, "cacheTtlSeconds")
-            ? $this->cacheTtlSeconds
-            : null;
-    }
-
     public static function all($columns = ['*']): EloquentCollection
     {
         $class = get_called_class();
@@ -108,10 +102,14 @@ trait ModelCaching
 
         return $instance->withCacheFallback(
             function () use ($instance, $columns) {
-                $tags = $instance->makeCacheTags();
+                $cacheTags = new CacheTags(
+                    $instance->newQueryWithoutScopes()->getEagerLoads(),
+                    $instance,
+                    $instance->newModelQuery()->getQuery(),
+                );
                 $key = $instance->makeCacheKey();
 
-                return $instance->rememberModelCacheForever($key, $tags, function () use ($columns) {
+                return $instance->rememberModelCache($key, $cacheTags->make(), $cacheTags->ttl(), function () use ($columns) {
                         return parent::all($columns);
                     });
             },

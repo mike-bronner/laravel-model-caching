@@ -6,10 +6,13 @@ namespace GeneaLabs\LaravelModelCaching;
 
 use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use ReflectionProperty;
 use SplObjectStorage;
 use Throwable;
 
@@ -68,6 +71,106 @@ class CacheTags
             ->unique()
             ->values()
             ->toArray();
+    }
+
+    public function ttl(): ?int
+    {
+        $globalTtl = $this->globalTtl();
+
+        return collect($this->eagerLoad)
+            ->keys()
+            ->flatMap(fn (string $relationName): array => $this->eagerLoadedModels($relationName))
+            ->prepend($this->model)
+            ->map(fn (Model $model): ?int => $this->modelTtl($model) ?? $globalTtl)
+            ->filter()
+            ->min();
+    }
+
+    protected function globalTtl(): ?int
+    {
+        $ttl = Container::getInstance()
+            ->make("config")
+            ->get("laravel-model-caching.ttl");
+
+        return $this->validTtl(
+            $ttl,
+            "The laravel-model-caching.ttl config value (MODEL_CACHE_TTL)",
+        );
+    }
+
+    protected function modelTtl(Model $model): ?int
+    {
+        if (! property_exists($model, "cacheTtlSeconds")) {
+            return null;
+        }
+
+        $ttl = (new ReflectionProperty($model, "cacheTtlSeconds"))
+            ->getValue($model);
+        $modelClass = $model::class;
+
+        return $this->validTtl($ttl, "The \$cacheTtlSeconds property of [{$modelClass}]");
+    }
+
+    protected function validTtl(mixed $ttl, string $source): ?int
+    {
+        if (
+            $ttl === null
+            || $ttl === ""
+        ) {
+            return null;
+        }
+
+        if (
+            is_int($ttl)
+            && $ttl >= 0
+        ) {
+            return $ttl;
+        }
+
+        if (
+            is_string($ttl)
+            && ctype_digit($ttl)
+        ) {
+            return (int) $ttl;
+        }
+
+        throw new InvalidArgumentException(
+            "{$source} must be a whole number of seconds, 0 or greater. Got " . var_export($ttl, true) . ".",
+        );
+    }
+
+    protected function eagerLoadedModels(string $relationName): array
+    {
+        return collect(explode(".", $relationName))
+            ->reduce(function (array $models, string $segment): array {
+                return collect($models)
+                    ->flatMap(fn (Model $model): array => $this->relatedModels($model, $segment))
+                    ->all();
+            }, [$this->model]);
+    }
+
+    protected function relatedModels(Model $model, string $relationName): array
+    {
+        if (
+            ! method_exists($model, $relationName)
+            && ! $model->isRelation($relationName)
+        ) {
+            return [];
+        }
+
+        $relation = $model->{$relationName}();
+
+        if ($relation instanceof MorphTo) {
+            return collect($this->getMorphToModelClasses($relation))
+                ->map(fn (string $class): Model => new $class)
+                ->all();
+        }
+
+        if (! $relation instanceof Relation) {
+            return [];
+        }
+
+        return [$relation->getRelated()];
     }
 
     protected function resolveBaseQuery(): mixed
@@ -319,40 +422,33 @@ class CacheTags
         return null;
     }
 
-    // phpcs:ignore SlevomatCodingStandard.Complexity.Cognitive.ComplexityTooHigh,SlevomatCodingStandard.Functions.FunctionLength.FunctionLength
     protected function getMorphToTags(MorphTo $relation): array
     {
-        $morphMap = Relation::morphMap();
+        return collect($this->getMorphToModelClasses($relation))
+            ->map(fn (string $class): string => $this->getCachePrefix() . (new Str)->slug($class))
+            ->all();
+    }
 
-        if ($morphMap) {
-            $tags = collect($morphMap)
-                ->filter(fn ($type) => class_exists($type))
-                ->map(fn ($type) => $this->getCachePrefix() . (new Str)->slug($type))
-                ->values()
-                ->all();
+    protected function getMorphToModelClasses(MorphTo $relation): array
+    {
+        $mappedClasses = collect(Relation::morphMap())
+            ->filter(fn ($type) => class_exists($type))
+            ->values()
+            ->all();
 
-            if ($tags) {
-                return $tags;
-            }
+        if ($mappedClasses) {
+            return $mappedClasses;
         }
 
         $morphType = $relation->getMorphType();
         $column = last(explode('.', $morphType));
         $table = $relation->getParent()->getTable();
 
-        $types = $this->getMorphTypesInUse($relation, $table, $column);
-
-        $tags = [];
-
-        foreach ($types as $type) {
-            $resolved = Relation::getMorphedModel($type) ?? $type;
-
-            if (class_exists($resolved)) {
-                $tags[] = $this->getCachePrefix() . (new Str)->slug($resolved);
-            }
-        }
-
-        return $tags;
+        return collect($this->getMorphTypesInUse($relation, $table, $column))
+            ->map(fn ($type) => Relation::getMorphedModel($type) ?? $type)
+            ->filter(fn ($class) => class_exists($class))
+            ->values()
+            ->all();
     }
 
     protected function getMorphTypesInUse(MorphTo $relation, string $table, string $column) : array

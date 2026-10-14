@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Tests\Fixtures\Concerns;
 
+use Illuminate\Support\Carbon;
+
 trait InteractsWithInMemoryDynamoDbStore
 {
     protected static array $items = [];
@@ -70,8 +72,8 @@ trait InteractsWithInMemoryDynamoDbStore
         static::$items[$key] = [
             'value' => $value,
             'expires_at' => $seconds > 0
-                ? time() + $seconds
-                : time(),
+                ? Carbon::now()->getTimestamp() + $seconds
+                : Carbon::now()->getTimestamp(),
         ];
         static::$writeCount++;
 
@@ -147,7 +149,7 @@ trait InteractsWithInMemoryDynamoDbStore
             return false;
         }
 
-        static::$items[$key]['expires_at'] = time() + $seconds;
+        static::$items[$key]['expires_at'] = Carbon::now()->getTimestamp() + $seconds;
 
         return true;
     }
@@ -159,7 +161,7 @@ trait InteractsWithInMemoryDynamoDbStore
 
     protected static function purgeExpired(): void
     {
-        $now = time();
+        $now = Carbon::now()->getTimestamp();
 
         foreach (static::$items as $key => $item) {
             if (

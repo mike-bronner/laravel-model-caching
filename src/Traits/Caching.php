@@ -538,17 +538,14 @@ trait Caching
         static::$modelCacheRepositories
             ??= new \WeakMap;
 
-        if (isset(static::$modelCacheRepositories[$this])) {
-            return static::$modelCacheRepositories[$this];
-        }
-
-        $model = $this->cacheModel() ?? $this;
-        $ttl = method_exists($model, "getModelCacheTtlSeconds")
-            ? $model->getModelCacheTtlSeconds()
-            : null;
-
         return static::$modelCacheRepositories[$this]
-            = ModelCacheRepository::make($ttl);
+            ??= ModelCacheRepository::make();
+    }
+
+    protected function modelCacheTtlSeconds(): ?int
+    {
+        return (new CacheTags($this->cacheEagerLoads(), $this->cacheModel() ?? $this, null))
+            ->ttl();
     }
 
     protected function rememberModelCacheForever(
@@ -557,6 +554,20 @@ trait Caching
         callable $callback,
         bool $hash = false,
     ): mixed {
+        return $this->rememberModelCache($key, $tags, $this->modelCacheTtlSeconds(), $callback, $hash);
+    }
+
+    protected function rememberModelCache(
+        string $key,
+        array $tags,
+        ?int $ttl,
+        callable $callback,
+        bool $hash = false,
+    ): mixed {
+        if ($ttl) {
+            return $this->modelCacheRepository()->remember($key, $tags, $ttl, $callback, $hash);
+        }
+
         return $this->modelCacheRepository()->rememberForever($key, $tags, $callback, $hash);
     }
 
@@ -571,6 +582,14 @@ trait Caching
         array $tags = [],
         bool $hash = false,
     ): bool {
+        $ttl = $this->modelCacheTtlSeconds();
+
+        if ($ttl) {
+            $this->modelCacheRepository()->remember($key, $tags, $ttl, fn (): mixed => $value, $hash);
+
+            return true;
+        }
+
         return $this->modelCacheRepository()->forever($key, $value, $tags, $hash);
     }
 
