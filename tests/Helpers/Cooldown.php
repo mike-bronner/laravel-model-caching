@@ -1,8 +1,10 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithCooldown;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthorWithCooldown;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Store;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
+use Illuminate\Database\Eloquent\Model;
 
 function startCooldown(): void
 {
@@ -45,4 +47,27 @@ function startCooldownAndCacheBooks(): BookWithCooldown
 function newStoreId(): int
 {
     return Store::factory()->create()->id;
+}
+
+function prefixedAuthorNames(Model $model): array
+{
+    return $model->orderBy("id")
+        ->pluck("name", "id")
+        ->all();
+}
+
+function prefixedBookTitles(Model $model): array
+{
+    return $model->orderBy("id")
+        ->pluck("title", "id")
+        ->all();
+}
+
+function startPrefixedAuthorCooldown(): array
+{
+    (new PrefixedAuthorWithCooldown)
+        ->withCacheCooldownSeconds()
+        ->get();
+
+    return prefixedAuthorNames(new PrefixedAuthorWithCooldown);
 }

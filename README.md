@@ -391,9 +391,9 @@ That covers model events, `destroy()`, pivot operations and every builder
 write in the *Cache Invalidation* table, `increment()` included. An explicit
 `flushCache()` or `ModelCache::invalidate()`, and a write through a different
 model class on the same table, still flush, because the window belongs to one
-model class. Cool-down does not hold for a model that declares `$cachePrefix`,
-and on pivot writes it is not guaranteed when the two models declare different
-`$cachePrefix` values (#643).
+model class. A model that declares `$cachePrefix` keeps its window under that
+prefix, and every write checks it there, pivot writes included, whatever prefix
+the other model declares.
 
 After the window expires, the next cached read of the model flushes its cache
 and ends the window, even if no write comes first. A write after expiry
@@ -432,6 +432,33 @@ one of those.
 Cache tags are generated for the primary model, each eager-loaded relationship,
 joined tables, and morph-to target types, so only the relevant entries are
 invalidated. 🎯
+
+A subquery passed to `joinSub()`, `leftJoinSub()`, `rightJoinSub()`,
+`crossJoinSub()`, `straightJoinSub()`, `joinLateral()`, `leftJoinLateral()`,
+`fromSub()`, `whereIn()`, `orWhereIn()`, `whereNotIn()` or `orWhereNotIn()`
+tags the table it reads as well. That includes calls by named argument and
+calls made inside a `beforeQuery()` callback. `straightJoinSub()` exists on
+Laravel 13 only.
+
+For a model whose `newBaseQueryBuilder()` returns its own builder class, such
+as one from `staudenmeir/laravel-cte`, the tag is added for calls made through
+the model's query and for calls made inside a custom Eloquent builder's own
+methods. A subquery on such a model is not tagged in these cases:
+
+- It is added to the base builder directly, through `toBase()`, `getQuery()`
+  or a `beforeQuery()` callback.
+- A custom Eloquent builder defines its own method with one of those names,
+  calls it from another of its own methods, and that method does not call its
+  parent. A builder that extends `CachedBuilder` and defines one of those
+  methods without calling its parent is not tagged either.
+- A custom Eloquent builder registers a local macro with one of those names
+  and uses it inside the same method call.
+- A custom Eloquent builder calls one of those methods from its own methods in
+  a different letter case, such as `whereIN()`. Calls through the model's
+  query are matched in any letter case.
+
+After a write to that table, call `ModelCache::invalidate()` for the model that
+ran the query.
 
 Joined tables include the pivot or intermediate table of a `belongsToMany`,
 `morphToMany`, `hasManyThrough`, or `hasOneThrough` relationship. Writing rows

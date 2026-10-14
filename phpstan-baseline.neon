@@ -37,12 +37,6 @@ parameters:
 			path: src/CacheKey.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: src/CachedBelongsToMany.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 1
@@ -97,12 +91,6 @@ parameters:
 			path: src/CachedBelongsToMany.php
 
 		-
-			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.ShortVariable\)\)\: Unexpected token "\.ShortVariable\)", expected ''\)'' at offset 34 on line 2$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/CachedBelongsToMany.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 1
@@ -131,18 +119,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: src/CachedBuilder.php
-
-		-
-			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.ShortVariable\)\)\: Unexpected token "\.ShortVariable\)", expected ''\)'' at offset 34 on line 2$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/CachedBuilder.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: src/CachedHasManyThrough.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
@@ -187,12 +163,6 @@ parameters:
 			path: src/CachedHasManyThrough.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: src/CachedHasOneThrough.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 1
@@ -233,12 +203,6 @@ parameters:
 			identifier: method.private
 			count: 2
 			path: src/CachedHasOneThrough.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\CachedModel\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: src/CachedModel.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\CachedModel\:\:\$cacheCooldownSeconds\.$#'
@@ -337,12 +301,6 @@ parameters:
 			path: src/CachedModel.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: src/CachedMorphToMany.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 1
@@ -397,26 +355,8 @@ parameters:
 			path: src/CachedMorphToMany.php
 
 		-
-			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.ShortVariable\)\)\: Unexpected token "\.ShortVariable\)", expected ''\)'' at offset 34 on line 2$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/CachedMorphToMany.php
-
-		-
-			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.BooleanArgumentFlag\)\)\: Unexpected token "\.BooleanArgumentFlag\)", expected ''\)'' at offset 27 on line 1$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/Console/Commands/Clear.php
-
-		-
 			message: '#^Call to function is_array\(\) with int will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 1
-			path: src/Traits/Buildable.php
-
-		-
-			message: '#^PHPDoc tag @SuppressWarnings has invalid value \(\(PHPMD\.TooManyPublicMethods\)\)\: Unexpected token "\.TooManyPublicMethods\)", expected ''\)'' at offset 30 on line 2$#'
-			identifier: phpDoc.parseError
 			count: 1
 			path: src/Traits/Buildable.php
 
@@ -427,34 +367,10 @@ parameters:
 			path: src/Traits/Buildable.php
 
 		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: src/Traits/BuilderCaching.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between non\-empty\-array and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: src/Traits/BuilderCaching.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between int\<1, max\> and 0 will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: src/Traits/BuilderCaching.php
-
-		-
 			message: '#^Strict comparison using \=\=\= between mixed and 0 will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
 			path: src/Traits/Caching.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Author\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Author.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Author\:\:\$cacheCooldownSeconds\.$#'
@@ -553,12 +469,6 @@ parameters:
 			path: tests/Fixtures/Author.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorBeginsWithScoped\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorBeginsWithScoped.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorBeginsWithScoped\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -653,108 +563,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorBeginsWithScoped.php
-
-		-
-			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:\$cacheCooldownSeconds\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:\$cachePrefix\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:\$query\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
-			identifier: method.notFound
-			count: 7
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorDelegatingToModelCaching\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorDelegatingToModelCaching.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorExtendingGenerated.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorExtendingGenerated\:\:\$cacheCooldownSeconds\.$#'
@@ -853,108 +661,6 @@ parameters:
 			path: tests/Fixtures/AuthorExtendingGenerated.php
 
 		-
-			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:\$cacheCooldownSeconds\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:\$cachePrefix\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:\$query\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cacheCooldownSeconds\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:cache\(\)\.$#'
-			identifier: method.notFound
-			count: 7
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:flushCache\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:modelCacheRepository\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:all\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, static\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\)\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newBelongsToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newHasManyThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasManyThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newHasOneThrough\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasOneThrough\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TIntermediateModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model\> but returns GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Method GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithBaseBuilderTrait\:\:newMorphToMany\(\) should return Illuminate\\Database\\Eloquent\\Relations\\MorphToMany\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model, TDeclaringModel of Illuminate\\Database\\Eloquent\\Model, Illuminate\\Database\\Eloquent\\Relations\\MorphPivot, ''pivot''\> but returns GeneaLabs\\LaravelModelCaching\\CachedMorphToMany\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedBelongsToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasManyThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedHasOneThrough constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Parameter \#1 \$query of class GeneaLabs\\LaravelModelCaching\\CachedMorphToMany constructor expects Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>, Illuminate\\Database\\Eloquent\\Builder\<TRelatedModel of Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Fixtures/AuthorWithBaseBuilderTrait.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCachedCustomBuilder\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCachedCustomBuilder\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1049,12 +755,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithCachedCustomBuilder.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithConditionalFillable\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithConditionalFillable.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithConditionalFillable\:\:\$cacheCooldownSeconds\.$#'
@@ -1153,12 +853,6 @@ parameters:
 			path: tests/Fixtures/AuthorWithConditionalFillable.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBaseBuilder\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1253,12 +947,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithCustomBaseBuilder.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBuilder\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithCustomBuilder.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithCustomBuilder\:\:\$cacheCooldownSeconds\.$#'
@@ -1357,12 +1045,6 @@ parameters:
 			path: tests/Fixtures/AuthorWithCustomBuilder.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithDynamicFillable\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithDynamicFillable.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithDynamicFillable\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1457,12 +1139,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithDynamicFillable.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithInlineGlobalScope\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithInlineGlobalScope\:\:\$cacheCooldownSeconds\.$#'
@@ -1567,12 +1243,6 @@ parameters:
 			path: tests/Fixtures/AuthorWithInlineGlobalScope.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithTraitCollision\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/AuthorWithTraitCollision.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\AuthorWithTraitCollision\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1667,12 +1337,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/AuthorWithTraitCollision.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Book\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Book.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Book\:\:\$cacheCooldownSeconds\.$#'
@@ -1771,12 +1435,6 @@ parameters:
 			path: tests/Fixtures/Book.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\BookWithUncachedStore\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/BookWithUncachedStore.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\BookWithUncachedStore\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1873,12 +1531,6 @@ parameters:
 			path: tests/Fixtures/BookWithUncachedStore.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/CachableRoleUser.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\CachableRoleUser\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -1973,12 +1625,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/CachableRoleUser.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Comment\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Comment.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Comment\:\:\$cacheCooldownSeconds\.$#'
@@ -2089,12 +1735,6 @@ parameters:
 			path: tests/Fixtures/FakeNativeDynamoDbStore.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/GeneratedAuthor.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\GeneratedAuthor\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2189,12 +1829,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/GeneratedAuthor.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\History\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/History.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\History\:\:\$cacheCooldownSeconds\.$#'
@@ -2305,12 +1939,6 @@ parameters:
 			path: tests/Fixtures/Http/Resources/Author.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Image\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Image.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Image\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2405,12 +2033,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Image.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Post\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Post.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Post\:\:\$cacheCooldownSeconds\.$#'
@@ -2509,12 +2131,6 @@ parameters:
 			path: tests/Fixtures/Post.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\PrefixedAuthor\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/PrefixedAuthor.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\PrefixedAuthor\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2605,12 +2221,6 @@ parameters:
 			path: tests/Fixtures/PrefixedAuthor.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\PrefixedStore\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/PrefixedStore.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\PrefixedStore\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2699,12 +2309,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/PrefixedStore.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Printer\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Printer.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Printer\:\:\$cacheCooldownSeconds\.$#'
@@ -2803,12 +2407,6 @@ parameters:
 			path: tests/Fixtures/Printer.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Profile\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Profile.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Profile\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2905,12 +2503,6 @@ parameters:
 			path: tests/Fixtures/Profile.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Publisher\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Publisher.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Publisher\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -3005,12 +2597,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Publisher.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Role\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Role.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Role\:\:\$cacheCooldownSeconds\.$#'
@@ -3115,12 +2701,6 @@ parameters:
 			path: tests/Fixtures/Scopes/NameBeginsWith.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Store\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Store.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Store\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -3215,12 +2795,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Store.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\StoreWithUncachedBooks\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/StoreWithUncachedBooks.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\StoreWithUncachedBooks\:\:\$cacheCooldownSeconds\.$#'
@@ -3319,12 +2893,6 @@ parameters:
 			path: tests/Fixtures/StoreWithUncachedBooks.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Supplier\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Supplier.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Supplier\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -3421,12 +2989,6 @@ parameters:
 			path: tests/Fixtures/Supplier.php
 
 		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Tag\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/Tag.php
-
-		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\Tag\:\:\$cacheCooldownSeconds\.$#'
 			identifier: property.notFound
 			count: 2
@@ -3521,12 +3083,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: tests/Fixtures/Tag.php
-
-		-
-			message: '#^Access to an undefined property \$this\(GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\User\)\:\:\$model\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Fixtures/User.php
 
 		-
 			message: '#^Access to an undefined property GeneaLabs\\LaravelModelCaching\\Tests\\Fixtures\\User\:\:\$cacheCooldownSeconds\.$#'

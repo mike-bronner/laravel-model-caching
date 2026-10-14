@@ -194,10 +194,9 @@ flush inside a window: an explicit `flushCache()` or
 `ModelCache::invalidate()`, and a write through a different model class that
 shares the table, because the window belongs to one model class.
 
-Cool-down does not hold for a model that declares `$cachePrefix`, and on pivot
-writes it is not guaranteed when the two models declare different
-`$cachePrefix` values. Writes to such models flush as if no window were
-active. Issue #643 tracks this.
+A model that declares `$cachePrefix` keeps its window under that prefix. Every
+write checks it there, pivot writes included, whatever prefix the other model
+declares.
 
 Once the window has run out, the next cached read of the model flushes its
 cache and ends the window, so what the window held back is dropped even when no

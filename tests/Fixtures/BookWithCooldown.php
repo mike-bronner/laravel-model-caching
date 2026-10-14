@@ -11,4 +11,14 @@ class BookWithCooldown extends Book
     {
         return $this->belongsToMany(Store::class, "book_store", "book_id", "store_id");
     }
+
+    public function prefixedStores(): BelongsToMany
+    {
+        return $this->belongsToMany(
+                PrefixedStoreWithCooldown::class,
+                "book_store",
+                "book_id",
+                "store_id",
+            );
+    }
 }

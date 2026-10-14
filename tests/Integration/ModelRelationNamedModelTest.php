@@ -1,137 +1,136 @@
 <?php
 
-declare(strict_types=1);
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithModelRelation;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithUnloadableModelRelation;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
+use Illuminate\Support\Facades\DB;
 
-namespace GeneaLabs\LaravelModelCaching\Tests\Integration;
+test('writes do not load a relation named model', function (): void {
+    $author = (new Author)->first();
+    $authorId = $author->getKey();
+    $attributes = Book::factory()
+        ->raw(["author_id" => $authorId]);
+    DB::enableQueryLog();
 
-use GeneaLabs\LaravelModelCaching\Providers\Service as LaravelModelCachingService;
-use GeneaLabs\LaravelModelCaching\Traits\Cachable;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-use Orchestra\Testbench\TestCase;
-use RuntimeException;
+    $book = BookWithModelRelation::create($attributes);
+    $book->update(["title" => "Renamed"]);
+    $book->delete();
 
-// Regression test for a cachable model that defines a relationship named
-// model(). The flush after every write resolved the model it caches for by
-// reading $this->model, which on a model goes through Eloquent's magic
-// accessors and lazy-loads that relationship. A relation that cannot be
-// lazy-loaded (a HasOneDeep ending in a MorphTo produced invalid SQL in the
-// downstream report) made every create, update and delete fail.
-//
-// Self-contained on SQLite and the array cache store, like
-// GroupUsersEagerLoadTest, so it runs without Redis.
-class ModelRelationNamedModelTest extends TestCase
-{
-    protected function getPackageProviders($app): array
-    {
-        return [LaravelModelCachingService::class];
-    }
+    $authorQueries = collect(DB::getQueryLog())
+        ->pluck("query")
+        ->filter(fn (string $query) => str_contains($query, "\"authors\""));
+    $loaded = $book->relationLoaded("model");
 
-    protected function getEnvironmentSetUp($app): void
-    {
-        $app['config']->set('database.default', 'testing');
-        $app['config']->set('database.connections.testing', [
-            'driver' => 'sqlite',
-            'database' => ':memory:',
-            'prefix' => '',
-        ]);
-        $app['config']->set('cache.default', 'array');
-        $app['config']->set('laravel-model-caching.store', 'array');
-        $app['config']->set('laravel-model-caching.enabled', true);
-    }
+    expect($authorQueries)->toBeEmpty();
+    expect($loaded)->toBeFalse();
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+test('writes succeed when the model relation cannot be loaded', function (): void {
+    $attributes = Book::factory()
+        ->raw();
+    $book = BookWithUnloadableModelRelation::create($attributes);
+    $book->update(["title" => "Renamed"]);
+    $book->delete();
 
-        Schema::create('lmc_model_owners', function (Blueprint $table) {
-            $table->increments('id');
-            $table->string('name');
-            $table->timestamps();
-        });
-        Schema::create('lmc_model_fields', function (Blueprint $table) {
-            $table->increments('id');
-            $table->unsignedInteger('owner_id')->nullable();
-            $table->string('value');
-            $table->timestamps();
-        });
+    $bookId = $book->getKey();
+    $exists = (new BookWithUnloadableModelRelation)
+        ->whereKey($bookId)
+        ->exists();
 
-        FieldWithModelRelation::$modelRelationCalls = 0;
-    }
+    expect($exists)->toBeFalse();
+});
 
-    public function testWritesDoNotLoadARelationNamedModel(): void
-    {
-        $owner = ModelOwner::create(['name' => 'Owner']);
+test('the model relation still loads when asked for', function (): void {
+    $author = (new Author)->first();
+    $authorId = $author->getKey();
+    $attributes = Book::factory()
+        ->raw(["author_id" => $authorId]);
+    $book = BookWithModelRelation::create($attributes);
+    $loaded = $book->fresh()
+        ->model;
 
-        $field = FieldWithModelRelation::create(['owner_id' => $owner->id, 'value' => 'a']);
-        $field->update(['value' => 'b']);
-        $field->delete();
+    expect($loaded->is($author))->toBeTrue();
+});
 
-        $this->assertSame(
-            0,
-            FieldWithModelRelation::$modelRelationCalls,
-            'Flushing the cache after a write must not resolve the model() relationship',
-        );
-        $this->assertFalse($field->relationLoaded('model'));
-    }
+test('writes do not load a morph to model relation and flush its parent', function (): void {
+    $post = (new Post)->first();
+    $comment = createCommentWithMorphToModelRelation(morphToParent($post));
+    cachedPostTitles();
+    renamePostBehindTheCache($post);
 
-    public function testWritesSucceedWhenTheModelRelationCannotBeLoaded(): void
-    {
-        $field = FieldWithUnloadableModelRelation::create(['value' => 'a']);
-        $field->update(['value' => 'b']);
-        $field->delete();
+    $comment->update(["subject" => "Renamed"]);
+    $loaded = $comment->relationLoaded("model");
 
-        $this->assertFalse(FieldWithUnloadableModelRelation::query()->whereKey($field->id)->exists());
-    }
+    expect($loaded)->toBeFalse();
+    expect(cachedPostTitles())->toEqual(livePostTitles());
+});
 
-    public function testTheModelRelationStillWorksWhenAskedFor(): void
-    {
-        $owner = ModelOwner::create(['name' => 'Owner']);
-        $field = FieldWithModelRelation::create(['owner_id' => $owner->id, 'value' => 'a']);
+test('writes flush the cache of a morph to model relation with no parent', function (): void {
+    cachedCommentSubjects();
+    $comment = createCommentWithMorphToModelRelation();
+    $afterCreate = cachedCommentSubjects();
 
-        $this->assertTrue($field->fresh()->model->is($owner));
-    }
-}
+    $comment->update(["subject" => "Renamed"]);
+    $afterUpdate = cachedCommentSubjects();
 
-class ModelOwner extends Model
-{
-    use Cachable;
+    $comment->delete();
+    $afterDelete = cachedCommentSubjects();
+    $type = $comment->getAttribute("commentable_type");
+    $commentId = $comment->getKey();
 
-    protected $table = 'lmc_model_owners';
+    expect($type)->toBeNull();
+    expect($afterCreate)->toHaveKey($commentId);
+    expect(data_get($afterUpdate, $commentId))->toBe("Renamed");
+    expect($afterDelete)->toEqual(liveCommentSubjects());
+    expect(array_key_exists($commentId, $afterDelete))->toBeFalse();
+});
 
-    protected $fillable = ['name'];
-}
+test('deleting a morph to model relation flushes its parent and itself', function (): void {
+    $post = (new Post)->first();
+    $comment = createCommentWithMorphToModelRelation(morphToParent($post));
+    cachedPostTitles();
+    $comments = cachedCommentSubjects();
+    renamePostBehindTheCache($post);
 
-class FieldWithModelRelation extends Model
-{
-    use Cachable;
+    $comment->delete();
+    $commentId = $comment->getKey();
 
-    public static int $modelRelationCalls = 0;
+    expect($comments)->toHaveKey($commentId);
+    expect(cachedPostTitles())->toEqual(livePostTitles());
+    expect(cachedCommentSubjects())->toEqual(liveCommentSubjects());
+});
 
-    protected $table = 'lmc_model_fields';
+test('writes flush a morph to model relation with half a parent', function (array $parent): void {
+    cachedCommentSubjects();
+    $comment = createCommentWithMorphToModelRelation($parent);
+    $afterCreate = cachedCommentSubjects();
 
-    protected $fillable = ['owner_id', 'value'];
+    $comment->update(["subject" => "Renamed"]);
+    $afterUpdate = cachedCommentSubjects();
 
-    public function model(): BelongsTo
-    {
-        static::$modelRelationCalls++;
+    $comment->delete();
+    $afterDelete = cachedCommentSubjects();
+    $commentId = $comment->getKey();
 
-        return $this->belongsTo(ModelOwner::class, 'owner_id');
-    }
-}
+    expect($afterCreate)->toHaveKey($commentId);
+    expect(data_get($afterUpdate, $commentId))->toBe("Renamed");
+    expect($afterDelete)->toEqual(liveCommentSubjects());
+    expect(array_key_exists($commentId, $afterDelete))->toBeFalse();
+})->with([
+    "a type with no id" => [["commentable_type" => Post::class, "commentable_id" => null]],
+    "an id with no type" => [["commentable_type" => null, "commentable_id" => 1]],
+]);
 
-class FieldWithUnloadableModelRelation extends Model
-{
-    use Cachable;
+test('a write with a morph type and no id leaves the parent cache alone', function (): void {
+    cachedPostTitles();
 
-    protected $table = 'lmc_model_fields';
+    $comment = createCommentWithMorphToModelRelation([
+        "commentable_type" => Post::class,
+        "commentable_id" => null,
+    ]);
+    $comment->update(["subject" => "Renamed"]);
 
-    protected $fillable = ['owner_id', 'value'];
-
-    public function model(): BelongsTo
-    {
-        throw new RuntimeException('The model() relationship was resolved during a write.');
-    }
-}
+    expectServedFromCache(fn () => cachedPostTitles());
+});

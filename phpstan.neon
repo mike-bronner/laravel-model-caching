@@ -11,6 +11,9 @@ parameters:
     paths:
         - src/
         - tests/Fixtures/
+    excludePaths:
+        - tests/Fixtures/AuthorWithBaseBuilderTrait.php
+        - tests/Fixtures/Concerns/DefinesBaseQueryBuilder.php
     # composer.lock is not committed, so CI resolves its own dependency set and
     # the findings can shift under it. Without this, a baseline entry that
     # stops matching is itself an error, and CI goes red for a finding that

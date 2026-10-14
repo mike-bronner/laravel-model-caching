@@ -4,16 +4,23 @@ use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
 use GeneaLabs\LaravelModelCaching\CacheTags;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorBaseQueryBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorDelegatingToModelCaching;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithBaseBuilderTrait;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithClassBodyBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBaseAndEloquentBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBaseBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithMacroEloquentBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CachableRoleUser;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Store;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\User;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 test('join query cache tags contain joined table tag', function () {
     $query = (new Author)
@@ -350,6 +357,48 @@ test('the default base query builder is the recording one', function () {
     expect($builder)->toBeInstanceOf(CachedQueryBuilder::class);
 });
 
+test('fromBase keeps the sql and bindings of a query with clauses', function (): void {
+    $query = DB::table('authors')
+        ->select('authors.*')
+        ->join('books', 'books.author_id', '=', 'authors.id')
+        ->where('authors.name', 'like', 'A%')
+        ->whereIn('books.title', ['First', 'Second'])
+        ->orderBy('authors.id');
+
+    $recording = CachedQueryBuilder::fromBase($query);
+    $sql = $query->toSql();
+    $bindings = $query->getBindings();
+
+    expect($recording)->toBeInstanceOf(CachedQueryBuilder::class);
+    expect($recording->toSql())->toBe($sql);
+    expect($recording->getBindings())->toBe($bindings);
+});
+
+test('fromBase keeps a custom base query builder', function (): void {
+    $query = (new AuthorWithCustomBaseBuilder)
+        ->newQuery()
+        ->getQuery();
+
+    expect(CachedQueryBuilder::fromBase($query))->toBe($query);
+});
+
+test('the recording base query builder is used when caching is disabled', function (): void {
+    config(['laravel-model-caching.enabled' => false]);
+    $query = (new Author)
+        ->newQuery()
+        ->getQuery();
+
+    expect($query)->toBeInstanceOf(CachedQueryBuilder::class);
+});
+
+test('a class body new eloquent builder gets the recording base builder', function (): void {
+    $query = (new AuthorWithClassBodyBuilder)
+        ->newQuery()
+        ->getQuery();
+
+    expect($query)->toBeInstanceOf(CachedQueryBuilder::class);
+});
+
 test('cachable combines with a trait defining new base query builder', function () {
     $builder = (new AuthorWithBaseBuilderTrait)->newQuery()->getQuery();
 
@@ -364,6 +413,226 @@ test('cachable combines with a trait defining new base query builder', function 
     expect($authors)->not->toBeEmpty();
     expect($cached->pluck('id'))->toEqual($authors->pluck('id'));
     expect(DB::getQueryLog())->toBe([], 'The second read should be served from the cache');
+});
+
+test('a subquery read refreshes after a write', function (string $model, Closure $query): void {
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => $query(new $model)->get(),
+            fn () => $query(new UncachedAuthor)->get(),
+        );
+})->with([
+    'the default builder' => Author::class,
+    'a class body new eloquent builder' => AuthorWithClassBodyBuilder::class,
+    'a model delegating to model caching' => AuthorDelegatingToModelCaching::class,
+    'a custom base builder from a trait' => AuthorWithBaseBuilderTrait::class,
+    'a custom base builder from a parent class' => AuthorWithCustomBaseBuilder::class,
+])->with([
+    'join sub' => fn (Model $model) => $model
+        ->select('authors.*')
+        ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id'),
+    'cross join sub' => fn (Model $model) => $model
+        ->select('authors.*')
+        ->crossJoinSub(authoredSubQuery(), 'authored')
+        ->whereColumn('authored.author_id', 'authors.id'),
+    'from sub' => fn (Model $model) => $model
+        ->fromSub(bookAuthorsSubQuery(), 'authors'),
+    'from sub by named arguments' => fn (Model $model) => $model
+        ->fromSub(query: bookAuthorsSubQuery(), as: 'authors'),
+    'where in sub' => fn (Model $model) => $model
+        ->whereIn('authors.id', bookAuthorIdsSubQuery()),
+    'where in sub in another letter case' => fn (Model $model) => $model
+        ->whereIN('authors.id', bookAuthorIdsSubQuery()),
+    'join sub by named arguments' => fn (Model $model) => $model
+        ->select('authors.*')
+        ->joinSub(
+            query: authoredSubQuery(),
+            as: 'authored',
+            first: 'authored.author_id',
+            operator: '=',
+            second: 'authors.id',
+        ),
+    'where in sub by named arguments' => fn (Model $model) => $model
+        ->whereIn(column: 'authors.id', values: bookAuthorIdsSubQuery()),
+    'where in closure' => fn (Model $model) => $model
+        ->whereIn('authors.id', fn ($query) => $query
+            ->select('author_id')
+            ->from('books')),
+    'nested where in sub' => fn (Model $model) => $model
+        ->where(fn ($query) => $query
+            ->whereIn('authors.id', bookAuthorIdsSubQuery())),
+]);
+
+test('a deferred subquery read refreshes', function (string $model, Closure $query): void {
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => $query(new $model)->get(),
+            fn () => $query(new UncachedAuthor)->get(),
+        );
+})->with([
+    'the default builder' => Author::class,
+    'a class body new eloquent builder' => AuthorWithClassBodyBuilder::class,
+    'a model delegating to model caching' => AuthorDelegatingToModelCaching::class,
+])->with([
+    'join sub' => fn (Model $model) => withDeferredJoinSub($model),
+    'where in sub' => fn (Model $model) => $model
+        ->beforeQuery(fn ($query) => $query->whereIn('authors.id', bookAuthorIdsSubQuery())),
+    'from sub' => fn (Model $model) => $model
+        ->beforeQuery(fn ($query) => $query->fromSub(bookAuthorsSubQuery(), 'authors')),
+]);
+
+test('a straight join sub SQLite and Postgres reject is tagged', function (string $model): void {
+    $query = (new $model)
+        ->select('authors.*')
+        ->straightJoinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id');
+    $tags = joinSubTags($query);
+    $cache = $this->cache()
+        ->tags($tags);
+    $cache->put('straight-join-probe', 'cached');
+
+    Book::factory()
+        ->create();
+
+    expect($cache->get('straight-join-probe'))->toBeNull();
+})->with([
+    'a custom base builder from a trait' => AuthorWithBaseBuilderTrait::class,
+    'a custom base builder from a parent class' => AuthorWithCustomBaseBuilder::class,
+])->skip(
+    ! method_exists(QueryBuilder::class, "straightJoinSub"),
+    "Method " . QueryBuilder::class . "::straightJoinSub() does not exist",
+);
+
+test('a throwing before query callback runs once per tag build', function (): void {
+    $calls = 0;
+    $query = (new Author)->beforeQuery(function () use (&$calls): void {
+        $calls++;
+
+        throw new RuntimeException('The callback failed.');
+    });
+
+    joinSubTags($query);
+
+    expect($calls)->toBe(1);
+});
+
+test('an on clone callback subquery read refreshes after a write', function (): void {
+    $query = (new AuthorWithBaseBuilderTrait)
+        ->select('authors.*')
+        ->onClone(fn ($clone) => $clone
+            ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id'));
+
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => (clone $query)->get(),
+            fn () => (new UncachedAuthor)
+                ->select('authors.*')
+                ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')
+                ->get(),
+        );
+});
+
+test('a subquery call with a wildcard method name is left alone', function (): void {
+    $recorder = CachedQueryBuilder::recorderFor(DB::table('authors'));
+
+    expect($recorder->recordSubqueryCall('*', ['authors.id']))->toBe(['authors.id']);
+});
+
+test('a custom builder method subquery refreshes', function (string $method, Closure $query): void {
+    $model = new AuthorWithCustomBaseAndEloquentBuilder;
+
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => $model->{$method}()
+                ->get(),
+            fn () => $query(new UncachedAuthor)->get(),
+        );
+})->with([
+    'join sub' => ['joinAuthoredBooks', fn (Model $model) => $model
+        ->select('authors.*')
+        ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')],
+    'from sub' => ['fromAuthoredBooks', fn (Model $model) => $model
+        ->fromSub(bookAuthorsSubQuery(), 'authors')],
+    'where in sub' => ['whereAuthoredBooks', fn (Model $model) => $model
+        ->whereIn('authors.id', bookAuthorIdsSubQuery())],
+    'join sub by named arguments' => ['joinAuthoredBooksByName', fn (Model $model) => $model
+        ->select('authors.*')
+        ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')],
+    'from sub by named arguments' => ['fromAuthoredBooksByName', fn (Model $model) => $model
+        ->fromSub(bookAuthorsSubQuery(), 'authors')],
+    'where in sub by named arguments' => ['whereAuthoredBooksByName', fn (Model $model) => $model
+        ->whereIn('authors.id', bookAuthorIdsSubQuery())],
+    'cross join sub' => ['crossJoinAuthoredBooks', fn (Model $model) => $model
+        ->select('authors.*')
+        ->crossJoinSub(authoredSubQuery(), 'authored')
+        ->whereColumn('authored.author_id', 'authors.id')],
+]);
+
+test('a custom builder method named like a subquery method is tagged', function (): void {
+    $authorWithoutBooks = Author::factory()
+        ->create();
+    $read = fn (Model $model) => $model
+        ->where('authors.id', 0)
+        ->orWhereNotIn('authors.id', bookAuthorIdsSubQuery())
+        ->pluck('id')
+        ->sort()
+        ->values()
+        ->all();
+    $before = $read(new AuthorWithCustomBaseAndEloquentBuilder);
+    expectServedFromCache(fn () => $read(new AuthorWithCustomBaseAndEloquentBuilder));
+    $authorId = $authorWithoutBooks->getKey();
+
+    Book::factory()
+        ->create(['author_id' => $authorId]);
+
+    expect($before)->toContain($authorId);
+    expect($read(new AuthorWithCustomBaseAndEloquentBuilder))->toBe($read(new UncachedAuthor));
+});
+
+test('a local macro named like a subquery method keeps running and is tagged', function (): void {
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => (new AuthorWithMacroEloquentBuilder)->whereAuthoredBooks()
+                ->get(),
+            fn () => (new UncachedAuthor)
+                ->whereIn('authors.id', bookAuthorIdsSubQuery())
+                ->where('authors.id', '!=', 1)
+                ->get(),
+        );
+});
+
+test('a local macro registered after the builder is made is tagged', function (): void {
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => (new AuthorWithCustomBaseAndEloquentBuilder)
+                ->excludingTheFirstAuthorFromWhereIn()
+                ->whereAuthoredBooks()
+                ->get(),
+            fn () => (new UncachedAuthor)
+                ->whereIn('authors.id', bookAuthorIdsSubQuery())
+                ->where('authors.id', '!=', 1)
+                ->get(),
+        );
+});
+
+test('a cloned custom builder method subquery read refreshes after a write', function (): void {
+    $query = (new AuthorWithCustomBaseAndEloquentBuilder)->newQuery();
+
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => (clone $query)->joinAuthoredBooks()
+                ->get(),
+            fn () => (new UncachedAuthor)
+                ->select('authors.*')
+                ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')
+                ->get(),
+        );
+});
+
+test('a cloned custom base builder subquery read refreshes after a write', function (): void {
+    $query = (new AuthorWithBaseBuilderTrait)
+        ->select('authors.*')
+        ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id');
+
+    expectReadToRefreshAfterABookIsAdded(
+            fn () => (clone $query)->get(),
+            fn () => (new UncachedAuthor)
+                ->select('authors.*')
+                ->joinSub(authoredSubQuery(), 'authored', 'authored.author_id', '=', 'authors.id')
+                ->get(),
+        );
 });
 
 test('of many relation builds cache tags without raising a type error', function () {

@@ -8,6 +8,7 @@ use Aws\DynamoDb\Exception\DynamoDbException;
 use Closure;
 use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
+use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
 use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
@@ -43,6 +44,8 @@ trait Caching
 
     public function __call($method, $parameters): mixed
     {
+        $parameters = $this->recordSubqueryArguments($method, $parameters);
+
         if (
             property_exists($this, 'innerBuilder')
             && $this->innerBuilder
@@ -78,6 +81,27 @@ trait Caching
         $this->flushCacheAfterForwardedWrite($method);
 
         return $result;
+    }
+
+    protected function recordSubqueryArguments(string $method, array $parameters): array
+    {
+        if (
+            ! $this instanceof Builder
+            || $this->getQuery() instanceof CachedQueryBuilder
+        ) {
+            return $parameters;
+        }
+
+        $recorder = CachedQueryBuilder::recorderFor($this->getQuery());
+
+        if (
+            property_exists($this, "innerBuilder")
+            && $this->innerBuilder
+        ) {
+            $recorder->recordSubqueryCallsOf($this->innerBuilder);
+        }
+
+        return $recorder->recordSubqueryCall($method, $parameters);
     }
 
     protected function macroKeyArguments(array $parameters): string
@@ -236,17 +260,11 @@ trait Caching
 
             $this->modelCacheRepository()->invalidateTags($tags);
 
-            [$cacheCooldown] = $this->getModelCacheCooldown($this->cacheModel() ?? $this);
+            $model = $this->cacheModel() ?? $this;
+            [$cacheCooldown] = $this->getModelCacheCooldown($model);
 
             if ($cacheCooldown) {
-                $cachePrefix = $this->getCachePrefix();
-                $modelClassName = get_class($this);
-                $cacheKey = "{$cachePrefix}:{$modelClassName}-cooldown:saved-at";
-
-                $this->cache()
-                    ->rememberForever($cacheKey, function () {
-                        return (new Carbon)->now();
-                    });
+                $this->setCacheCooldownSavedAtTimestamp($model);
             }
         }, 'cache flush failed');
     }
@@ -257,9 +275,6 @@ trait Caching
             return $this->getRelated();
         }
 
-        // A model is its own cache model. Reading $this->model on one goes
-        // through Eloquent's magic accessors, which lazy-load a relationship
-        // named model() on every flush, and so on every write.
         if ($this instanceof Model) {
             return $this;
         }
@@ -273,10 +288,14 @@ trait Caching
 
     protected function getCachePrefix(): string
     {
+        return $this->cooldownCachePrefix($this->cacheModel());
+    }
+
+    protected function cooldownCachePrefix(?Model $model): string
+    {
         $cachePrefix = Container::getInstance()
             ->make("config")
             ->get("laravel-model-caching.cache-prefix", "");
-        $model = $this->cacheModel();
 
         if (
             $model
@@ -387,7 +406,7 @@ trait Caching
             return [null, null, null];
         }
 
-        $cachePrefix = $this->getCachePrefix();
+        $cachePrefix = $this->cooldownCachePrefix($instance);
         $modelClassName = get_class($instance);
         [$cacheCooldown, $invalidatedAt, $savedAt] = $this
             ->getCacheCooldownDetails($instance, $cachePrefix, $modelClassName);
@@ -429,7 +448,7 @@ trait Caching
                 return;
             }
 
-            $cachePrefix = $this->getCachePrefix();
+            $cachePrefix = $this->cooldownCachePrefix($instance);
             $modelClassName = get_class($instance);
 
             $instance
@@ -527,16 +546,19 @@ trait Caching
         $relationObject = $instance->$relationship();
         $relationshipInstance = $relationObject->getModel();
 
-        if (method_exists($relationshipInstance, "flushCache")) {
-            $relationshipInstance->flushCache();
-        } else {
-            $tags = (new CacheTags(
-                [],
-                $relationshipInstance,
-                Container::getInstance()->make("db")->query(),
-            ))->make();
+        if (! method_exists($relationshipInstance, "flushCache")) {
+            $query = Container::getInstance()
+                ->make("db")
+                ->query();
+            $tags = (new CacheTags([], $relationshipInstance, $query))->make();
+            $repository = $instance->modelCacheRepository();
+            $repository->invalidateTags($tags);
 
-            $instance->modelCacheRepository()->invalidateTags($tags);
+            return;
+        }
+
+        if ($this->cacheCooldownAllowsFlush($relationshipInstance)) {
+            $relationshipInstance->flushCache();
         }
     }
 
@@ -740,7 +762,7 @@ trait Caching
     protected function setCacheCooldownSavedAtTimestamp(Model $instance): void
     {
         $this->withCacheFallback(function () use ($instance) {
-            $cachePrefix = $this->getCachePrefix();
+            $cachePrefix = $this->cooldownCachePrefix($instance);
             $modelClassName = get_class($instance);
             $cacheKey = "{$cachePrefix}:{$modelClassName}-cooldown:saved-at";
 

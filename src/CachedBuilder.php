@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use ReflectionClass;
 
 class CachedBuilder extends Builder
@@ -25,9 +26,19 @@ class CachedBuilder extends Builder
     protected ?Builder $innerBuilder = null;
     private static ?ReflectionClass $builderReflection = null;
 
+    public function __construct(QueryBuilder $query)
+    {
+        parent::__construct(CachedQueryBuilder::fromBase($query));
+    }
+
     public function setInnerBuilder(Builder $builder): static
     {
         $this->innerBuilder = $builder;
+
+        if (! $builder->getQuery() instanceof CachedQueryBuilder) {
+            CachedQueryBuilder::recorderFor($builder->getQuery())
+                ->recordSubqueryCallsOf($builder);
+        }
 
         return $this;
     }
@@ -141,7 +152,12 @@ class CachedBuilder extends Builder
             $this->innerBuilder = clone $this->innerBuilder;
         }
 
+        $query = $this->query;
         parent::__clone();
+        CachedQueryBuilder::recorderFor($this->query, $query);
+        $clonedQuery = $this->query;
+        $innerBuilder = $this->innerBuilder;
+        $innerBuilder?->setQuery($clonedQuery);
     }
 
     protected function getRelationWithoutConstraints($relation): mixed

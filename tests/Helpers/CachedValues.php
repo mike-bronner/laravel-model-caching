@@ -62,6 +62,15 @@ function booksTagEntrySets() : array
     );
 }
 
+function storesTagEntrySets(): array
+{
+    $token = (int) env("TEST_TOKEN", 1);
+    $connection = app("redis")->connection("model-cache");
+    $pattern = "lmc-test-{$token}:tag:genealabs:laravel-model-caching:*:stores:entries";
+
+    return test()->scanRedisKeys($connection, $pattern);
+}
+
 function modelCacheKeys() : array
 {
     $token = (int) env('TEST_TOKEN', 1);

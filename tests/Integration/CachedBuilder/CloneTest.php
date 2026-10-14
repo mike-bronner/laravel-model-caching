@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBaseAndEloquentBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Comment;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
@@ -261,4 +263,31 @@ test('multiple clones do not share state', function () {
     $clone2Columns = array_column($clone2Wheres, 'column');
     expect($clone2Columns)->toContain('id');
     expect($clone2Columns)->not->toContain('email');
+});
+
+test('cloned reads on a custom eloquent builder model return their own rows', function (): void {
+    $query = (new AuthorWithCustomBuilder)->newQuery();
+    [$firstId, $secondId] = firstTwoDistinctValues("authors", "id");
+
+    $first = (clone $query)->where("id", $firstId)
+        ->pluck("id")
+        ->all();
+    $second = (clone $query)->where("id", $secondId)
+        ->pluck("id")
+        ->all();
+
+    expect($first)->toBe([$firstId]);
+    expect($second)->toBe([$secondId]);
+});
+
+test('a cloned builder does not share macros with its original', function (): void {
+    $query = (new AuthorWithCustomBaseAndEloquentBuilder)->newQuery();
+    $clone = clone $query;
+    $cloneInner = $clone->getInnerBuilder();
+    $originalInner = $query->getInnerBuilder();
+
+    $cloneInner->macro("cloneOnly", fn ($builder) => $builder);
+
+    expect($cloneInner->hasMacro("cloneOnly"))->toBeTrue();
+    expect($originalInner->hasMacro("cloneOnly"))->toBeFalse();
 });

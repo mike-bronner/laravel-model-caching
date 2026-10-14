@@ -1,9 +1,11 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\KeepsItsNamePrivate;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 function authoredSubQuery()
@@ -11,6 +13,19 @@ function authoredSubQuery()
     return DB::table('books')
         ->select('author_id')
         ->groupBy('author_id');
+}
+
+function bookAuthorsSubQuery(): QueryBuilder
+{
+    return DB::table("books")
+        ->selectRaw("author_id as id, null as deleted_at")
+        ->distinct();
+}
+
+function bookAuthorIdsSubQuery(): QueryBuilder
+{
+    return DB::table("books")
+        ->select("author_id");
 }
 
 function latestBookSubQuery()
@@ -154,4 +169,45 @@ function booksHavingAuthorAbove(Model $model, array $value)
     return $model
         ->groupBy("author_id")
         ->having("author_id", ">", $value);
+}
+
+function expectServedFromCache(Closure $read): void
+{
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    try {
+        $read();
+        $queries = DB::getQueryLog();
+
+        expect($queries)->toBe([], "The read should be served from the cache");
+    } finally {
+        DB::disableQueryLog();
+    }
+}
+
+function expectReadToRefreshAfterABookIsAdded(Closure $cachedRead, Closure $liveRead): void
+{
+    $authorWithoutBooks = Author::factory()
+        ->create();
+    $before = $cachedRead();
+    expectServedFromCache($cachedRead);
+
+    $authorId = $authorWithoutBooks->getKey();
+    Book::factory()
+        ->create(["author_id" => $authorId]);
+
+    $afterCachedRead = $cachedRead()
+        ->pluck("id")
+        ->sort()
+        ->values();
+    $liveTruth = $liveRead();
+    $liveIds = $liveTruth->pluck("id")
+        ->sort()
+        ->values();
+
+    $beforeCount = $before->count();
+
+    expect($liveTruth)->toHaveCount($beforeCount + 1);
+    expect($afterCachedRead)->toEqual($liveIds);
 }

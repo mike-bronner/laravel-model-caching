@@ -4,11 +4,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Concerns\DefinesBaseQueryBuilde
 use GeneaLabs\LaravelModelCaching\Traits\Cachable;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * A cachable Author that also mixes in another trait overriding
- * newBaseQueryBuilder(). Merely loading this class proves the two traits do
- * not collide.
- */
 class AuthorWithBaseBuilderTrait extends Model
 {
     use Cachable;

@@ -18,7 +18,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 
 // phpcs:ignore SlevomatCodingStandard.Classes.ClassLength.ClassTooLong
@@ -41,18 +40,6 @@ trait ModelCaching
         } finally {
             unset($building[$objectId]);
         }
-    }
-
-    protected function useModelCachingQueryBuilder(mixed $query): mixed
-    {
-        if (
-            ! is_object($query)
-            || $query::class !== QueryBuilder::class
-        ) {
-            return $query;
-        }
-
-        return CachedQueryBuilder::fromBase($query);
     }
 
     public function __get($key): mixed
@@ -164,10 +151,7 @@ trait ModelCaching
 
     public function newModelCachingEloquentBuilder($query): Builder
     {
-        // Done here rather than in newEloquentBuilder() so a model that
-        // resolves a newEloquentBuilder() collision by delegating to this
-        // method still gets the recording query builder.
-        $query = $this->useModelCachingQueryBuilder($query);
+        $query = CachedQueryBuilder::fromBase($query);
 
         if (! $this->isCachable()) {
             $this->isCachable = false;

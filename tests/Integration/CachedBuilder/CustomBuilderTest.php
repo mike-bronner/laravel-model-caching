@@ -7,8 +7,11 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorDelegatingToModelCaching;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorExtendingGenerated;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorQueryBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCachedCustomBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBaseAndEloquentBuilder;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCustomBuilder;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithSubqueryNamedScope;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithTraitCollision;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 
 test('non cachable model uses custom builder', function () {
     config(['laravel-model-caching.enabled' => false]);
@@ -197,4 +200,32 @@ test('inheritance with double cachable still caches results', function () {
         'Child model with double-Cachable inheritance must still cache results',
     );
     expect($cached['value']->count())->toEqual($results->count());
+});
+
+test('a scope named like a subquery method runs in a builder method', function (): void {
+    $author = (new UncachedAuthor)->first();
+    $name = $author->getAttribute("name");
+
+    $ids = (new AuthorWithSubqueryNamedScope)
+        ->callNamedLikeASubqueryMethod("whereNotIn", $name)
+        ->pluck("id")
+        ->all();
+
+    expect($ids)->toBe([$author->getKey()]);
+});
+
+test('a global macro named like a subquery method runs in a builder method', function (): void {
+    $author = (new UncachedAuthor)->first();
+    $name = $author->getAttribute("name");
+
+    $ids = withGlobalEloquentMacro(
+            "leftJoinLateral",
+            fn (string $name) => $this->where("name", $name),
+            fn () => (new AuthorWithCustomBaseAndEloquentBuilder)
+                ->callNamedLikeASubqueryMethod("leftJoinLateral", $name)
+                ->pluck("id")
+                ->all(),
+        );
+
+    expect($ids)->toBe([$author->getKey()]);
 });

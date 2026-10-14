@@ -10,11 +10,13 @@ use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use ReflectionProperty;
 use SplObjectStorage;
 use Throwable;
+use WeakMap;
 
 // phpcs:ignore SlevomatCodingStandard.Files.TypeNameMatchesFileName.NoMatchBetweenTypeNameAndFileName,SlevomatCodingStandard.Classes.ClassLength.ClassTooLong
 class CacheTags
@@ -22,6 +24,8 @@ class CacheTags
     use CachePrefixing;
 
     protected int $morphTypesTtlSeconds = 60;
+
+    protected ?WeakMap $deferredQueries = null;
 
     protected $eagerLoad;
     protected $model;
@@ -227,42 +231,76 @@ class CacheTags
             ->toArray();
     }
 
+    protected function subqueryRecorder(mixed $builder): mixed
+    {
+        return $builder instanceof QueryBuilder
+            ? CachedQueryBuilder::recorderFor($builder)
+            : $builder;
+    }
+
     protected function getJoinedSubqueryTables(mixed $baseQuery): array
     {
-        if (! method_exists($baseQuery, "getJoinedSubqueryTables")) {
+        $recorder = $this->subqueryRecorder($baseQuery);
+
+        if (! method_exists($recorder, "getJoinedSubqueryTables")) {
             return [];
         }
 
-        return collect($baseQuery->getJoinedSubqueryTables())
+        return collect($recorder->getJoinedSubqueryTables())
             ->merge($this->getDeferredJoinedSubqueryTables($baseQuery))
             ->all();
     }
 
     protected function getDeferredJoinedSubqueryTables(mixed $baseQuery): array
     {
+        $deferredQuery = $this->deferredQuery($baseQuery);
+
+        return $deferredQuery
+            ? $deferredQuery->getJoinedSubqueryTables()
+            : [];
+    }
+
+    protected function deferredQuery(mixed $baseQuery): ?CachedQueryBuilder
+    {
         if (
-            ! property_exists($baseQuery, "beforeQueryCallbacks")
+            ! $baseQuery instanceof CachedQueryBuilder
             || ! $baseQuery->beforeQueryCallbacks
         ) {
-            return [];
+            return null;
         }
 
+        $deferredQueries = $this->deferredQueries ??= new WeakMap;
+
+        if (! $deferredQueries->offsetExists($baseQuery)) {
+            $deferredQueries[$baseQuery] = $this->queryAfterCallbacks($baseQuery);
+        }
+
+        return $deferredQueries[$baseQuery] ?: null;
+    }
+
+    protected function queryAfterCallbacks(CachedQueryBuilder $baseQuery): CachedQueryBuilder|false
+    {
         try {
             $query = clone $baseQuery;
             $query->applyBeforeQueryCallbacks();
 
-            return $query->getJoinedSubqueryTables();
+            return $query;
         } catch (Throwable) {
-            return [];
+            return false;
         }
     }
 
     protected function getSubqueryWhereTags(): array
     {
-        $entries = $this->getSubqueryTablesFromBuilder(
-            $this->resolveBaseQuery(),
-            new SplObjectStorage,
-        );
+        $baseQuery = $this->resolveBaseQuery();
+        $seen = new SplObjectStorage;
+        $deferredQuery = $this->deferredQuery($baseQuery);
+        $deferredEntries = $deferredQuery
+            ? $this->getSubqueryTablesFromBuilder($deferredQuery, $seen)
+            : [];
+        $entries = collect($this->getSubqueryTablesFromBuilder($baseQuery, $seen))
+            ->merge($deferredEntries)
+            ->all();
         $modelledTables = collect($entries)
             ->filter(fn (array $entry) => $entry["model"] !== null)
             ->pluck("table")
@@ -287,8 +325,9 @@ class CacheTags
 
         $seen->offsetSet($builder);
 
-        $tables = method_exists($builder, "getRelatedSubqueryTables")
-            ? $builder->getRelatedSubqueryTables()
+        $recorder = $this->subqueryRecorder($builder);
+        $tables = method_exists($recorder, "getRelatedSubqueryTables")
+            ? $recorder->getRelatedSubqueryTables()
             : [];
 
         return collect($tables)
@@ -312,7 +351,7 @@ class CacheTags
                         ->flatMap(function ($where) use ($seen) {
                             return $this->getSubqueryTablesFromWhere($where, $seen);
                         }))))
-            ->merge(collect([$builder])
+            ->merge(collect([$recorder])
                 ->filter(fn ($builder) => method_exists($builder, "getJoinedSubqueryTables"))
                 ->flatMap(fn ($builder) => $builder->getJoinedSubqueryTables())
                 ->map(fn (string $table) => [
