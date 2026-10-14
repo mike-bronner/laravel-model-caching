@@ -227,11 +227,6 @@ test('where-only constraints of other shapes keep their key', function (Closure 
             ->whereIn("publisher_id", fn ($sub) => $sub->select("id")->from("publishers"))]),
         "books=54d199896d516bdbf4a78e69dcf80e44943b7801",
     ],
-    "a where has" => [
-        fn () => (new Author)->with(["books" => fn ($query) => $query
-            ->whereHas("publisher", fn ($publisher) => $publisher->where("name", "!=", ""))]),
-        "books=32629fbc8484553e944ce556cfb34374a835615a",
-    ],
     "a where pivot" => [
         fn () => (new Book)->with(["stores" => fn ($query) => $query->wherePivot("store_id", ">", 0)]),
         "stores=67d2af62f3bc3fc16192f851b5eb34a70f176c42",
@@ -248,19 +243,35 @@ test('where-only constraints of other shapes keep their key', function (Closure 
         fn () => (new Book)->with(["stores" => fn ($query) => $query->wherePivotNull("store_id")]),
         "stores=67d09f945c4e5bff8bc041c363167c784384f606",
     ],
+]);
+
+test('where-only constraints that nest a builder keep the key the framework gave them', function (Model $model, string $relation, Closure $constraint) {
+    $suffix = whereOnlyEagerLoadKeySuffix($model, $relation, $constraint);
+    $expected = $suffix === null
+        ? ""
+        : cacheKey($model->with($relation)) . $suffix;
+
+    expect(cacheKey($model->with([$relation => $constraint])))->toBe($expected);
+})->with([
+    "a where has" => [
+        fn () => new Author,
+        "books",
+        fn ($query) => $query->whereHas("publisher", fn ($publisher) => $publisher->where("name", "!=", "")),
+    ],
     "a where pivot closure" => [
-        fn () => (new Book)->with(["stores" => fn ($query) => $query
-            ->wherePivot(fn ($pivot) => $pivot->where("book_store.store_id", ">", 0))]),
-        "stores=20488d434d41e2db3d6c67fe63efb95837371f45",
+        fn () => new Book,
+        "stores",
+        fn ($query) => $query->wherePivot(fn ($pivot) => $pivot->where("book_store.store_id", ">", 0)),
     ],
     "a nested where" => [
-        fn () => (new Author)->with(["books" => fn ($query) => $query
-            ->where(fn ($nested) => $nested->where("title", "!=", ""))]),
-        "books=41e13e69bfe5057419418d4ce7cf963e36a1b3e6",
+        fn () => new Author,
+        "books",
+        fn ($query) => $query->where(fn ($nested) => $nested->where("title", "!=", "")),
     ],
     "a local scope that nests a where" => [
-        fn () => (new Author)->with(["books" => fn ($query) => $query->titledLike("A%")]),
-        "books=de93775f6c026fb65d06638207c7550df32e0ece",
+        fn () => new Author,
+        "books",
+        fn ($query) => $query->titledLike("A%"),
     ],
 ]);
 

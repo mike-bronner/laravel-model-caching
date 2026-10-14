@@ -21,7 +21,7 @@ trait CachedValueRetrievable
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
 
-        return match ($this->isCachable === true) {
+        return match ($this->isCachable) {
             true => $this->storedValue($method, $arguments, $cacheKey),
             false => parent::{$method}(...$arguments),
         };
@@ -165,11 +165,11 @@ trait CachedValueRetrievable
                 ->filter()
                 ->unique()
                 ->map(fn (string $type) => $relation->createModelByType($type))
-                ->contains(fn (Model $related) => $related->getGlobalScopes() !== []);
+                ->contains(fn (Model $related) => (bool) $related->getGlobalScopes());
         }
 
-        return $relation->getRelated()
-            ->getGlobalScopes() !== [];
+        return (bool) $relation->getRelated()
+            ->getGlobalScopes();
     }
 
     protected function reloadScopedRelationsOfRelated(
@@ -177,7 +177,7 @@ trait CachedValueRetrievable
         string $name,
         array $nestedEagerLoads,
     ): void {
-        if ($nestedEagerLoads === []) {
+        if (! $nestedEagerLoads) {
             return;
         }
 

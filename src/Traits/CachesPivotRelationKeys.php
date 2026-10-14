@@ -47,7 +47,7 @@ trait CachesPivotRelationKeys
     {
         $eagerLoads = $this->cacheEagerLoads();
 
-        if ($eagerLoads === []) {
+        if (! $eagerLoads) {
             return "";
         }
 
@@ -66,7 +66,7 @@ trait CachesPivotRelationKeys
 
     protected function pivotColumnsKeySegment(): string
     {
-        if ($this->pivotColumns === []) {
+        if (! $this->pivotColumns) {
             return "";
         }
 

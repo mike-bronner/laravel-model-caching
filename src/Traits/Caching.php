@@ -35,7 +35,7 @@ trait Caching
         'Predis\\Connection\\ConnectionException',
     ];
     protected static ?\WeakMap $modelCacheRepositories = null;
-    protected $isCachable = true;
+    protected bool $isCachable = true;
     protected $scopesAreApplied = false;
     protected $macroKey = "";
     protected $withoutGlobalScopes = [];
@@ -582,7 +582,7 @@ trait Caching
 
         $allRelationshipsAreCachable = true;
 
-        if ($this->cacheEagerLoads() !== []) {
+        if ($this->cacheEagerLoads()) {
             $allRelationshipsAreCachable = collect($this->cacheEagerLoads())
                 ->keys()
                 ->reduce(function ($carry, $related) {
