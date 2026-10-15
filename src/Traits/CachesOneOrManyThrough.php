@@ -212,7 +212,7 @@ trait CachesOneOrManyThrough
                 $eagerLoad,
                 $model,
                 $query,
-                $this->macroKey,
+                $this->builderArgumentMacroKey($this->getQuery()),
                 $this->withoutGlobalScopes,
                 $this->withoutAllGlobalScopes,
             ))->make($columns, $idColumn, $keyDifferentiator);

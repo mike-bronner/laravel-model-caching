@@ -125,9 +125,7 @@ trait Caching
         return collect($parameters)
             ->map(function ($parameter) {
                 if (is_array($parameter)) {
-                    $this->assertKeyableMacroArray($parameter);
-
-                    return json_encode($parameter, JSON_THROW_ON_ERROR);
+                    return json_encode($this->keyableMacroArray($parameter), JSON_THROW_ON_ERROR);
                 }
 
                 if ($parameter instanceof BackedEnum) {
@@ -177,24 +175,16 @@ trait Caching
             ->call($builder);
     }
 
-    protected function assertKeyableMacroArray(array $values, int $depth = 1): void
+    protected function keyableMacroArray(array $values, int $depth = 1): array
     {
         throw_if($depth > 512, UnkeyableValueException::class);
 
-        foreach ($values as $value) {
-            if (is_array($value)) {
-                $this->assertKeyableMacroArray($value, $depth + 1);
-
-                continue;
-            }
-
-            throw_if(
-                is_object($value)
-                    && ! $value instanceof Stringable
-                    && ! $value instanceof UnitEnum,
-                UnkeyableValueException::class,
-            );
-        }
+        return array_map(fn ($value) => match (true) {
+            is_array($value) => $this->keyableMacroArray($value, $depth + 1),
+            $value instanceof Stringable && CacheKey::hidesStateFromJson($value) => (string) $value,
+            is_object($value) && ! $value instanceof Stringable && ! $value instanceof UnitEnum => throw new UnkeyableValueException,
+            default => $value,
+        }, $values);
     }
 
     protected function keyableMacroKey(): string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GeneaLabs\LaravelModelCaching;
 
 use BackedEnum;
+use Closure;
 use DateTimeInterface;
 use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
@@ -17,6 +18,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use JsonSerializable;
 use Ramsey\Uuid\Uuid;
+use ReflectionClass;
 use ReflectionReference;
 use SplObjectStorage;
 use Stringable;
@@ -169,7 +171,7 @@ class CacheKey
     {
         return match (true) {
             $this->isResource($binding) => $this->unkeyableBinding(),
-            ! $this->hidesStateFromJson($binding) => $binding,
+            ! static::hidesStateFromJson($binding) => $binding,
             $binding instanceof Stringable => (string) $binding,
             default => $this->unkeyableBinding(),
         };
@@ -182,7 +184,7 @@ class CacheKey
         return null;
     }
 
-    protected function hidesStateFromJson(mixed $value) : bool
+    public static function hidesStateFromJson(mixed $value) : bool
     {
         if (
             ! is_object($value)
@@ -763,7 +765,7 @@ class CacheKey
 
     protected function getEagerLoadConstraintKey(string $related, $constraint) : string
     {
-        if (! ($constraint instanceof \Closure)) {
+        if (! ($constraint instanceof Closure)) {
             return "";
         }
 
@@ -775,7 +777,7 @@ class CacheKey
         }
 
         try {
-            $freshModel = (new \ReflectionClass($this->model))->newInstanceWithoutConstructor();
+            $freshModel = (new ReflectionClass($this->model))->newInstanceWithoutConstructor();
             $relation = $freshModel->$related();
             $baseWheres   = $relation->getQuery()->getQuery()->wheres ?? [];
             $baseBindings = $relation->getQuery()->getQuery()->bindings['where'] ?? [];
@@ -958,7 +960,7 @@ class CacheKey
             return $this->expressionToString($value);
         }
 
-        if ($value instanceof \Closure) {
+        if ($value instanceof Closure) {
             return "Closure";
         }
 
