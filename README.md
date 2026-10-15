@@ -78,6 +78,11 @@ $posts = Post::where('active', true)->with('comments')->paginate();
   eager-loaded relation still runs a query of its own, and that query is cached
   or not by its own rules. The check covers first-level relations only: in
   `with('comments.replies')` it checks `Comment`, but not `Reply`.
+- A macro or custom Eloquent builder method called with a closure, or with an
+  object that has no `__toString()`, also inside an array argument. The key
+  cannot tell two such arguments apart, so the query runs live. Two kinds of
+  object are keyed and cached: an enum passed directly, by its value or name,
+  and a query builder or relation, by its own query.
 
 ### 💾 Cache Drivers
 
