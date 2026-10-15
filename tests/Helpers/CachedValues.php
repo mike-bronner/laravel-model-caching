@@ -79,6 +79,14 @@ function modelCacheKeys() : array
     return test()->scanRedisKeys($connection, "lmc-test-{$token}:*");
 }
 
+function modelCacheEntryKeys() : array
+{
+    return collect(modelCacheKeys())
+        ->reject(fn (string $key): bool => str_contains($key, ":tag:"))
+        ->values()
+        ->all();
+}
+
 function packageKeys(): array
 {
     $token = (int) env("TEST_TOKEN", 1);

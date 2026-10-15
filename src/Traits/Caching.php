@@ -137,6 +137,14 @@ trait Caching
                     return $parameter->name;
                 }
 
+                if (
+                    $parameter instanceof QueryBuilder
+                    || $parameter instanceof Builder
+                    || $parameter instanceof Relation
+                ) {
+                    return $this->macroBuilderArgumentKey($parameter);
+                }
+
                 throw_unless(
                     $parameter === null
                         || is_scalar($parameter)
@@ -147,6 +155,30 @@ trait Caching
                 return $parameter;
             })
             ->implode("_");
+    }
+
+    /**
+     * A builder argument keys by a nested cache key over its SQL, bindings,
+     * eager loads and macro key, so a builder the method applies outside the
+     * query still splits the key. A builder that cannot be keyed throws.
+     */
+    protected function macroBuilderArgumentKey(QueryBuilder|Builder|Relation $builder): string
+    {
+        if ($builder instanceof Relation) {
+            $builder = $builder->getQuery();
+        }
+
+        $key = $builder instanceof Builder
+            ? new CacheKey($builder->getEagerLoads(), $builder->getModel(), $builder->toBase(), $this->builderArgumentMacroKey($builder), [], false)
+            : new CacheKey([], $this->cacheModel(), $builder, "", [], false);
+
+        return "builder:" . sha1($key->make());
+    }
+
+    protected function builderArgumentMacroKey(Builder $builder): string
+    {
+        return (fn () => method_exists($this, "keyableMacroKey") ? $this->keyableMacroKey() : "")
+            ->call($builder);
     }
 
     /**

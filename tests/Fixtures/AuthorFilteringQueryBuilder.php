@@ -1,5 +1,9 @@
 <?php namespace GeneaLabs\LaravelModelCaching\Tests\Fixtures;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Arr;
 
 class AuthorFilteringQueryBuilder extends AuthorQueryBuilder
@@ -36,6 +40,16 @@ class AuthorFilteringQueryBuilder extends AuthorQueryBuilder
         $this->resultFilters = Arr::flatten(Arr::wrap($filters));
 
         return $this;
+    }
+
+    public function ignoringBuilder(QueryBuilder|Builder|Relation $builder): static
+    {
+        return $this;
+    }
+
+    public function keepResultsIn(QueryBuilder|Builder|Relation $ids): static
+    {
+        return $this->keepResultsWhere(fn (Model $author) => $ids->pluck("id")->contains($author->getKey()));
     }
 
     public function get($columns = ["*"])
