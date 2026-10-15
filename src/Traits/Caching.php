@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
 use Aws\DynamoDb\Exception\DynamoDbException;
+use BackedEnum;
 use Closure;
 use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\CachedBuilder;
@@ -26,18 +27,23 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use JsonException;
+use RedisException;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionProperty;
+use Stringable;
+use Throwable;
+use UnitEnum;
+use WeakMap;
 
 trait Caching
 {
     protected static array $cacheConnectionExceptions = [
-        \RedisException::class,
+        RedisException::class,
         'Predis\\Connection\\ConnectionException',
     ];
-    protected static ?\WeakMap $modelCacheRepositories = null;
+    protected static ?WeakMap $modelCacheRepositories = null;
     protected bool $isCachable = true;
     protected $scopesAreApplied = false;
     protected $macroKey = "";
@@ -124,11 +130,11 @@ trait Caching
                     return json_encode($parameter, JSON_THROW_ON_ERROR);
                 }
 
-                if ($parameter instanceof \BackedEnum) {
+                if ($parameter instanceof BackedEnum) {
                     return $parameter->value;
                 }
 
-                if ($parameter instanceof \UnitEnum) {
+                if ($parameter instanceof UnitEnum) {
                     return $parameter->name;
                 }
 
@@ -143,7 +149,7 @@ trait Caching
                 throw_unless(
                     $parameter === null
                         || is_scalar($parameter)
-                        || $parameter instanceof \Stringable,
+                        || $parameter instanceof Stringable,
                     UnkeyableValueException::class,
                 );
 
@@ -184,8 +190,8 @@ trait Caching
 
             throw_if(
                 is_object($value)
-                    && ! $value instanceof \Stringable
-                    && ! $value instanceof \UnitEnum,
+                    && ! $value instanceof Stringable
+                    && ! $value instanceof UnitEnum,
                 UnkeyableValueException::class,
             );
         }
@@ -641,7 +647,7 @@ trait Caching
     protected function modelCacheRepository(): ModelCacheRepository
     {
         static::$modelCacheRepositories
-            ??= new \WeakMap;
+            ??= new WeakMap;
 
         return static::$modelCacheRepositories[$this]
             ??= ModelCacheRepository::make();
@@ -791,7 +797,7 @@ trait Caching
             ->get("laravel-model-caching.fallback-to-database", false);
     }
 
-    public function isCacheConnectionException(\Throwable $exception): bool
+    public function isCacheConnectionException(Throwable $exception): bool
     {
         $isListedException = collect(static::$cacheConnectionExceptions)
             ->contains(fn (string $exceptionClass): bool => $exception instanceof $exceptionClass);
@@ -816,7 +822,7 @@ trait Caching
 
         try {
             return $operation();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             if (! $this->shouldFallbackToDatabase() || ! $this->isCacheConnectionException($exception)) {
                 throw $exception;
             }

@@ -9,6 +9,7 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\IntegerStatus;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use Illuminate\Support\Facades\DB;
+use ReflectionMethod;
 
 test('an argument applied outside the query never shares a cache entry', function (Closure $call, Closure $filterFor) {
     $first = $call("keepResultsWhere", $filterFor(1))->get();
@@ -90,7 +91,7 @@ test('an array of joinable values keeps its key spelling', function () {
         }
     };
     $argument = ["text", 7, 2.5, true, false, null, $stringable, IntegerStatus::Active, ["key" => "nested"]];
-    $method = new \ReflectionMethod(CachedBuilder::class, "macroKeyArguments");
+    $method = new ReflectionMethod(CachedBuilder::class, "macroKeyArguments");
 
     expect($method->invoke(Book::query(), [$argument]))->toBe(
         '["text",7,2.5,true,false,null,{},1,{"key":"nested"}]',
