@@ -236,8 +236,11 @@ extends `CachedBuilder` is used directly. One that does not is wrapped inside a
 `CachedBuilder`, which proxies unknown method calls through to it, so custom
 query methods stay callable, whatever arguments they take. Each call is
 recorded in the cache key with its arguments, so two calls with different
-arguments are cached apart. An enum passed directly is recorded by its value
-or name. A query builder or relation is recorded by its own SQL, bindings,
+arguments are cached apart. Calls made through a has-one-through or
+has-many-through relation are recorded the same way. An enum passed directly
+is recorded by its value or name. An object with `__toString()` inside an
+array argument is recorded by that string when its state is not all public.
+A query builder or relation is recorded by its own SQL, bindings,
 eager loads and custom method calls. A call that passes a closure or another
 object with no `__toString()`, also inside an array argument, runs uncached,
 because the key cannot tell two such arguments apart. A custom method that
