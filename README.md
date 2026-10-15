@@ -59,12 +59,25 @@ $posts = Post::where('active', true)->with('comments')->paginate();
 - Model queries (`get`, `first`, `find`, `all`, `paginate`, `pluck`, `value`, `exists`)
 - Aggregations (`count`, `sum`, `avg`, `min`, `max`)
 - Eager-loaded relationships (via `with()`)
+- Lazy-loaded relationships, such as `$post->comments`, are cached the same
+  way as eager-loaded ones when the related model uses `Cachable`. The related
+  model's query also runs through `CachedBuilder`, so you do not need `with()`
+  to get caching.
+- Custom column selections: `select()`, `addSelect()` and raw expressions are
+  cached. The selected columns form part of the cache key.
 
 ### 🚫 What Does Not Get Cached
-- Lazy-loaded relationships — only eager-loaded (`with()`) relationships are cached. Use `with()` to benefit from caching.
-- Queries using `select()` clauses — custom column selections bypass the cache.
-- Queries inside transactions — cache is not automatically flushed when a transaction commits; call `flushCache()` manually if needed.
 - `inRandomOrder()` queries — caching is automatically disabled since results should differ each time.
+- `lockForUpdate()` and `sharedLock()` queries. They read from the database
+  directly, and their results are never written to the cache.
+- A query that eager-loads a relation whose related model does not use
+  `Cachable`. That one relation stops the whole query from being cached: the
+  base model's query is not cached, whatever other relations the same `with()`
+  call lists. For example, `Post::with('author')` is not cached when `Author`
+  is a plain model. Check this first when caching seems to stop working. Each
+  eager-loaded relation still runs a query of its own, and that query is cached
+  or not by its own rules. The check covers first-level relations only: in
+  `with('comments.replies')` it checks `Comment`, but not `Reply`.
 
 ### 💾 Cache Drivers
 
@@ -429,6 +442,14 @@ model's builder does not: `DB::table(...)`, or a base query builder taken with
 `toBase()` or `getQuery()`. Call `ModelCache::invalidate(Post::class)` after
 one of those.
 
+A flush does not wait for a database transaction to commit. A model write
+flushes on its Eloquent model event, which fires during the transaction, not
+on commit. Builder writes flush when their statement runs. A rollback does not
+undo a flush that already happened. Before the transaction ends, a read can
+cache rows that the commit or rollback then changes. Call
+`ModelCache::invalidate(Post::class)` after the transaction ends where that
+matters.
+
 Cache tags are generated for the primary model, each eager-loaded relationship,
 joined tables, and morph-to target types, so only the relevant entries are
 invalidated. 🎯
@@ -472,6 +493,11 @@ it. A many-to-many relationship eager-loaded through a `morphTo`, such as
 `with('commentable.tags')`, does not tag its pivot table. After a write to that
 pivot table outside the relationship, call `ModelCache::invalidate()` for the
 model that ran the query.
+
+A pivot `attach`, `detach`, `sync` or `updateExistingPivot` through the
+relationship flushes the pivot table's tags itself. That holds with model events
+off, and when the related model does not use `Cachable`. An active cool-down
+window on either model holds that flush back.
 
 ### 🔗 BelongsToMany with Custom Pivot Models
 Cache invalidation works for `BelongsToMany` relationships using custom pivot

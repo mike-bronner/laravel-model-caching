@@ -60,6 +60,11 @@ model events: `insert`, `insertGetId`, `insertOrIgnore`,
 and it covers `saveQuietly()`, `deleteQuietly()` and `withoutEvents()`, because
 the insert, update or delete underneath each of them is one of those writes.
 
+A pivot `attach`, `detach`, `sync` or `updateExistingPivot` on a
+`belongsToMany` or `morphToMany` relationship also flushes the pivot table's
+tags, with or without model events, and whether or not the related model uses
+`Cachable`. An active cool-down window on either model holds that flush back.
+
 A write that does not go through the model's builder leaves the cache stale.
 `DB::table('posts')->update(...)` is the common case. A base query builder taken
 from the model with `toBase()` or `getQuery()` is another. Write through the

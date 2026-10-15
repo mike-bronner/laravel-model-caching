@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
+use GeneaLabs\LaravelModelCaching\CacheTags;
 use GeneaLabs\LaravelPivotEvents\Traits\FiresPivotEventsTrait;
+use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Model;
 
 trait CachedPivotOperations
 {
@@ -28,6 +31,35 @@ trait CachedPivotOperations
                     }
                 }, 'cache flush after pivot write failed');
             });
+
+        $this->flushPivotTableCache();
+    }
+
+    protected function flushPivotTableCache(): void
+    {
+        $isEnabled = Container::getInstance()
+            ->make("config")
+            ->get("laravel-model-caching.enabled");
+
+        if (! $isEnabled) {
+            return;
+        }
+
+        $this->withCacheFallback(function (): void {
+            $isCoolingDown = collect([$this->parent, $this->getRelated()])
+                ->filter(fn ($model): bool => method_exists($model, "flushCache"))
+                ->contains(fn (Model $model): bool => ! $this->cacheCooldownAllowsFlush($model));
+
+            if ($isCoolingDown) {
+                return;
+            }
+
+            $pivotTags = (new CacheTags([], $this->getRelated(), null))
+                ->getPivotTableTags($this);
+
+            $this->modelCacheRepository()
+                ->invalidateTags($pivotTags);
+        }, 'pivot table cache flush after pivot write failed');
     }
 
     public function sync($ids, $detaching = true): array|false
