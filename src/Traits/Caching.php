@@ -122,10 +122,10 @@ trait Caching
 
     protected function macroKeyArguments(array $parameters): string
     {
-        return collect($parameters)
+        $arguments = collect($parameters)
             ->map(function ($parameter) {
                 if (is_array($parameter)) {
-                    return json_encode($this->keyableMacroArray($parameter), JSON_THROW_ON_ERROR);
+                    return $this->keyableMacroArray($parameter);
                 }
 
                 if ($parameter instanceof BackedEnum) {
@@ -151,9 +151,13 @@ trait Caching
                     UnkeyableValueException::class,
                 );
 
-                return $parameter;
+                return $parameter instanceof Stringable
+                    ? (string) $parameter
+                    : $parameter;
             })
-            ->implode("_");
+            ->all();
+
+        return json_encode($arguments, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION, 1024);
     }
 
     protected function macroBuilderArgumentKey(QueryBuilder|Builder|Relation $builder): string

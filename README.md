@@ -82,7 +82,8 @@ $posts = Post::where('active', true)->with('comments')->paginate();
   object that has no `__toString()`, also inside an array argument. The key
   cannot tell two such arguments apart, so the query runs live. Two kinds of
   object are keyed and cached: an enum passed directly, by its value or name,
-  and a query builder or relation, by its own query.
+  and a query builder or relation, by its own query. A value JSON cannot
+  encode, such as `NAN` or a string that is not valid UTF-8, also runs live.
 
 ### 💾 Cache Drivers
 

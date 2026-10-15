@@ -49,7 +49,7 @@ test('enum arguments are spelled by value or name', function () {
     $method = new \ReflectionMethod(CachedBuilder::class, "macroKeyArguments");
 
     expect($method->invoke(Book::query(), [IntegerStatus::Active, AuthorOrder::Newest]))->toBe(
-        "1_Newest",
+        '[1,"Newest"]',
     );
 });
 
@@ -76,7 +76,7 @@ test('write declared on wrapped builder invalidates cache', function () {
     expect((new AuthorWithFilteringBuilder)->orderBy("id")->pluck("name"))->toEqual($live);
 });
 
-test('joinable arguments keep their key spelling', function () {
+test('joinable arguments are spelled as a json list', function () {
     $stringable = new class {
         public function __toString(): string
         {
@@ -86,5 +86,5 @@ test('joinable arguments keep their key spelling', function () {
     $arguments = ["text", 7, 2.5, true, false, null, $stringable];
     $method = new \ReflectionMethod(CachedBuilder::class, "macroKeyArguments");
 
-    expect($method->invoke(Book::query(), $arguments))->toBe(implode("_", $arguments));
+    expect($method->invoke(Book::query(), $arguments))->toBe('["text",7,2.5,true,false,null,"stringable"]');
 });

@@ -1,8 +1,6 @@
 <?php
 
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithFilteringBuilder;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,8 +35,7 @@ function bookAuthorRelationOver(Builder $authors, int $authorId = 1): BelongsTo
 
 function filteringAuthorsThroughBooks(int $authorId = 1): HasManyThrough
 {
-    return (new Author)->forceFill(["id" => $authorId])
-        ->hasManyThrough(AuthorWithFilteringBuilder::class, Book::class, "author_id", "id", "id", "author_id");
+    return authorsThroughBooksOf(AuthorWithFilteringBuilder::class, $authorId);
 }
 
 function stringableHolding(string $value): Stringable

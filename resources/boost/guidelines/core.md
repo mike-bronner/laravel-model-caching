@@ -243,7 +243,9 @@ array argument is recorded by that string when its state is not all public.
 A query builder or relation is recorded by its own SQL, bindings,
 eager loads and custom method calls. A call that passes a closure or another
 object with no `__toString()`, also inside an array argument, runs uncached,
-because the key cannot tell two such arguments apart. A custom method that
+because the key cannot tell two such arguments apart. So does a call that
+passes a value JSON cannot encode, such as `NAN` or a string that is not valid
+UTF-8. A custom method that
 writes, such as its own `updateOrInsert()`, invalidates like the builder write
 it is named after.
 

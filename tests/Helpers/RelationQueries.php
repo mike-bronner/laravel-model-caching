@@ -1,9 +1,11 @@
 <?php
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CountingBook;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
@@ -88,4 +90,10 @@ function tally(callable $query): int
     $query();
 
     return CountingBook::$authorCalls;
+}
+
+function authorsThroughBooksOf(string $related, int $authorId = 1): HasManyThrough
+{
+    return (new Author)->forceFill(["id" => $authorId])
+        ->hasManyThrough($related, Book::class, "author_id", "id", "id", "author_id");
 }

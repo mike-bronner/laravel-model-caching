@@ -35,6 +35,11 @@ class AuthorFilteringQueryBuilder extends AuthorQueryBuilder
         return $this;
     }
 
+    public function ignoringValues(mixed ...$values): static
+    {
+        return $this;
+    }
+
     public function keepResultsWhere(callable|array $filters): static
     {
         $this->resultFilters = Arr::flatten(Arr::wrap($filters));

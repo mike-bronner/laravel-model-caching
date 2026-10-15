@@ -68,7 +68,7 @@ test('an array argument json cannot encode runs the call uncached', function (Cl
     },
 ]);
 
-test('an array argument is walked to the json depth limit and no further', function (Closure $call) {
+test('an array argument is walked 512 levels deep and no further', function (Closure $call) {
     $call("ignoring", arrayNested(512, "deepest"))->get();
 
     expect(modelCacheEntryKeys())->toHaveCount(1);
@@ -138,7 +138,7 @@ test('an array of joinable values keeps its key spelling', function () {
     $method = new ReflectionMethod(CachedBuilder::class, "macroKeyArguments");
 
     expect($method->invoke(Book::query(), [$argument]))->toBe(
-        '["text",7,2.5,true,false,null,"stringable",{"name":"public"},1,{"key":"nested"}]',
+        '[["text",7,2.5,true,false,null,"stringable",{"name":"public"},1,{"key":"nested"}]]',
     );
 });
 
@@ -236,4 +236,59 @@ test('a through relation runs a call with an unkeyable argument uncached', funct
 ])->with([
     "a closure" => fn () => fn ($author) => true,
     "an object without __toString" => fn () => new AuthorWithId(1),
+    "a closure nested three arrays deep" => fn () => ["a" => ["b" => ["c" => [fn ($author) => true]]]],
+    "an object nested three arrays deep" => fn () => ["a" => ["b" => ["c" => [new AuthorWithId(1)]]]],
+]);
+
+dataset('calls ignoring scalar arguments', [
+    "forwarded to the wrapped builder" => fn (...$values) => AuthorWithFilteringBuilder::query()->ignoringValues(...$values),
+    "through a local macro" => function (...$values) {
+        $query = AuthorWithFilteringBuilder::query();
+        $query->macro("ignoringAll", fn ($builder, ...$values) => $builder);
+
+        return $query->ignoringAll(...$values);
+    },
+    "through a global macro" => fn (...$values) => withGlobalEloquentMacro(
+        "ignoringAll",
+        fn (...$values) => $this,
+        fn () => AuthorWithFilteringBuilder::query()->ignoringAll(...$values),
+    ),
+]);
+
+test('scalar arguments that used to spell alike never share a cache entry', function (Closure $call, array $first, array $second) {
+    $call(...$first)->get();
+    $call(...$second)->get();
+
+    expect(modelCacheEntryKeys())->toHaveCount(2);
+})->with('calls ignoring scalar arguments')->with([
+    "null and false" => [[null], [false]],
+    "null and an empty string" => [[null], [""]],
+    "false and an empty string" => [[false], [""]],
+    "true and one" => [[true], [1]],
+    "an integer and its string" => [[1], ["1"]],
+    "a whole float and its integer" => [[2.0], [2]],
+    "an underscore inside one argument and between two" => [["a_b"], ["a", "b"]],
+]);
+
+test('a macro argument never runs into the macro name', function () {
+    $first = AuthorWithFilteringBuilder::query();
+    $first->macro("keyed", fn ($builder, $value) => $builder);
+    $first->keyed("Abc")->get();
+
+    $second = AuthorWithFilteringBuilder::query();
+    $second->macro("keyedA", fn ($builder, $value) => $builder);
+    $second->keyedA("bc")->get();
+
+    expect(modelCacheEntryKeys())->toHaveCount(2);
+});
+
+test('a scalar argument json cannot encode runs the call uncached', function (Closure $call, mixed $value) {
+    $authors = $call($value)->orderBy("id")->get();
+
+    expect($authors->pluck("id")->all())->toBe((new UncachedAuthor)->orderBy("id")->pluck("id")->all())
+        ->and(modelCacheKeys())->toBe([]);
+})->with('calls ignoring scalar arguments')->with([
+    "a malformed string" => "\xB1",
+    "not a number" => NAN,
+    "infinity" => INF,
 ]);

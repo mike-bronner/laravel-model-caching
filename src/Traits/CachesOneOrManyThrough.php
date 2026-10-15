@@ -203,16 +203,14 @@ trait CachesOneOrManyThrough
         $idColumn = null,
         string $keyDifferentiator = '',
     ): string {
-        $eagerLoad = $this->getQuery()->getEagerLoads();
-        $model = $this->getModel();
-        $query = $this->getQuery()->getQuery();
+        $builder = $this->getQuery()->applyScopes();
 
         try {
             return (new CacheKey(
-                $eagerLoad,
-                $model,
-                $query,
-                $this->builderArgumentMacroKey($this->getQuery()),
+                $builder->getEagerLoads(),
+                $this->getModel(),
+                $builder->getQuery(),
+                $this->builderArgumentMacroKey($builder),
                 $this->withoutGlobalScopes,
                 $this->withoutAllGlobalScopes,
             ))->make($columns, $idColumn, $keyDifferentiator);
