@@ -114,11 +114,6 @@ trait Caching
         }
     }
 
-    /**
-     * Spell macro arguments for the cache key. An argument with no faithful
-     * spelling throws, so the query runs uncached rather than sharing a key
-     * with a call that differs only in that argument.
-     */
     protected function macroKeyArguments(array $parameters): string
     {
         return collect($parameters)
@@ -157,11 +152,6 @@ trait Caching
             ->implode("_");
     }
 
-    /**
-     * A builder argument keys by a nested cache key over its SQL, bindings,
-     * eager loads and macro key, so a builder the method applies outside the
-     * query still splits the key. A builder that cannot be keyed throws.
-     */
     protected function macroBuilderArgumentKey(QueryBuilder|Builder|Relation $builder): string
     {
         if ($builder instanceof Relation) {
@@ -181,14 +171,6 @@ trait Caching
             ->call($builder);
     }
 
-    /**
-     * An array keys by its JSON. json_encode throws on a value it cannot
-     * encode, such as a unit enum, a resource or a malformed string, but it
-     * spells any other object by its public properties, so a closure becomes
-     * "{}". This walk rejects those objects at any depth. Stringable objects
-     * keep their JSON spelling. The depth limit matches json_encode's and
-     * stops a self-referencing array.
-     */
     protected function assertKeyableMacroArray(array $values, int $depth = 1): void
     {
         throw_if($depth > 512, UnkeyableValueException::class);

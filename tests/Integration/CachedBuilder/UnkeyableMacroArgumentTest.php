@@ -27,6 +27,8 @@ test('an argument applied outside the query never shares a cache entry', functio
     "an object without __toString" => fn (int $id) => new AuthorWithId($id),
     "a closure nested in an array" => fn (int $id) => ["by id" => [fn ($author) => $author->id === $id]],
     "an object nested in an array" => fn (int $id) => ["by id" => [new AuthorWithId($id)]],
+    "a closure nested three arrays deep" => fn (int $id) => ["a" => ["b" => ["c" => [fn ($author) => $author->id === $id]]]],
+    "an object nested three arrays deep" => fn (int $id) => ["a" => ["b" => ["c" => [new AuthorWithId($id)]]]],
 ]);
 
 test('unit enums inside an array argument never share a cache entry', function (Closure $call) {
@@ -40,6 +42,7 @@ test('unit enums inside an array argument never share a cache entry', function (
     "forwarded to the wrapped builder" => fn (string $method, $argument) => AuthorWithFilteringBuilder::query()
         ->{$method}($argument),
     "through a local macro" => fn (string $method, $argument) => authorsThroughLocalMacro($method, $argument),
+    "through a global macro" => fn (string $method, $argument) => authorsThroughGlobalMacro($method, $argument),
 ]);
 
 test('an array argument json cannot encode runs the call uncached', function (Closure $argument) {
