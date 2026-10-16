@@ -604,6 +604,10 @@ trait Caching
                     return;
                 }
 
+                if ($parentType instanceof BackedEnum) {
+                    $parentType = $parentType->value;
+                }
+
                 $parentClass = Relation::getMorphedModel($parentType) ?? $parentType;
                 $parentModel = new $parentClass;
 
