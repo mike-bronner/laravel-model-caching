@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GeneaLabs\LaravelModelCaching\Traits;
 
+use BackedEnum;
 use Closure;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
@@ -162,6 +163,7 @@ trait CachedValueRetrievable
     {
         if ($relation instanceof MorphTo) {
             return $models->pluck($relation->getMorphType())
+                ->map(fn ($type) => $type instanceof BackedEnum ? $type->value : $type)
                 ->filter()
                 ->unique()
                 ->map(fn (string $type) => $relation->createModelByType($type))
