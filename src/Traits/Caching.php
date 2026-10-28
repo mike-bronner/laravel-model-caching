@@ -579,11 +579,10 @@ trait Caching
         if (! isset(static::$morphToMethodCache[$className])) {
             static::$morphToMethodCache[$className] = collect((new ReflectionClass($instance))
                 ->getMethods(ReflectionMethod::IS_PUBLIC))
-                ->filter(function (ReflectionMethod $method) use ($className): bool {
+                ->filter(function (ReflectionMethod $method): bool {
                     $returnType = $method->getReturnType();
 
-                    return $method->class === $className
-                        && $method->getNumberOfParameters() === 0
+                    return $method->getNumberOfParameters() === 0
                         && $returnType instanceof ReflectionNamedType
                         && $returnType->getName() === MorphTo::class;
                 })
@@ -597,15 +596,11 @@ trait Caching
                 $relation = $instance->{$morphToName}();
                 $typeColumn = $relation->getMorphType();
                 $idColumn = $relation->getForeignKeyName();
-                $parentType = $instance->getAttribute($typeColumn);
+                $parentType = $instance->getAttributes()[$typeColumn] ?? null;
                 $parentId = $instance->getAttribute($idColumn);
 
                 if (! $parentType || ! $parentId) {
                     return;
-                }
-
-                if ($parentType instanceof BackedEnum) {
-                    $parentType = $parentType->value;
                 }
 
                 $parentClass = Relation::getMorphedModel($parentType) ?? $parentType;

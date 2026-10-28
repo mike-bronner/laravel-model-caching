@@ -2,42 +2,19 @@
 
 declare(strict_types=1);
 
-namespace GeneaLabs\LaravelModelCaching\Tests\Integration\CachedBuilder;
-
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CommentableTypeEnum;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CommentableTypePureEnum;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CommentWithEnumCastType;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\CommentWithPureEnumCastType;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
-use GeneaLabs\LaravelModelCaching\Traits\Cachable;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedComment;
 use Illuminate\Database\Eloquent\Relations\Relation;
-
-enum CommentableTypeEnum: string
-{
-    case Post = 'post';
-}
-
-class CommentWithEnumCastType extends Model
-{
-    use Cachable;
-
-    protected $table = 'comments';
-
-    protected $guarded = [];
-
-    protected $casts = [
-        'commentable_type' => CommentableTypeEnum::class,
-    ];
-
-    public function commentable(): MorphTo
-    {
-        return $this->morphTo();
-    }
-}
 
 afterEach(function () {
     Relation::morphMap([], false);
 });
 
-test('deleting a child whose morph type column is cast to an enum invalidates the parent cache', function () {
+test('creating a child whose morph type column is cast to a backed enum, then deleting it, invalidates the parent cache', function () {
     Relation::morphMap(['post' => Post::class]);
     $post = (new Post)->first();
     $comment = CommentWithEnumCastType::create([
@@ -76,4 +53,27 @@ test('eager loading a morph to whose type column is cast to an enum works on a w
     $warm = CommentWithEnumCastType::with('commentable')->where('subject', 'enum cast')->get();
 
     expect($warm->first()->commentable)->toBeInstanceOf(Post::class);
+});
+
+test('a pure enum morph type cast invalidates the parent cache on create, update and delete', function () {
+    Relation::morphMap(['post' => Post::class]);
+    $post = (new Post)->first();
+
+    $comment = expectWriteToFlushFirstPost(
+        fn () => CommentWithPureEnumCastType::create(morphChildAttributes(CommentableTypePureEnum::post, $post->id)),
+    );
+    expectWriteToFlushFirstPost(fn () => $comment->update(['subject' => 'pure enum updated']));
+    expectWriteToFlushFirstPost(fn () => $comment->delete());
+});
+
+test('eager loading a pure enum morph type cast returns the parent on a cold and a warm cache', function () {
+    Relation::morphMap(['post' => Post::class]);
+    $post = (new Post)->first();
+    UncachedComment::forceCreate(morphChildAttributes('post', $post->id));
+
+    $cold = CommentWithPureEnumCastType::with('commentable')->where('subject', 'morph type cast')->get();
+    $warm = CommentWithPureEnumCastType::with('commentable')->where('subject', 'morph type cast')->get();
+
+    expect($cold->first()->commentable)->toBeInstanceOf(Post::class)
+        ->and($warm->first()->commentable)->toBeInstanceOf(Post::class);
 });
