@@ -593,7 +593,6 @@ trait Caching
 
         collect(static::$morphToMethodCache[$className])
             ->each(function (string $morphToName) use ($instance): void {
-                // A blank copy has no morph type, so morphTo() instantiates no class.
                 $relation = $instance->newInstance()
                     ->{$morphToName}();
                 $typeColumn = $relation->getMorphType();
