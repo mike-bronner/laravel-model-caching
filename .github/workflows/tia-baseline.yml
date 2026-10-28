@@ -1,3 +1,4 @@
+# mike-bronner/laravel-development-settings: project entries go above this line. Anything below it is lost on the next sync.
 name: TIA Baseline
 
 on:
@@ -29,6 +30,280 @@ jobs:
         with:
           secrets: ${{ secrets.TIA_BASELINE_SECRETS || '{}' }}
 
+      - name: Detect the test environment
+        id: environment
+        shell: php {0}
+        env:
+          HOOK_PHP_EXTENSIONS: ${{ steps.before-install.outputs.php-extensions }}
+        run: |
+          <?php
+
+          function fail(string $message): never
+          {
+              echo "::error title=Pest TIA baseline::{$message}\n";
+              exit(1);
+          }
+
+          function readJson(string $path): array
+          {
+              if (! is_file($path)) {
+                  return [];
+              }
+
+              $decoded = json_decode((string) file_get_contents($path), true);
+
+              return is_array($decoded) ? $decoded : fail("{$path} is not a JSON object.");
+          }
+
+          $phpunit = ['server' => [], 'env' => []];
+          $phpunitFile = current(array_filter(['phpunit.xml', 'phpunit.xml.dist'], 'is_file'));
+
+          if ($phpunitFile !== false) {
+              libxml_use_internal_errors(true);
+              $xml = simplexml_load_file($phpunitFile, options: LIBXML_NONET);
+              $xml !== false || fail("{$phpunitFile} is not valid XML, so the test environment it sets cannot be read.");
+
+              foreach ($xml->xpath('/phpunit/php/server') ?: [] as $element) {
+                  $phpunit['server'][(string) $element['name']] = (string) $element['value'];
+              }
+
+              foreach ($xml->xpath('/phpunit/php/env') ?: [] as $element) {
+                  $phpunit['env'][(string) $element['name']] ??= (string) $element['value'];
+              }
+          }
+
+          $example = [];
+
+          foreach (is_file('.env.example') ? (array) file('.env.example', FILE_IGNORE_NEW_LINES) : [] as $line) {
+              if (preg_match('/^\s*(?:export\s+)?([A-Za-z_]\w*)\s*=\s*(.*?)\s*$/', (string) $line, $match) !== 1) {
+                  continue;
+              }
+
+              $example[$match[1]] ??= preg_match('/^(["\'])(.*?)\1/', $match[2], $quoted) === 1
+                  ? $quoted[2]
+                  : (string) preg_replace('/(^|\s+)#.*$/', '', $match[2]);
+          }
+
+          $process = getenv();
+
+          $value = function (string $name) use ($phpunit, $process, $example): ?string {
+              $found = $phpunit['server'][$name] ?? $process[$name] ?? $phpunit['env'][$name] ?? $example[$name] ?? null;
+
+              return in_array(strtolower((string) $found), ['null', '(null)', 'empty', '(empty)'], true) ? '' : $found;
+          };
+
+          $servers = [
+              'pgsql' => ['image' => 'postgres', 'version' => 'TIA_POSTGRES_VERSION', 'tag' => '17', 'port' => '5432', 'username' => 'postgres', 'password' => 'postgres', 'extension' => 'pdo_pgsql'],
+              'mysql' => ['image' => 'mysql', 'version' => 'TIA_MYSQL_VERSION', 'tag' => '8.4', 'port' => '3306', 'username' => 'root', 'password' => 'password', 'extension' => 'pdo_mysql'],
+              'mariadb' => ['image' => 'mariadb', 'version' => 'TIA_MARIADB_VERSION', 'tag' => '11', 'port' => '3306', 'username' => 'root', 'password' => 'password', 'extension' => 'pdo_mysql'],
+          ];
+
+          $connection = strtolower((string) $value('DB_CONNECTION'));
+          $driver = match (true) {
+              str_contains($connection, 'sqlite') => 'sqlite',
+              str_contains($connection, 'pgsql'), str_contains($connection, 'postgres') => 'pgsql',
+              str_contains($connection, 'mariadb') => 'mariadb',
+              str_contains($connection, 'mysql') => 'mysql',
+              default => '',
+          };
+
+          $outputs = array_fill_keys(['database', 'database-image', 'database-port', 'database-name', 'database-username', 'database-password', 'sqlite-file', 'redis', 'redis-image', 'redis-port', 'redis-password', 'env-file', 'app-key', 'npm', 'build', 'browsers', 'writable'], '');
+          $outputs['database'] = $driver;
+          $needed = [];
+
+          if (isset($servers[$driver])) {
+              $server = $servers[$driver];
+              $outputs['database-image'] = $server['image'] . ':' . (($process[$server['version']] ?? '') ?: $server['tag']);
+              $outputs['database-port'] = $value('DB_PORT') ?: $server['port'];
+              $outputs['database-name'] = $value('DB_DATABASE') ?: 'testing';
+              $outputs['database-username'] = $value('DB_USERNAME') ?: $server['username'];
+              $outputs['database-password'] = $value('DB_PASSWORD') ?? $server['password'];
+              $needed[] = $server['extension'];
+          }
+
+          if ($driver === 'sqlite') {
+              $database = $value('DB_DATABASE') ?: 'database/database.sqlite';
+              $outputs['sqlite-file'] = $database === ':memory:' || file_exists($database) ? '' : $database;
+              $needed[] = 'pdo_sqlite';
+          }
+
+          $named = array_keys([...$phpunit['env'], ...$process, ...$phpunit['server']]);
+          $values = array_map('strtolower', [...array_values($example), ...array_values($phpunit['env']), ...array_values($process), ...array_values($phpunit['server'])]);
+
+          if (preg_grep('/^REDIS_/', $named) !== [] || in_array('redis', $values, true)) {
+              $outputs['redis'] = 'true';
+              $outputs['redis-image'] = 'redis:' . (($process['TIA_REDIS_VERSION'] ?? '') ?: '7');
+              $outputs['redis-port'] = $value('REDIS_PORT') ?: '6379';
+              $outputs['redis-password'] = (string) $value('REDIS_PASSWORD');
+
+              if (strtolower($value('REDIS_CLIENT') ?: 'phpredis') === 'phpredis') {
+                  $needed[] = 'redis';
+              }
+          }
+
+          $package = readJson('package.json');
+          $composer = readJson('composer.json');
+          $required = array_map('strtolower', array_keys([...(array) ($composer['require'] ?? []), ...(array) ($composer['require-dev'] ?? [])]));
+
+          $outputs['env-file'] = is_file('.env.example') && ! file_exists('.env') ? 'true' : '';
+          $outputs['app-key'] = is_file('artisan') && array_key_exists('APP_KEY', $example) && $value('APP_KEY') === '' ? 'true' : '';
+          $outputs['npm'] = is_file('package.json') && is_file('package-lock.json') ? 'true' : '';
+          $outputs['build'] = $outputs['npm'] === 'true' && is_string($package['scripts']['build'] ?? null) ? 'true' : '';
+
+          if (is_file('package.json') && $outputs['npm'] === '') {
+              $otherLock = current(array_filter(['pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'], 'is_file'));
+              $found = $otherLock === false ? '' : ", only {$otherLock}";
+              echo "::notice title=Pest TIA baseline::package.json has no package-lock.json{$found}, so the workflow installs and builds no front end. Install and build it in .github/actions/tia-baseline-after-install.\n";
+          }
+
+          if (in_array('pestphp/pest-plugin-browser', $required, true)) {
+              $lock = $outputs['npm'] === 'true' ? readJson('package-lock.json') : [];
+              $outputs['browsers'] = isset($lock['packages']['node_modules/playwright']) || isset($lock['dependencies']['playwright']) ? 'true' : '';
+
+              if ($outputs['browsers'] === '') {
+                  echo "::warning title=Pest TIA baseline::composer.json requires pestphp/pest-plugin-browser, but no package-lock.json locks playwright, so the workflow installs no browser. Run npm install --save-dev playwright and commit package-lock.json.\n";
+              }
+          }
+
+          $outputs['writable'] = implode(' ', array_filter(['storage', 'bootstrap/cache'], 'is_dir'));
+
+          $extensions = array_values(array_filter(array_map('trim', explode(',', (string) ($process['HOOK_PHP_EXTENSIONS'] ?? ''))), 'strlen'));
+
+          foreach ($needed as $extension) {
+              if (! in_array($extension, array_map('strtolower', $extensions), true)) {
+                  $extensions[] = $extension;
+              }
+          }
+
+          $outputs['php-extensions'] = implode(', ', $extensions);
+
+          foreach ($outputs as $name => $output) {
+              if ($output !== '' && ! str_ends_with($name, 'password')) {
+                  echo "{$name}: {$output}\n";
+              }
+          }
+
+          file_put_contents((string) getenv('GITHUB_OUTPUT'), implode('', array_map(fn (string $name, string $output): string => "{$name}={$output}\n", array_keys($outputs), $outputs)), FILE_APPEND);
+
+      - name: Start the database and Redis
+        if: steps.environment.outputs.database-image != '' || steps.environment.outputs.redis == 'true'
+        env:
+          TIA_DATABASE: ${{ steps.environment.outputs.database }}
+          TIA_DATABASE_IMAGE: ${{ steps.environment.outputs.database-image }}
+          TIA_DATABASE_PORT: ${{ steps.environment.outputs.database-port }}
+          TIA_DATABASE_NAME: ${{ steps.environment.outputs.database-name }}
+          TIA_DATABASE_USERNAME: ${{ steps.environment.outputs.database-username }}
+          TIA_DATABASE_PASSWORD: ${{ steps.environment.outputs.database-password }}
+          TIA_REDIS: ${{ steps.environment.outputs.redis }}
+          TIA_REDIS_IMAGE: ${{ steps.environment.outputs.redis-image }}
+          TIA_REDIS_PORT: ${{ steps.environment.outputs.redis-port }}
+          TIA_REDIS_PASSWORD: ${{ steps.environment.outputs.redis-password }}
+        run: |
+          fail() {
+            echo "::error title=Pest TIA baseline::$1"
+            exit 1
+          }
+
+          start() {
+            local name=$1 port=$2
+            shift 2
+
+            if (exec 3<> "/dev/tcp/127.0.0.1/${port}") 2> /dev/null; then
+              echo "Port ${port} is in use already, so the workflow starts no ${name}."
+              return 1
+            fi
+
+            docker run --detach --name "tia-${name}" "$@" > /dev/null || fail "The ${name} container did not start."
+
+            for _ in $(seq 1 60); do
+              if [ "$(docker inspect --format '{{.State.Health.Status}}' "tia-${name}")" = healthy ]; then
+                echo "Started ${name} on port ${port}."
+                return 0
+              fi
+
+              sleep 2
+            done
+
+            docker logs "tia-${name}" || true
+            fail "The ${name} container did not become healthy within 120 seconds."
+          }
+
+          sql_string() {
+            printf "'%s'" "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g")"
+          }
+
+          export_unset() {
+            if ! printenv "$1" > /dev/null; then
+              echo "$1=$2" >> "$GITHUB_ENV"
+            fi
+          }
+
+          if [ "$TIA_DATABASE" = pgsql ]; then
+            port=5432
+            health='pg_isready -h 127.0.0.1'
+            options=(--env "POSTGRES_DB=${TIA_DATABASE_NAME}" --env "POSTGRES_USER=${TIA_DATABASE_USERNAME}")
+
+            if [ -n "$TIA_DATABASE_PASSWORD" ]; then
+              options+=(--env "POSTGRES_PASSWORD=${TIA_DATABASE_PASSWORD}")
+            else
+              options+=(--env POSTGRES_HOST_AUTH_METHOD=trust)
+            fi
+          elif [ -n "$TIA_DATABASE_IMAGE" ]; then
+            port=3306
+            health='mysqladmin ping -h 127.0.0.1 --silent'
+            options=(--env "MYSQL_DATABASE=${TIA_DATABASE_NAME}")
+
+            if [ "$TIA_DATABASE" = mariadb ]; then
+              health='healthcheck.sh --connect --innodb_initialized'
+            fi
+
+            if [ "$TIA_DATABASE_USERNAME" != root ]; then
+              user="$(sql_string "$TIA_DATABASE_USERNAME")@'%'"
+              mkdir -p "${RUNNER_TEMP}/tia-database-init"
+              printf 'CREATE USER %s IDENTIFIED BY %s;\nGRANT ALL PRIVILEGES ON *.* TO %s;\n' "$user" "$(sql_string "$TIA_DATABASE_PASSWORD")" "$user" > "${RUNNER_TEMP}/tia-database-init/user.sql"
+              options+=(--volume "${RUNNER_TEMP}/tia-database-init:/docker-entrypoint-initdb.d:ro" --env MYSQL_RANDOM_ROOT_PASSWORD=yes)
+            elif [ -n "$TIA_DATABASE_PASSWORD" ]; then
+              options+=(--env "MYSQL_ROOT_PASSWORD=${TIA_DATABASE_PASSWORD}")
+            else
+              options+=(--env MYSQL_ALLOW_EMPTY_PASSWORD=yes)
+            fi
+          fi
+
+          if [ -n "$TIA_DATABASE_IMAGE" ] && start database "$TIA_DATABASE_PORT" --publish "${TIA_DATABASE_PORT}:${port}" "${options[@]}" --health-cmd "$health" --health-interval 2s "$TIA_DATABASE_IMAGE"; then
+            export_unset DB_HOST 127.0.0.1
+            export_unset DB_PORT "$TIA_DATABASE_PORT"
+            export_unset DB_DATABASE "$TIA_DATABASE_NAME"
+            export_unset DB_USERNAME "$TIA_DATABASE_USERNAME"
+            export_unset DB_PASSWORD "$TIA_DATABASE_PASSWORD"
+          fi
+
+          if [ "$TIA_REDIS" = true ]; then
+            options=()
+            command=()
+
+            if [ -n "$TIA_REDIS_PASSWORD" ]; then
+              options=(--env "REDISCLI_AUTH=${TIA_REDIS_PASSWORD}")
+              command=(redis-server --requirepass "$TIA_REDIS_PASSWORD")
+            fi
+
+            if start redis "$TIA_REDIS_PORT" --publish "${TIA_REDIS_PORT}:6379" ${options[@]+"${options[@]}"} --health-cmd 'redis-cli ping | grep -q PONG' --health-interval 2s "$TIA_REDIS_IMAGE" ${command[@]+"${command[@]}"}; then
+              export_unset REDIS_HOST 127.0.0.1
+              export_unset REDIS_PORT "$TIA_REDIS_PORT"
+            fi
+          fi
+
+      - name: Create the SQLite database
+        if: steps.environment.outputs.sqlite-file != ''
+        env:
+          TIA_SQLITE_FILE: ${{ steps.environment.outputs.sqlite-file }}
+        run: |
+          mkdir -p "$(dirname "$TIA_SQLITE_FILE")"
+          touch "$TIA_SQLITE_FILE"
+
+      - name: Copy the environment file
+        if: steps.environment.outputs.env-file == 'true'
+        run: cp .env.example .env
+
       - name: Choose the PHP version
         id: php
         env:
@@ -57,12 +332,36 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ steps.php.outputs.version }}
-          extensions: ${{ steps.before-install.outputs.php-extensions }}
+          extensions: ${{ steps.environment.outputs.php-extensions }}
           ini-values: ${{ steps.before-install.outputs.php-ini-values }}
           coverage: pcov
 
       - name: Install Composer dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Generate the application key
+        if: steps.environment.outputs.app-key == 'true'
+        run: php artisan key:generate --force
+
+      - name: Install npm dependencies
+        if: steps.environment.outputs.npm == 'true'
+        run: npm ci
+
+      - name: Build the front end
+        if: steps.environment.outputs.build == 'true'
+        run: npm run build
+
+      - name: Install the Playwright browser
+        if: steps.environment.outputs.browsers == 'true'
+        run: npx --no playwright install --with-deps chromium
+
+      - name: Make storage and bootstrap/cache writable
+        if: steps.environment.outputs.writable != ''
+        env:
+          TIA_WRITABLE: ${{ steps.environment.outputs.writable }}
+        run: |
+          read -r -a paths <<< "$TIA_WRITABLE"
+          chmod -R 777 "${paths[@]}"
 
       - name: Set up the project after Composer
         if: hashFiles('.github/actions/tia-baseline-after-install/action.yml', '.github/actions/tia-baseline-after-install/action.yaml') != ''
