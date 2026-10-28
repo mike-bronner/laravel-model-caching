@@ -66,13 +66,16 @@ test('a pure enum morph type cast invalidates the parent cache on create, update
     expectWriteToFlushFirstPost(fn () => $comment->delete());
 });
 
-test('eager loading a pure enum morph type cast returns the parent on a cold and a warm cache', function () {
+test('eager loading a pure enum morph type cast returns the parent on a cold load and serves the warm load from the cache', function () {
     Relation::morphMap(['post' => Post::class]);
     $post = (new Post)->first();
     UncachedComment::forceCreate(morphChildAttributes('post', $post->id));
 
     $cold = CommentWithPureEnumCastType::with('commentable')->where('subject', 'morph type cast')->get();
-    $warm = CommentWithPureEnumCastType::with('commentable')->where('subject', 'morph type cast')->get();
+    $warm = null;
+    expectServedFromCache(function () use (&$warm) {
+        $warm = CommentWithPureEnumCastType::with('commentable')->where('subject', 'morph type cast')->get();
+    });
 
     expect($cold->first()->commentable)->toBeInstanceOf(Post::class)
         ->and($warm->first()->commentable)->toBeInstanceOf(Post::class);

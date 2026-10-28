@@ -593,7 +593,9 @@ trait Caching
 
         collect(static::$morphToMethodCache[$className])
             ->each(function (string $morphToName) use ($instance): void {
-                $relation = $instance->{$morphToName}();
+                // A blank copy has no morph type, so morphTo() instantiates no class.
+                $relation = $instance->newInstance()
+                    ->{$morphToName}();
                 $typeColumn = $relation->getMorphType();
                 $idColumn = $relation->getForeignKeyName();
                 $parentType = $instance->getAttributes()[$typeColumn] ?? null;
@@ -604,6 +606,11 @@ trait Caching
                 }
 
                 $parentClass = Relation::getMorphedModel($parentType) ?? $parentType;
+
+                if (! is_subclass_of($parentClass, Model::class)) {
+                    return;
+                }
+
                 $parentModel = new $parentClass;
 
                 if (method_exists($parentModel, 'flushCache')) {
