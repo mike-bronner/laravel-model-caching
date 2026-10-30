@@ -363,3 +363,57 @@ test('a cached has many through query follows a changed scope on its eager load'
     expect($first)->toBe([$book->id])
         ->and($second)->toBe([]);
 });
+
+test('a cache hit follows a changed scope on an eager load that a global scope adds', function () {
+    $author = Author::factory()->create();
+    $alpha = Publisher::factory()->create(['name' => 'Alpha']);
+    $bravo = Publisher::factory()->create(['name' => 'Bravo']);
+    Book::factory()->create(['author_id' => $author->id, 'publisher_id' => $alpha->id]);
+    Book::factory()->create(['author_id' => $author->id, 'publisher_id' => $bravo->id]);
+    Book::addGlobalScope('loadsPublisher', fn ($builder) => $builder->with('publisher'));
+
+    $results = resultsPerScopeBinding(Publisher::class, 'name', ['Alpha', 'Bravo'], fn () => (new Author)
+        ->with('books')
+        ->find($author->id)
+        ->books
+        ->map
+        ->publisher
+        ->filter()
+        ->pluck('id')
+        ->all());
+
+    expect($results)->toBe([[$alpha->id], [$bravo->id]]);
+});
+
+test('a paginated cache hit with an unchanged scope on an eager-loaded model reads the cache once', function () {
+    $author = Author::factory()->create();
+    Book::factory()->create(['author_id' => $author->id]);
+    Book::addGlobalScope('keepsEveryRow', fn ($builder) => $builder->where('books.id', '!=', 0));
+
+    [$result, $cacheReads, $queries] = cacheReadsAndQueriesOfTheSecondRun(fn () => (new Author)
+        ->with('books')
+        ->where('id', $author->id)
+        ->paginate(2));
+
+    expect(collect($result->items())->flatMap->books)->toHaveCount(1)
+        ->and($cacheReads)->toBe(1)
+        ->and($queries)->toBe([]);
+});
+
+test('a paginated cache hit follows a scope binding that changes between write and hit', function () {
+    $author = Author::factory()->create();
+    $alpha = Book::factory()->create(['author_id' => $author->id, 'title' => 'Alpha']);
+    $bravo = Book::factory()->create(['author_id' => $author->id, 'title' => 'Bravo']);
+
+    $results = resultsPerScopeBinding(Book::class, 'title', ['Alpha', 'Bravo'], fn () => collect((new Author)
+        ->with('books')
+        ->where('id', $author->id)
+        ->paginate(2)
+        ->items())
+        ->flatMap
+        ->books
+        ->pluck('id')
+        ->all());
+
+    expect($results)->toBe([[$alpha->id], [$bravo->id]]);
+});
