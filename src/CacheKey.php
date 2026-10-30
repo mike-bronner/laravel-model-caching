@@ -11,6 +11,8 @@ use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Arr;
@@ -19,6 +21,7 @@ use Illuminate\Support\Str;
 use JsonSerializable;
 use Ramsey\Uuid\Uuid;
 use ReflectionClass;
+use ReflectionFunction;
 use ReflectionReference;
 use SplObjectStorage;
 use Stringable;
@@ -778,16 +781,27 @@ class CacheKey
             return "";
         }
 
+        $path = explode(".", $related);
+        $name = array_pop($path);
+
         if (
-            ! method_exists($this->model, $related)
-            && ! $this->model->isRelation($related)
+            ! $path
+            && ! method_exists($this->model, $name)
+            && ! $this->model->isRelation($name)
         ) {
             return "";
         }
 
         try {
-            $freshModel = (new ReflectionClass($this->model))->newInstanceWithoutConstructor();
-            $relation = $freshModel->$related();
+            $owner = $this->getEagerLoadOwner($path);
+
+            if (! $owner) {
+                return $this->isNoOpConstraint($constraint)
+                    ? ""
+                    : $this->unkeyableMarker();
+            }
+
+            $relation = $owner->$name();
             $baseWheres   = $relation->getQuery()->getQuery()->wheres ?? [];
             $baseBindings = $relation->getQuery()->getQuery()->bindings['where'] ?? [];
             $baseState = $this->getEagerLoadState($relation);
@@ -804,10 +818,66 @@ class CacheKey
 
             return "=" . sha1($this->encodeForKeyHash($addedWheres)
                 . $this->encodeBindingsForKeyHash($addedBindings))
+                . $this->getExpressionsKey($addedWheres)
                 . $changedStateKey;
         } catch (Throwable) {
             return $this->unkeyableMarker();
         }
+    }
+
+    protected function getExpressionsKey(array $wheres): string
+    {
+        return match (true) {
+            $this->holdsExpression($wheres) => "~"
+                . sha1($this->encodeForKeyHash($this->normalizeForHash($wheres))),
+            default => "",
+        };
+    }
+
+    protected function holdsExpression(mixed $value): bool
+    {
+        return match (true) {
+            // phpcs:ignore CleanCode.Classes.DisallowTypeIntrospection.InstanceOf
+            $value instanceof Expression => true,
+            // phpcs:ignore CleanCode.Classes.DisallowTypeIntrospection.InstanceOf
+            $value instanceof QueryBuilder => $this->holdsExpression(get_object_vars($value)),
+            is_array($value) => collect($value)->contains($this->holdsExpression(...)),
+            default => false,
+        };
+    }
+
+    protected function getEagerLoadOwner(array $path): ?Model
+    {
+        $owner = (new ReflectionClass($this->model))->newInstanceWithoutConstructor();
+
+        foreach ($path as $segment) {
+            $relation = $owner->$segment();
+
+            // phpcs:ignore CleanCode.Classes.DisallowTypeIntrospection.InstanceOf
+            if ($relation instanceof MorphTo) {
+                return null;
+            }
+
+            $owner = $relation->getRelated();
+        }
+
+        return $owner;
+    }
+
+    protected function isNoOpConstraint(Closure $constraint): bool
+    {
+        $function = new ReflectionFunction($constraint);
+        $builderFile = (new ReflectionClass(EloquentBuilder::class))->getFileName();
+
+        if ($function->getFileName() !== $builderFile) {
+            return false;
+        }
+
+        $combined = $function->getStaticVariables()["constraints"] ?? null;
+
+        return $function->getNumberOfParameters() === 0
+            || (is_array($combined)
+                && collect($combined)->every($this->isNoOpConstraint(...)));
     }
 
     protected function getEagerLoadState(Relation $relation) : array

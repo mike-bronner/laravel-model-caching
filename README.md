@@ -84,6 +84,11 @@ $posts = Post::where('active', true)->with('comments')->paginate();
   object are keyed and cached: an enum passed directly, by its value or name,
   and a query builder or relation, by its own query. A value JSON cannot
   encode, such as `NAN` or a string that is not valid UTF-8, also runs live.
+- A constrained eager load whose dotted path runs through a `morphTo`
+  relation, such as `Comment::with(['commentable.author' => fn ($query) =>
+  ...])`. The related model of a `morphTo` is known only from the rows, so the
+  key cannot hold the constraint, and the query runs live. The same path
+  without a constraint, `with('commentable.author')`, is cached.
 
 ### 💾 Cache Drivers
 
