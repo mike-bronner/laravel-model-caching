@@ -817,14 +817,17 @@ class CacheKey
 
     // A dotted path is constrained on its last segment, so its constraint is
     // keyed on the model that owns that segment. A morphTo segment has no
-    // single related model, so the walk cannot go through it.
-    protected function getEagerLoadOwner(array $path) : ?Model
+    // single related model, so the walk cannot go through it. Each relation
+    // comes from the application's model, so no declared type can carry the
+    // morphTo check.
+    protected function getEagerLoadOwner(array $path): ?Model
     {
         $owner = (new ReflectionClass($this->model))->newInstanceWithoutConstructor();
 
         foreach ($path as $segment) {
             $relation = $owner->$segment();
 
+            // phpcs:ignore CleanCode.Classes.DisallowTypeIntrospection.InstanceOf
             if ($relation instanceof MorphTo) {
                 return null;
             }
@@ -839,11 +842,12 @@ class CacheKey
     // closure, or as combineConstraints() over such closures. Only closures
     // declared in the Eloquent builder's file count, so an application closure
     // is never taken for one.
-    protected function isNoOpConstraint(Closure $constraint) : bool
+    protected function isNoOpConstraint(Closure $constraint): bool
     {
         $function = new ReflectionFunction($constraint);
+        $builderFile = (new ReflectionClass(EloquentBuilder::class))->getFileName();
 
-        if ($function->getFileName() !== (new ReflectionClass(EloquentBuilder::class))->getFileName()) {
+        if ($function->getFileName() !== $builderFile) {
             return false;
         }
 

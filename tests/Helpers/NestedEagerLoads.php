@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\DB;
 
 function bookWithComments(Author $author, array $descriptions, array $attributes = []): Book
 {
-    $book = Book::factory()->create([
-        "author_id" => $author->id,
-        "publisher_id" => Publisher::factory()->create()->id,
-        ...$attributes,
-    ]);
+    $book = Book::factory()
+        ->create([
+            "author_id" => $author->id,
+            "publisher_id" => Publisher::factory()->create()->id,
+            ...$attributes,
+        ]);
     collect($descriptions)
         ->each(fn (string $description) => $book->comments()->create([
             "description" => $description,
@@ -24,7 +25,8 @@ function bookWithComments(Author $author, array $descriptions, array $attributes
 
 function authorWithCommentedBook(): Author
 {
-    $author = Author::factory()->create();
+    $author = Author::factory()
+        ->create();
     bookWithComments($author, ["AAA", "BBB"]);
 
     return $author;
@@ -32,8 +34,10 @@ function authorWithCommentedBook(): Author
 
 function authorWithPublishedBooks(): Author
 {
-    $author = Author::factory()->create();
-    $publisher = Publisher::factory()->create(["name" => "Penguin"]);
+    $author = Author::factory()
+        ->create();
+    $publisher = Publisher::factory()
+        ->create(["name" => "Penguin"]);
     collect(["One", "Two"])
         ->each(fn (string $title) => Book::factory()->create([
             "author_id" => $author->id,
@@ -51,7 +55,11 @@ function whereDescription(string $description): Closure
 
 function commentsOfFirstBook(Author $author): array
 {
-    return $author->books->first()->comments->pluck("description")->all();
+    return $author->books
+        ->first()
+        ->comments
+        ->pluck("description")
+        ->all();
 }
 
 function commentsByBook(Author $author): array
@@ -72,12 +80,20 @@ function commentColumnsOfFirstBook(Author $author): array
 
 function publishedTitlesOfFirstBook(Author $author): ?array
 {
-    return $author->books->first()->publisher?->books->pluck("title")->all();
+    return $author->books
+        ->first()
+        ->publisher
+        ?->books
+        ->pluck("title")
+        ->all();
 }
 
 function commentsBesideComment(Comment $comment): array
 {
-    return $comment->commentable->comments->pluck("description")->all();
+    return $comment->commentable
+        ->comments
+        ->pluck("description")
+        ->all();
 }
 
 function queriesRunBy(Closure $read): array
