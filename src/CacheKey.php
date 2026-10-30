@@ -11,6 +11,8 @@ use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
 use GeneaLabs\LaravelModelCaching\Traits\CachePrefixing;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Arr;
@@ -19,6 +21,7 @@ use Illuminate\Support\Str;
 use JsonSerializable;
 use Ramsey\Uuid\Uuid;
 use ReflectionClass;
+use ReflectionFunction;
 use ReflectionReference;
 use SplObjectStorage;
 use Stringable;
@@ -769,16 +772,27 @@ class CacheKey
             return "";
         }
 
+        $path = explode(".", $related);
+        $name = array_pop($path);
+
         if (
-            ! method_exists($this->model, $related)
-            && ! $this->model->isRelation($related)
+            ! $path
+            && ! method_exists($this->model, $name)
+            && ! $this->model->isRelation($name)
         ) {
             return "";
         }
 
         try {
-            $freshModel = (new ReflectionClass($this->model))->newInstanceWithoutConstructor();
-            $relation = $freshModel->$related();
+            $owner = $this->getEagerLoadOwner($path);
+
+            if (! $owner) {
+                return $this->isNoOpConstraint($constraint)
+                    ? ""
+                    : $this->unkeyableMarker();
+            }
+
+            $relation = $owner->$name();
             $baseWheres   = $relation->getQuery()->getQuery()->wheres ?? [];
             $baseBindings = $relation->getQuery()->getQuery()->bindings['where'] ?? [];
             $baseState = $this->getEagerLoadState($relation);
@@ -799,6 +813,45 @@ class CacheKey
         } catch (Throwable) {
             return $this->unkeyableMarker();
         }
+    }
+
+    // A dotted path is constrained on its last segment, so its constraint is
+    // keyed on the model that owns that segment. A morphTo segment has no
+    // single related model, so the walk cannot go through it.
+    protected function getEagerLoadOwner(array $path) : ?Model
+    {
+        $owner = (new ReflectionClass($this->model))->newInstanceWithoutConstructor();
+
+        foreach ($path as $segment) {
+            $relation = $owner->$segment();
+
+            if ($relation instanceof MorphTo) {
+                return null;
+            }
+
+            $owner = $relation->getRelated();
+        }
+
+        return $owner;
+    }
+
+    // Laravel stores a dotted eager load without a constraint as its own empty
+    // closure, or as combineConstraints() over such closures. Only closures
+    // declared in the Eloquent builder's file count, so an application closure
+    // is never taken for one.
+    protected function isNoOpConstraint(Closure $constraint) : bool
+    {
+        $function = new ReflectionFunction($constraint);
+
+        if ($function->getFileName() !== (new ReflectionClass(EloquentBuilder::class))->getFileName()) {
+            return false;
+        }
+
+        $combined = $function->getStaticVariables()["constraints"] ?? null;
+
+        return $function->getNumberOfParameters() === 0
+            || (is_array($combined)
+                && collect($combined)->every($this->isNoOpConstraint(...)));
     }
 
     protected function getEagerLoadState(Relation $relation) : array
