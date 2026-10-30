@@ -6,9 +6,6 @@ use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Comment;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Publisher;
 
-// Every expected value below was captured from the code before #661, not generated from the
-// code it now checks. Only the sqlite path, which differs per checkout, is filled in at run time.
-
 test('a query with no eager loads keeps its key, tags and ttl', function () {
     expect(cacheKeyTagsAndTtl(Book::query()))->toBe([
         "key" => tagPrefix() . "books:genealabslaravelmodelcachingtestsfixturesbook",
