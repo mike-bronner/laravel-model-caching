@@ -5,6 +5,7 @@ declare(strict_types=1);
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorEagerLoadingItself;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithCommentsOfAnyType;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Comment;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Image;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Post;
@@ -141,6 +142,30 @@ test('a cache hit follows a changed scope on an eager load nested under a morph 
         ->and($second)->toBe([]);
 });
 
+test('a cache hit follows a changed scope on a morph to target nested under another eager load', function () {
+    $sharedId = max(Book::max('id'), Post::max('id')) + 1;
+    $book = Book::factory()->make();
+    $book->id = $sharedId;
+    $book->save();
+    $post = Post::factory()->make();
+    $post->id = $sharedId;
+    $post->save();
+    Comment::factory()->create([
+        'commentable_id' => $post->id,
+        'commentable_type' => Post::class,
+    ]);
+
+    [$first, $second] = runTwiceExcludingTheFirstResult(Post::class, fn () => (new BookWithCommentsOfAnyType)
+        ->with('commentsOfAnyType.commentable')
+        ->find($book->id)
+        ->commentsOfAnyType
+        ->map(fn (Comment $comment) => $comment->commentable?->id)
+        ->all());
+
+    expect($first)->toBe([$post->id])
+        ->and($second)->toBe([]);
+});
+
 test('a cache hit applies the current filter of a scope that filters after the query', function () {
     $author = Author::factory()->create();
     $kept = Book::factory()->create(['author_id' => $author->id]);
@@ -158,6 +183,24 @@ test('a cache hit applies the current filter of a scope that filters after the q
 
     expect($first)->toBe([$kept->id, $excluded->id])
         ->and($query())->toBe([$kept->id]);
+});
+
+test('a cache hit applies the current filter of a second-level scope that filters after the query', function () {
+    $author = Author::factory()->create();
+    $book = Book::factory()->create(['author_id' => $author->id]);
+    $excludedId = 0;
+    Publisher::addGlobalScope('filtersAfterTheQuery', function ($builder) use (&$excludedId) {
+        $builder->afterQuery(function ($publishers) use (&$excludedId) {
+            return $publishers->reject(fn (Publisher $publisher) => $publisher->id === $excludedId)->values();
+        });
+    });
+    $query = fn () => (new Author)->with('books.publisher')->find($author->id)->books->first()->publisher?->id;
+
+    $first = $query();
+    $excludedId = $book->publisher_id;
+
+    expect($first)->toBe($book->publisher_id)
+        ->and($query())->toBeNull();
 });
 
 test('a cache hit follows a scope whose own query changes its result between write and hit', function () {
