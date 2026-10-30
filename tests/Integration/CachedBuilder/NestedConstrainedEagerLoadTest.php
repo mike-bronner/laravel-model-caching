@@ -34,7 +34,7 @@ test('a nested eager load constraint keys each value and serves repeats from the
 
 test('a nested constraint that depends on a captured flag keys each flag value', function (array $flags): void {
     $author = authorWithCommentedBook();
-    // phpcs:ignore CleanCode.Functions.DisallowBooleanArgumentFlag.Found -- the issue uses a flag
+    // phpcs:ignore CleanCode.Functions.DisallowBooleanArgumentFlag.Found
     $query = fn (bool $onlyAaa) => Author::where("id", $author->id)
         ->with(["books.comments" => function ($query) use ($onlyAaa): void {
             if ($onlyAaa) {
@@ -274,9 +274,7 @@ test('a dotted path via a resolveRelationUsing relation is keyed', function (str
     "resolved first segment" => ["nestedResolvedBooks", "comments"],
 ]);
 
-test('a nested constraint through a morph to relation runs uncached', function (): void {
-    // The morphing model gets a relation of the same name, so walking through
-    // morphTo would reach a relation and key it instead of failing.
+test('a nested constraint through morph to runs uncached even if both models have the relation', function (): void {
     Comment::resolveRelationUsing(
             "comments",
             fn (Comment $comment) => $comment->morphMany(Comment::class, "commentable"),
@@ -290,17 +288,8 @@ test('a nested constraint through a morph to relation runs uncached', function (
         ->get()
         ->first();
 
-    $first = commentsBesideComment($query("AAA"));
-    $second = commentsBesideComment($query("BBB"));
-    [$repeat, $log] = queriesRunBy(fn () => $query("BBB"));
-
-    expect($first)->toBe(["AAA"])
-        ->and($second)
-        ->toBe(["BBB"])
-        ->and(commentsBesideComment($repeat))
-        ->toBe(["BBB"])
-        ->and(collect($log)->pluck("query"))
-        ->toContain((new Comment)->where("id", $commentId)->toSql());
+    expect(readsWithLiveRepeat($query, commentsBesideComment(...), "AAA", "BBB"))
+        ->toBe([["AAA"], ["BBB"], ["BBB"], true]);
 });
 
 test('a nested column selection through a morph to relation runs uncached', function (): void {
@@ -318,9 +307,12 @@ test('a nested column selection through a morph to relation runs uncached', func
         ->values()
         ->all();
 
-    expect($columns($query("description")))->toBe(["commentable_id", "commentable_type", "description", "id"])
-        ->and($columns($query("subject")))
-        ->toBe(["commentable_id", "commentable_type", "id", "subject"]);
+    expect(readsWithLiveRepeat($query, $columns, "description", "subject"))->toBe([
+        ["commentable_id", "commentable_type", "description", "id"],
+        ["commentable_id", "commentable_type", "id", "subject"],
+        ["commentable_id", "commentable_type", "id", "subject"],
+        true,
+    ]);
 });
 
 test('a nested constraint through a morph to relation that declares no parameter runs uncached', function (): void {
@@ -330,18 +322,17 @@ test('a nested constraint through a morph to relation that declares no parameter
         ->min("id");
     $query = fn (string $description) => Comment::where("id", $commentId)
         ->with(["commentable.comments" => function () use ($description): void {
-            // phpcs:ignore CleanCode.Methods.DeclaredParameters.DynamicArguments -- the case under test
+            // phpcs:ignore CleanCode.Methods.DeclaredParameters.DynamicArguments
             func_get_arg(0)->where("description", $description);
         }])
         ->get()
         ->first();
 
-    expect(commentsBesideComment($query("AAA")))->toBe(["AAA"])
-        ->and(commentsBesideComment($query("BBB")))
-        ->toBe(["BBB"]);
+    expect(readsWithLiveRepeat($query, commentsBesideComment(...), "AAA", "BBB"))
+        ->toBe([["AAA"], ["BBB"], ["BBB"], true]);
 });
 
-test('an unconstrained dotted eager load through a morph to relation stays cached', function (): void {
+test('an unconstrained morph to path, which Laravel combines from no-op closures, stays cached', function (): void {
     $book = bookWithComments(Author::factory()->create(), ["AAA", "BBB"]);
     $commentId = DB::table("comments")
         ->where("commentable_id", $book->id)

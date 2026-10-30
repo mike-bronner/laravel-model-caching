@@ -106,3 +106,15 @@ function queriesRunBy(Closure $read): array
 
     return [$result, $log];
 }
+
+function readsWithLiveRepeat(Closure $query, Closure $shape, string $first, string $second): array
+{
+    $reads = [$shape($query($first)), $shape($query($second))];
+    [$repeat, $log] = queriesRunBy(fn () => $query($second));
+    $rootQuery = (new Comment)->where("id", $repeat->id)
+        ->toSql();
+    $ranLive = collect($log)->pluck("query")
+        ->contains($rootQuery);
+
+    return [...$reads, $shape($repeat), $ranLive];
+}

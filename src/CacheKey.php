@@ -815,11 +815,6 @@ class CacheKey
         }
     }
 
-    // A dotted path is constrained on its last segment, so its constraint is
-    // keyed on the model that owns that segment. A morphTo segment has no
-    // single related model, so the walk cannot go through it. Each relation
-    // comes from the application's model, so no declared type can carry the
-    // morphTo check.
     protected function getEagerLoadOwner(array $path): ?Model
     {
         $owner = (new ReflectionClass($this->model))->newInstanceWithoutConstructor();
@@ -838,10 +833,6 @@ class CacheKey
         return $owner;
     }
 
-    // Laravel stores a dotted eager load without a constraint as its own empty
-    // closure, or as combineConstraints() over such closures. Only closures
-    // declared in the Eloquent builder's file count, so an application closure
-    // is never taken for one.
     protected function isNoOpConstraint(Closure $constraint): bool
     {
         $function = new ReflectionFunction($constraint);
