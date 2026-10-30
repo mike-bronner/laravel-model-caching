@@ -177,7 +177,7 @@ trait CachesOneOrManyThrough
 
         if ($cachedResult !== null) {
             $this->fireRetrievedEvents($cachedResult["value"] ?? null);
-            $this->reloadScopedEagerLoads($this->getQuery(), $cachedResult["value"] ?? null);
+            $this->reloadChangedScopedEagerLoads($this->getQuery(), $cachedResult);
 
             return $cachedResult;
         }
@@ -191,6 +191,7 @@ trait CachesOneOrManyThrough
         $result = [
             "key" => $cacheKey,
             "value" => parent::{$method}(...$arguments),
+            ...$this->eagerLoadFingerprintEntry($this->getQuery()),
         ];
 
         $this->putModelCacheValue($cacheKey, $result, $cacheTags, true);

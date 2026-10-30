@@ -14,9 +14,12 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Throwable;
 
 trait CachedValueRetrievable
 {
+    protected static bool $takingEagerLoadFingerprint = false;
+
     public function cachedValue(array $arguments, string $cacheKey): mixed
     {
         $method = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'];
@@ -145,17 +148,178 @@ trait CachedValueRetrievable
             ->keys()
             ->reject(fn (string $name) => str_contains($name, "."))
             ->each(function (string $name) use ($builder, $eagerLoads, $models): void {
+                $this->reloadScopedRelation($builder->getRelation($name), $name, $eagerLoads, $models);
+            });
+    }
+
+    protected function reloadScopedRelation(
+        Relation $relation,
+        string $name,
+        array $eagerLoads,
+        EloquentCollection $models,
+    ): void {
+        if ($this->relationHasGlobalScopes($relation, $models)) {
+            $this->reloadRelation($relation, $name, data_get($eagerLoads, $name), $models);
+
+            return;
+        }
+
+        $nestedEagerLoads = $this->eagerLoadsNestedUnder($eagerLoads, $name);
+        $this->reloadScopedRelationsOfRelated($models, $name, $nestedEagerLoads);
+    }
+
+    protected function reloadChangedScopedEagerLoads(EloquentBuilder $builder, array $cachedResult): void
+    {
+        $value = $cachedResult["value"] ?? null;
+        $models = $this->modelsInCachedValue($value);
+
+        if ($models->isEmpty()) {
+            return;
+        }
+
+        $storedFingerprint = $cachedResult["eagerLoadFingerprint"] ?? null;
+        $fingerprint = is_array($storedFingerprint)
+            ? $this->eagerLoadFingerprint($builder)
+            : null;
+
+        if (! $fingerprint || $fingerprint !== $storedFingerprint) {
+            $this->reloadScopedEagerLoads($builder, $value);
+
+            return;
+        }
+
+        if ($fingerprint["morphTo"]) {
+            $this->reloadMorphToRelations($builder, $models);
+        }
+    }
+
+    // A morphTo's targets are known only from its loaded rows, so no fingerprint covers it. This
+    // walks the eager loads down to each morphTo and reloads it, and everything under it, as before.
+    protected function reloadMorphToRelations(EloquentBuilder $builder, EloquentCollection $models): void
+    {
+        $eagerLoads = $builder->getEagerLoads();
+
+        collect($eagerLoads)
+            ->keys()
+            ->reject(fn (string $name) => str_contains($name, "."))
+            ->each(function (string $name) use ($builder, $eagerLoads, $models): void {
                 $relation = $builder->getRelation($name);
 
-                if ($this->relationHasGlobalScopes($relation, $models)) {
-                    $this->reloadRelation($relation, $name, data_get($eagerLoads, $name), $models);
+                if ($relation instanceof MorphTo) {
+                    $this->reloadScopedRelation($relation, $name, $eagerLoads, $models);
 
                     return;
                 }
 
-                $nestedEagerLoads = $this->eagerLoadsNestedUnder($eagerLoads, $name);
-                $this->reloadScopedRelationsOfRelated($models, $name, $nestedEagerLoads);
+                $this->eachLoadedRelatedGroup(
+                    $models,
+                    $name,
+                    $this->eagerLoadsNestedUnder($eagerLoads, $name),
+                    fn (EloquentBuilder $related, EloquentCollection $relatedModels) => $this
+                        ->reloadMorphToRelations($related, $relatedModels),
+                );
             });
+    }
+
+    protected function eagerLoadFingerprintEntry(EloquentBuilder $builder): array
+    {
+        if (! $builder->getEagerLoads()) {
+            return [];
+        }
+
+        $fingerprint = $this->eagerLoadFingerprint($builder);
+
+        return $fingerprint
+            ? ["eagerLoadFingerprint" => $fingerprint]
+            : [];
+    }
+
+    // A global scope that runs a query while the walk applies it starts a second walk. The flag is
+    // held per builder class, so a second walk on the same class returns no fingerprint, and its
+    // hit reloads in full instead of recursing.
+    protected function eagerLoadFingerprint(EloquentBuilder $builder): ?array
+    {
+        if (static::$takingEagerLoadFingerprint) {
+            return null;
+        }
+
+        static::$takingEagerLoadFingerprint = true;
+
+        try {
+            $hasMorphTo = false;
+            $parts = $this->eagerLoadFingerprintParts($builder, [], $hasMorphTo);
+
+            return $parts === null
+                ? null
+                : ["hash" => sha1(serialize($parts)), "morphTo" => $hasMorphTo];
+        } catch (Throwable) {
+            return null;
+        } finally {
+            static::$takingEagerLoadFingerprint = false;
+        }
+    }
+
+    // Records each eager load's SQL and bindings after its constraint and global scopes, then the
+    // same for the eager loads nested under it. It stops descending at a model class that is
+    // already on the path with the same eager loads, because the subtree below it is the same.
+    protected function eagerLoadFingerprintParts(EloquentBuilder $builder, array $path, bool &$hasMorphTo): ?array
+    {
+        $eagerLoads = $builder->getEagerLoads();
+        $path[] = $this->eagerLoadFingerprintPathEntry($builder);
+        $parts = [];
+
+        foreach (array_keys($eagerLoads) as $name) {
+            if (str_contains($name, ".")) {
+                continue;
+            }
+
+            $relation = $builder->getRelation($name);
+
+            if ($relation instanceof MorphTo) {
+                $hasMorphTo = true;
+                $parts[$name] = "morphTo";
+
+                continue;
+            }
+
+            $eagerLoads[$name]($relation);
+            $related = $relation->getQuery();
+            $scoped = $related->applyScopes();
+
+            if ($this->afterQueryCallbackCount($scoped) !== $this->afterQueryCallbackCount($related)) {
+                return null;
+            }
+
+            $nestedParts = in_array($this->eagerLoadFingerprintPathEntry($related), $path, true)
+                ? []
+                : $this->eagerLoadFingerprintParts($related, $path, $hasMorphTo);
+
+            if ($nestedParts === null) {
+                return null;
+            }
+
+            $parts[$name] = [
+                $scoped->getQuery()->toSql(),
+                $scoped->getQuery()->getBindings(),
+                $nestedParts,
+            ];
+        }
+
+        return $parts;
+    }
+
+    protected function eagerLoadFingerprintPathEntry(EloquentBuilder $builder): array
+    {
+        $eagerLoadNames = array_keys($builder->getEagerLoads());
+        sort($eagerLoadNames);
+
+        return [get_class($builder->getModel()), $eagerLoadNames];
+    }
+
+    protected function afterQueryCallbackCount(EloquentBuilder $builder): int
+    {
+        return count($this->afterQueryCallbacksOf($builder))
+            + count($this->afterQueryCallbacksOf($builder->getQuery()));
     }
 
     protected function relationHasGlobalScopes(Relation $relation, EloquentCollection $models): bool
@@ -177,6 +341,20 @@ trait CachedValueRetrievable
         string $name,
         array $nestedEagerLoads,
     ): void {
+        $this->eachLoadedRelatedGroup(
+            $models,
+            $name,
+            $nestedEagerLoads,
+            fn (EloquentBuilder $builder, EloquentCollection $related) => $this->reloadScopedRelations($builder, $related),
+        );
+    }
+
+    protected function eachLoadedRelatedGroup(
+        EloquentCollection $models,
+        string $name,
+        array $nestedEagerLoads,
+        Closure $callback,
+    ): void {
         if (! $nestedEagerLoads) {
             return;
         }
@@ -185,12 +363,12 @@ trait CachedValueRetrievable
             ->flatMap(fn (Model $model) => Collection::wrap($model->getRelation($name))->all())
             ->filter(fn ($related) => $related instanceof Model)
             ->groupBy(fn (Model $related) => get_class($related))
-            ->each(function (Collection $related) use ($nestedEagerLoads): void {
+            ->each(function (Collection $related) use ($nestedEagerLoads, $callback): void {
                 $builder = $related->first()
                     ->newQueryWithoutRelationships()
                     ->setEagerLoads($nestedEagerLoads);
 
-                $this->reloadScopedRelations($builder, new EloquentCollection($related->all()));
+                $callback($builder, new EloquentCollection($related->all()));
             });
     }
 
