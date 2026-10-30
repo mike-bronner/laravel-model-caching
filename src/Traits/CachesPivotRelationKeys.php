@@ -61,7 +61,7 @@ trait CachesPivotRelationKeys
             false,
         );
 
-        return "-with_" . sha1($eagerLoadsKey->make());
+        return "-with_" . sha1($eagerLoadsKey->usingRelationResolver($this->cacheRelationResolver())->make());
     }
 
     protected function pivotColumnsKeySegment(): string

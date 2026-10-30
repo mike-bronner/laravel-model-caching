@@ -89,6 +89,7 @@ class CacheKey
     protected $withoutAllGlobalScopes = false;
     protected ?string $unkeyableMarker = null;
     protected bool $hasUnkeyableBinding = false;
+    protected ?RelationResolver $relationResolver = null;
 
     public function __construct(
         array $eagerLoad,
@@ -104,6 +105,13 @@ class CacheKey
         $this->query = $query;
         $this->withoutGlobalScopes = $withoutGlobalScopes;
         $this->withoutAllGlobalScopes = $withoutAllGlobalScopes;
+    }
+
+    public function usingRelationResolver(RelationResolver $relationResolver): static
+    {
+        $this->relationResolver = $relationResolver;
+
+        return $this;
     }
 
     public function make(
@@ -753,7 +761,8 @@ class CacheKey
             if (! method_exists($this->model, $related)) {
                 $carry .= "-{$related}";
             } else {
-                $relatedModel = $this->model->$related()->getRelated();
+                $this->relationResolver ??= new RelationResolver;
+                $relatedModel = $this->relationResolver->resolve($this->model, $related)->getRelated();
                 $relatedConnection = $relatedModel->getConnection()->getName();
                 $relatedDatabase = $relatedModel->getConnection()->getDatabaseName();
 

@@ -13,6 +13,7 @@ use GeneaLabs\LaravelModelCaching\CachedQueryBuilder;
 use GeneaLabs\LaravelModelCaching\CacheKey;
 use GeneaLabs\LaravelModelCaching\CacheTags;
 use GeneaLabs\LaravelModelCaching\Exceptions\UnkeyableValueException;
+use GeneaLabs\LaravelModelCaching\RelationResolver;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -44,6 +45,7 @@ trait Caching
         'Predis\\Connection\\ConnectionException',
     ];
     protected static ?WeakMap $modelCacheRepositories = null;
+    protected static ?WeakMap $cacheRelationResolvers = null;
     protected bool $isCachable = true;
     protected $scopesAreApplied = false;
     protected $macroKey = "";
@@ -387,8 +389,9 @@ trait Caching
         string $keyDifferentiator = '',
     ): string {
         $this->applyScopesToInstance();
-        $eagerLoad = $this->eagerLoad
-            ?? [];
+        $eagerLoad = property_exists($this, "eagerLoad")
+            ? $this->eagerLoad
+            : [];
         $model = $this;
 
         if (property_exists($this, "model")) {
@@ -403,6 +406,7 @@ trait Caching
 
         try {
             return (new CacheKey($eagerLoad, $model, $query, $this->keyableMacroKey(), $this->withoutGlobalScopes, $this->withoutAllGlobalScopes))
+                ->usingRelationResolver($this->cacheRelationResolver())
                 ->make($columns, $idColumn, $keyDifferentiator);
         } catch (UnkeyableValueException) {
             $this->disableModelCaching();
@@ -432,8 +436,24 @@ trait Caching
     {
         return match (true) {
             $this instanceof Relation => $this->getQuery()->getEagerLoads(),
-            default => $this->eagerLoad ?? [],
+            property_exists($this, "eagerLoad") => $this->eagerLoad,
+            default => [],
         };
+    }
+
+    protected function cacheRelationResolver(): RelationResolver
+    {
+        static::$cacheRelationResolvers ??= new WeakMap;
+
+        return static::$cacheRelationResolvers[$this]
+            ??= new RelationResolver;
+    }
+
+    protected function freshCacheRelationResolver(): RelationResolver
+    {
+        static::$cacheRelationResolvers ??= new WeakMap;
+
+        return static::$cacheRelationResolvers[$this] = new RelationResolver;
     }
 
     protected function eagerLoadingModel(): mixed
@@ -463,7 +483,8 @@ trait Caching
             $query = $this->query->getQuery();
         }
 
-        $cacheTags = new CacheTags($eagerLoad, $model, $query);
+        $cacheTags = (new CacheTags($eagerLoad, $model, $query))
+            ->usingRelationResolver($this->cacheRelationResolver());
         $tags = $cacheTags->make();
 
         if ($this instanceof BelongsToMany) {
@@ -655,6 +676,7 @@ trait Caching
     protected function modelCacheTtlSeconds(): ?int
     {
         return (new CacheTags($this->cacheEagerLoads(), $this->cacheModel() ?? $this, null))
+            ->usingRelationResolver($this->cacheRelationResolver())
             ->ttl();
     }
 
@@ -719,11 +741,13 @@ trait Caching
         }
 
         $allRelationshipsAreCachable = true;
+        $eagerLoads = $this->cacheEagerLoads();
 
-        if ($this->cacheEagerLoads()) {
-            $allRelationshipsAreCachable = collect($this->cacheEagerLoads())
+        if ($eagerLoads) {
+            $relationResolver = $this->freshCacheRelationResolver();
+            $allRelationshipsAreCachable = collect($eagerLoads)
                 ->keys()
-                ->reduce(function ($carry, $related) {
+                ->reduce(function ($carry, $related) use ($relationResolver) {
                     if (
                         ! $this->modelHasRelation($this->eagerLoadingModel(), $related)
                         || $carry === false
@@ -731,7 +755,7 @@ trait Caching
                         return $carry;
                     }
 
-                    $relatedModel = $this->eagerLoadingModel()->$related()->getRelated();
+                    $relatedModel = $relationResolver->resolve($this->eagerLoadingModel(), $related)->getRelated();
 
                     if (
                         ! method_exists($relatedModel, "isCachable")
@@ -774,6 +798,10 @@ trait Caching
         $query = property_exists($this, "query")
             ? $this->query
             : null;
+
+        if (! $query) {
+            return false;
+        }
 
         return collect([$query, $query instanceof Builder ? $query->getQuery() : null])
             ->contains(fn ($builder): bool => $this->afterQueryCallbacksOf($builder) !== []);

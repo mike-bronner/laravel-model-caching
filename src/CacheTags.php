@@ -28,6 +28,8 @@ class CacheTags
 
     protected ?WeakMap $deferredQueries = null;
 
+    protected ?RelationResolver $relationResolver = null;
+
     protected $eagerLoad;
     protected $model;
     protected $query;
@@ -37,6 +39,20 @@ class CacheTags
         $this->eagerLoad = $eagerLoad;
         $this->model = $model;
         $this->query = $query;
+    }
+
+    public function usingRelationResolver(RelationResolver $relationResolver): static
+    {
+        $this->relationResolver = $relationResolver;
+
+        return $this;
+    }
+
+    protected function resolveRelation(Model $model, string $relationName): mixed
+    {
+        $this->relationResolver ??= new RelationResolver;
+
+        return $this->relationResolver->resolve($model, $relationName);
     }
 
     // phpcs:ignore SlevomatCodingStandard.Functions.FunctionLength.FunctionLength
@@ -187,7 +203,7 @@ class CacheTags
             return [];
         }
 
-        $relation = $model->{$relationName}();
+        $relation = $this->resolveRelation($model, $relationName);
 
         if ($relation instanceof MorphTo) {
             return collect($this->getMorphToModelClasses($relation))
@@ -446,7 +462,7 @@ class CacheTags
                     return null;
                 }
 
-                $relation = $carry->{$name}();
+                $relation = $this->resolveRelation($carry, $name);
 
                 if ($relation instanceof MorphTo) {
                     return null;
@@ -470,7 +486,7 @@ class CacheTags
                 return null;
             }
 
-            $relation = $model->{$segment}();
+            $relation = $this->resolveRelation($model, $segment);
 
             if ($relation instanceof MorphTo) {
                 return $this->getMorphToTags($relation);
