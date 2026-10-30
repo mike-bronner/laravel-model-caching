@@ -339,6 +339,7 @@ trait Buildable
                 return [
                     "key" => $cacheKey,
                     "value" => $this->executeOnInnerOrParent($method, $arguments),
+                    ...$this->eagerLoadFingerprintEntry($this->eagerLoadingBuilder()),
                 ];
             },
             true,
@@ -346,7 +347,7 @@ trait Buildable
 
         if (! $closureRan) {
             $this->fireRetrievedEvents($result["value"] ?? null);
-            $this->reloadScopedEagerLoads($this->eagerLoadingBuilder(), $result["value"] ?? null);
+            $this->reloadChangedScopedEagerLoads($this->eagerLoadingBuilder(), $result);
         }
 
         return $result;
