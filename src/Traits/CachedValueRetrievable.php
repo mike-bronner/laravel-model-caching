@@ -193,8 +193,6 @@ trait CachedValueRetrievable
         }
     }
 
-    // A morphTo's targets are known only from its loaded rows, so no fingerprint covers it. This
-    // walks the eager loads down to each morphTo and reloads it, and everything under it, as before.
     protected function reloadMorphToRelations(EloquentBuilder $builder, EloquentCollection $models): void
     {
         $eagerLoads = $builder->getEagerLoads();
@@ -234,9 +232,6 @@ trait CachedValueRetrievable
             : [];
     }
 
-    // A global scope that runs a query while the walk applies it starts a second walk. The flag is
-    // held per builder class, so a second walk on the same class returns no fingerprint, and its
-    // hit reloads in full instead of recursing.
     protected function eagerLoadFingerprint(EloquentBuilder $builder): ?array
     {
         if (static::$takingEagerLoadFingerprint) {
@@ -259,9 +254,6 @@ trait CachedValueRetrievable
         }
     }
 
-    // Records each eager load's SQL and bindings after its constraint and global scopes, then the
-    // same for the eager loads nested under it. It stops descending at a model class that is
-    // already on the path with the same eager loads, because the subtree below it is the same.
     protected function eagerLoadFingerprintParts(EloquentBuilder $builder, array $path, bool &$hasMorphTo): ?array
     {
         $eagerLoads = $builder->getEagerLoads();
@@ -286,7 +278,10 @@ trait CachedValueRetrievable
             $related = $relation->getQuery();
             $scoped = $related->applyScopes();
 
-            if ($this->afterQueryCallbackCount($scoped) !== $this->afterQueryCallbackCount($related)) {
+            if (
+                $scoped->getEagerLoads() !== $related->getEagerLoads()
+                || $this->afterQueryCallbackCount($scoped) !== $this->afterQueryCallbackCount($related)
+            ) {
                 return null;
             }
 
