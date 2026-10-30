@@ -228,8 +228,6 @@ trait CachesOneOrManyThrough
         $model = $this->getModel();
         $query = $this->getQuery()->getQuery();
 
-        return (new CacheTags($eagerLoad, $model, $query))
-            ->usingRelationResolver($this->cacheRelationResolver())
-            ->make();
+        return (new CacheTags($eagerLoad, $model, $query))->make();
     }
 }
