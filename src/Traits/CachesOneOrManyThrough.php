@@ -213,7 +213,8 @@ trait CachesOneOrManyThrough
                 $this->builderArgumentMacroKey($builder),
                 $this->withoutGlobalScopes,
                 $this->withoutAllGlobalScopes,
-            ))->make($columns, $idColumn, $keyDifferentiator);
+            ))->usingRelationResolver($this->cacheRelationResolver())
+                ->make($columns, $idColumn, $keyDifferentiator);
         } catch (UnkeyableValueException) {
             $this->disableModelCaching();
 
@@ -227,6 +228,8 @@ trait CachesOneOrManyThrough
         $model = $this->getModel();
         $query = $this->getQuery()->getQuery();
 
-        return (new CacheTags($eagerLoad, $model, $query))->make();
+        return (new CacheTags($eagerLoad, $model, $query))
+            ->usingRelationResolver($this->cacheRelationResolver())
+            ->make();
     }
 }
