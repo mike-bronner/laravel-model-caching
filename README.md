@@ -465,6 +465,16 @@ Cache tags are generated for the primary model, each eager-loaded relationship,
 joined tables, and morph-to target types, so only the relevant entries are
 invalidated. 🎯
 
+For the cache key, tags and TTL, the related model of an eager-loaded
+relationship is found the way Laravel's eager loader finds it: on a fresh
+instance of the model class. A relation method that picks its related model
+from a loaded model's attributes is therefore keyed and tagged by what a fresh
+instance returns. The answer is remembered for each model class and relation
+path, so later reads build their key, tags and TTL without calling the relation
+method again. A path through a `morphTo`, and a relation registered with
+`resolveRelationUsing()`, are still resolved on every read, on the model the
+query starts from.
+
 A subquery passed to `joinSub()`, `leftJoinSub()`, `rightJoinSub()`,
 `crossJoinSub()`, `straightJoinSub()`, `joinLateral()`, `leftJoinLateral()`,
 `fromSub()`, `whereIn()`, `orWhereIn()`, `whereNotIn()` or `orWhereNotIn()`
@@ -651,6 +661,11 @@ The package has no special queue or Horizon integration. Cached queries inside
 queued jobs work the same as in HTTP requests. Cache invalidation triggered in a
 web request is immediately visible to queue workers (assuming a shared cache
 store like Redis). No additional configuration is needed.
+
+A long-running process, such as a queue worker or Octane, keeps the remembered
+eager-load relations for its whole life. There is one entry for each model
+class and relation path. To clear them, call
+`GeneaLabs\LaravelModelCaching\RelationResolver::forgetClassRelationPaths()`.
 
 ### 🔍 Static Analysis (Larastan / PHPStan)
 The package is compatible with [Larastan](https://github.com/larastan/larastan)

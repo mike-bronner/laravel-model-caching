@@ -761,8 +761,7 @@ class CacheKey
             if (! method_exists($this->model, $related)) {
                 $carry .= "-{$related}";
             } else {
-                $this->relationResolver ??= new RelationResolver;
-                $relatedModel = $this->relationResolver->resolve($this->model, $related)->getRelated();
+                $relatedModel = $this->relatedEagerLoadModel($related);
                 $relatedConnection = $relatedModel->getConnection()->getName();
                 $relatedDatabase = $relatedModel->getConnection()->getDatabaseName();
 
@@ -773,6 +772,20 @@ class CacheKey
 
             return $carry;
         }, "");
+    }
+
+    protected function eagerLoadRelationResolver(): RelationResolver
+    {
+        return $this->relationResolver ??= new RelationResolver;
+    }
+
+    protected function relatedEagerLoadModel(string $related): Model
+    {
+        $path = $this->eagerLoadRelationResolver()->relationPath($this->model, $related);
+
+        return $path
+            ? end($path)["related"]
+            : $this->eagerLoadRelationResolver()->resolve($this->model, $related)->getRelated();
     }
 
     protected function getEagerLoadConstraintKey(string $related, $constraint) : string
@@ -793,6 +806,13 @@ class CacheKey
         }
 
         try {
+            if (
+                $this->isNoOpConstraint($constraint)
+                && $this->eagerLoadRelationResolver()->relationPath($this->model, $related)
+            ) {
+                return "";
+            }
+
             $owner = $this->getEagerLoadOwner($path);
 
             if (! $owner) {

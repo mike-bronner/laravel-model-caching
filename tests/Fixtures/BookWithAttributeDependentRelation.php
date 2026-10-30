@@ -2,14 +2,14 @@
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class BookWithSwitchingRelation extends Book
+class BookWithAttributeDependentRelation extends Book
 {
     protected $table = "books";
 
-    public function switching() : BelongsTo
+    public function dependent() : BelongsTo
     {
-        return $this->getAttribute("switch_to_publisher")
-            ? $this->belongsTo(Publisher::class, "publisher_id")
+        return $this->getAttribute("use_tenant_author")
+            ? $this->belongsTo(TenantAuthorWithTtl::class, "author_id")
             : $this->belongsTo(Author::class, "author_id");
     }
 }

@@ -55,6 +55,13 @@ class CacheTags
         return $this->relationResolver->resolve($model, $relationName);
     }
 
+    protected function rememberedRelationPath(string $relationName): ?array
+    {
+        $this->relationResolver ??= new RelationResolver;
+
+        return $this->relationResolver->relationPath($this->model, $relationName);
+    }
+
     // phpcs:ignore SlevomatCodingStandard.Functions.FunctionLength.FunctionLength
     public function make(): array
     {
@@ -82,6 +89,21 @@ class CacheTags
 
     protected function getEagerLoadTags(string $relationName): array
     {
+        $path = $this->rememberedRelationPath($relationName);
+
+        if ($path) {
+            $segment = end($path);
+
+            return [
+                "related" => [
+                    $this->getCachePrefixForModel($segment["related"]) . Str::slug($segment["related"]::class),
+                ],
+                "pivot" => $segment["pivot"]
+                    ? $this->pivotTableTags($segment["pivot"], $segment["parent"], $segment["table"])
+                    : [],
+            ];
+        }
+
         $morphToTags = $this->getMorphToTagsForRelation($relationName);
 
         if ($morphToTags !== null) {
@@ -110,11 +132,16 @@ class CacheTags
             return [];
         }
 
-        $table = Str::slug($this->stripTableAlias($relation->getTable()));
+        return $this->pivotTableTags($relation->newPivot(), $relation->getParent(), $relation->getTable());
+    }
+
+    protected function pivotTableTags(Model $pivot, Model $parent, string $table): array
+    {
+        $table = Str::slug($this->stripTableAlias($table));
 
         return array_values(array_unique([
-            $this->getCachePrefixForModel($relation->newPivot()) . $table,
-            $this->getCachePrefixForModel($relation->getParent()) . $table,
+            $this->getCachePrefixForModel($pivot) . $table,
+            $this->getCachePrefixForModel($parent) . $table,
         ]));
     }
 
@@ -186,6 +213,12 @@ class CacheTags
 
     protected function eagerLoadedModels(string $relationName): array
     {
+        $path = $this->rememberedRelationPath($relationName);
+
+        if ($path) {
+            return [end($path)["related"]];
+        }
+
         return collect(explode(".", $relationName))
             ->reduce(function (array $models, string $segment): array {
                 return collect($models)

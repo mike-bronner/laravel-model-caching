@@ -4,6 +4,7 @@ namespace GeneaLabs\LaravelModelCaching\Tests;
 
 use GeneaLabs\LaravelModelCaching\Cache\ModelCacheRepository;
 use GeneaLabs\LaravelModelCaching\Providers\Service as LaravelModelCachingService;
+use GeneaLabs\LaravelModelCaching\RelationResolver;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Artisan;
 use Throwable;
@@ -106,6 +107,7 @@ trait CreatesApplication
     {
         parent::setUp();
 
+        RelationResolver::forgetClassRelationPaths();
         $this->skipWithoutRedis();
         $this->setUpBaseLineSqlLiteDatabase();
 
