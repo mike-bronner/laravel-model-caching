@@ -1,11 +1,23 @@
 <?php
 
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithSwitchingRelation;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithRuntimeSwitchingRelation;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\BookWithThrowingRelation;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\EagerLoadCountingAuthor;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\EagerLoadCountingBook;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\EagerLoadCountingComment;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Publisher;
+
+function registerRuntimeSwitchingRelation(): void
+{
+    BookWithRuntimeSwitchingRelation::resolveRelationUsing(
+        "switching",
+        fn (BookWithRuntimeSwitchingRelation $book) => $book->getAttribute("switch_to_publisher")
+            ? $book->belongsTo(Publisher::class, "publisher_id")
+            : $book->belongsTo(Author::class, "author_id"),
+    );
+}
 
 test('a cached read resolves a single eager load once per model instance', function () {
     $book = new EagerLoadCountingBook;
@@ -50,8 +62,9 @@ test('a cached read resolves a constrained eager load once more only for its con
     expect(mostRelationCallsOnOneInstance($calls))->toBe(1);
 });
 
-test('a resolved relation does not carry over to the next read on the same model instance', function () {
-    $book = BookWithSwitchingRelation::first();
+test('a resolved runtime relation does not carry over to the next read on the same model instance', function () {
+    registerRuntimeSwitchingRelation();
+    $book = BookWithRuntimeSwitchingRelation::first();
     $book->newQuery()->with("switching")->get();
     $book->setAttribute("switch_to_publisher", true);
     $this->cache()->flush();
@@ -65,8 +78,9 @@ test('a resolved relation does not carry over to the next read on the same model
     expect(databaseQueriesRunBy($read))->toBeGreaterThan(0);
 });
 
-test('a resolved relation does not carry over to the next read on the same builder', function () {
-    $book = BookWithSwitchingRelation::first();
+test('a resolved runtime relation does not carry over to the next read on the same builder', function () {
+    registerRuntimeSwitchingRelation();
+    $book = BookWithRuntimeSwitchingRelation::first();
     $query = $book->newQuery()->with("switching");
     $query->get();
     $book->setAttribute("switch_to_publisher", true);
