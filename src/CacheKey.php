@@ -818,10 +818,32 @@ class CacheKey
 
             return "=" . sha1($this->encodeForKeyHash($addedWheres)
                 . $this->encodeBindingsForKeyHash($addedBindings))
+                . $this->getExpressionsKey($addedWheres)
                 . $changedStateKey;
         } catch (Throwable) {
             return $this->unkeyableMarker();
         }
+    }
+
+    protected function getExpressionsKey(array $wheres): string
+    {
+        return match (true) {
+            $this->holdsExpression($wheres) => "~"
+                . sha1($this->encodeForKeyHash($this->normalizeForHash($wheres))),
+            default => "",
+        };
+    }
+
+    protected function holdsExpression(mixed $value): bool
+    {
+        return match (true) {
+            // phpcs:ignore CleanCode.Classes.DisallowTypeIntrospection.InstanceOf
+            $value instanceof Expression => true,
+            // phpcs:ignore CleanCode.Classes.DisallowTypeIntrospection.InstanceOf
+            $value instanceof QueryBuilder => $this->holdsExpression(get_object_vars($value)),
+            is_array($value) => collect($value)->contains($this->holdsExpression(...)),
+            default => false,
+        };
     }
 
     protected function getEagerLoadOwner(array $path): ?Model

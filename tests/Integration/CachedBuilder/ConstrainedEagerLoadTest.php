@@ -225,7 +225,7 @@ test('where-only constraints of other shapes keep their key', function (Closure 
     "a where in subquery" => [
         fn () => (new Author)->with(["books" => fn ($query) => $query
             ->whereIn("publisher_id", fn ($sub) => $sub->select("id")->from("publishers"))]),
-        "books=54d199896d516bdbf4a78e69dcf80e44943b7801",
+        "books=54d199896d516bdbf4a78e69dcf80e44943b7801~9c9b15baad2d87014109a607ab547e03ff26ef89",
     ],
     "a where pivot" => [
         fn () => (new Book)->with(["stores" => fn ($query) => $query->wherePivot("store_id", ">", 0)]),

@@ -410,3 +410,86 @@ test('nested constraints are keyed for first and paginate', function (Closure $r
     "first" => [fn ($query) => $query->first()],
     "paginate" => [fn ($query) => $query->paginate()->first()],
 ]);
+
+test('nested constraints that differ only in a raw value are keyed', function (): void {
+    $author = authorWithCommentedBook();
+    $query = fn (string $description) => Author::where("id", $author->id)
+        ->with(["books.comments" => whereRawDescription($description)])
+        ->get()
+        ->first();
+
+    expect(commentsOfFirstBook($query("AAA")))->toBe(["AAA"])
+        ->and(commentsOfFirstBook($query("BBB")))
+        ->toBe(["BBB"]);
+});
+
+test('raw values inside a where group of a nested constraint are keyed', function (): void {
+    $author = authorWithCommentedBook();
+    $query = fn (string $description) => Author::where("id", $author->id)
+        ->with(["books.comments" => fn ($query) => $query
+            ->where(whereRawDescription($description))])
+        ->get()
+        ->first();
+
+    expect(commentsOfFirstBook($query("AAA")))->toBe(["AAA"])
+        ->and(commentsOfFirstBook($query("BBB")))
+        ->toBe(["BBB"]);
+});
+
+test('single level constraints that differ only in a raw value are keyed', function (): void {
+    $author = authorWithPublishedBooks();
+    $query = fn (string $title) => Author::where("id", $author->id)
+        ->with(["books" => fn ($query) => $query->where("title", DB::raw("'{$title}'"))])
+        ->get()
+        ->first()
+        ->books
+        ->pluck("title")
+        ->all();
+
+    expect($query("One"))->toBe(["One"])
+        ->and($query("Two"))
+        ->toBe(["Two"]);
+});
+
+test('nested constraints that differ only in a raw column are keyed', function (): void {
+    $author = authorWithCommentedBook();
+    $query = fn (string $column) => Author::where("id", $author->id)
+        ->with(["books.comments" => fn ($query) => $query->where(DB::raw($column), "aaa")])
+        ->get()
+        ->first();
+
+    expect(commentsOfFirstBook($query("lower(description)")))->toBe(["AAA"])
+        ->and(commentsOfFirstBook($query("replace(description, 'B', 'a')")))
+        ->toBe(["BBB"]);
+});
+
+test('an identical raw value constraint is served from the cache', function (): void {
+    $author = authorWithCommentedBook();
+    $query = fn () => Author::where("id", $author->id)
+        ->with(["books.comments" => whereRawDescription("BBB")])
+        ->get()
+        ->first();
+
+    $query();
+    [$repeat, $log] = queriesRunBy($query);
+
+    expect(commentsOfFirstBook($repeat))->toBe(["BBB"])
+        ->and($log)
+        ->toBe([]);
+});
+
+test('constraints that differ only in a where in subquery are keyed', function (): void {
+    $author = authorWithPublishedBooks();
+    $query = fn (string $condition) => Author::where("id", $author->id)
+        ->with(["books" => fn ($query) => $query
+            ->whereIn("publisher_id", publisherIdsWhere($condition))])
+        ->get()
+        ->first()
+        ->books
+        ->pluck("title")
+        ->all();
+
+    expect($query("1 = 1"))->toBe(["One", "Two"])
+        ->and($query("1 = 0"))
+        ->toBe([]);
+});

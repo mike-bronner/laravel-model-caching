@@ -53,6 +53,18 @@ function whereDescription(string $description): Closure
     return fn ($query) => $query->where("description", $description);
 }
 
+function whereRawDescription(string $description): Closure
+{
+    return fn ($query) => $query->where("description", DB::raw("'{$description}'"));
+}
+
+function publisherIdsWhere(string $condition): Closure
+{
+    return fn ($query) => $query->select("id")
+        ->from("publishers")
+        ->whereRaw($condition);
+}
+
 function commentsOfFirstBook(Author $author): array
 {
     return $author->books
