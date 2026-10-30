@@ -22,7 +22,9 @@ class CachedHasManyThrough extends HasManyThrough
         $model = $this->getModel();
         $query = $this->getQuery()->getQuery();
 
-        $tags = (new CacheTags($eagerLoad, $model, $query))->make();
+        $tags = (new CacheTags($eagerLoad, $model, $query))
+            ->usingRelationResolver($this->cacheRelationResolver())
+            ->make();
 
         $throughTags = (new CacheTags([], $this->throughParent, $query))->make();
 

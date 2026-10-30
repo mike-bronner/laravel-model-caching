@@ -213,7 +213,8 @@ trait CachesOneOrManyThrough
                 $this->builderArgumentMacroKey($builder),
                 $this->withoutGlobalScopes,
                 $this->withoutAllGlobalScopes,
-            ))->make($columns, $idColumn, $keyDifferentiator);
+            ))->usingRelationResolver($this->cacheRelationResolver())
+                ->make($columns, $idColumn, $keyDifferentiator);
         } catch (UnkeyableValueException) {
             $this->disableModelCaching();
 
